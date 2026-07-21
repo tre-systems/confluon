@@ -57,3 +57,11 @@ Audio starts only after an explicit user gesture. Parameter changes are smoothed
 - Particle motion is finite, speed-limited, and wrapped on a torus.
 - Master gain stays conservative and passes through a compressor.
 - Rendering resolution is capped at device pixel ratio 2.
+
+## Hosting and delivery
+
+The production build is served as Cloudflare Workers Static Assets at
+`geno-5.tre.systems`. `wrangler.toml` owns the custom-domain route and SPA fallback.
+GitHub Actions runs the complete verification gate before deploying a push to `main`;
+pull requests never deploy. Cloudflare credentials remain encrypted GitHub Actions
+secrets and are not available to the browser build.

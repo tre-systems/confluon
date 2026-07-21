@@ -39,6 +39,18 @@ Run the complete verification gate with:
 npm run check
 ```
 
+## Deployment
+
+Every passing push to `main` deploys the production build to Cloudflare Workers
+through GitHub Actions:
+
+<https://geno-5.tre.systems>
+
+The workflow builds and tests before deploying. Pull requests run the same checks but
+never deploy. A manual production deployment can also be started from the repository's
+Actions page. Local deployment is available to an authenticated operator with
+`npm run deploy`.
+
 ## Performance map
 
 - Press and drag: herd the swarm toward the pointer.
@@ -81,7 +93,8 @@ collective musical mapping; it includes no upstream code or creative assets.
 - Test and tune several six-minute seeds by listening, then record defended seeds in a
   small local preset ledger.
 
-Publishing and deployment remain explicit human decisions.
+Publishing and deployment remain explicit human decisions; the production deployment
+above was enabled by the project owner on 2026-07-21.
 
 ## License
 
