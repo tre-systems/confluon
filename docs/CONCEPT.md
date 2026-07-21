@@ -2,9 +2,10 @@
 
 ## One-sentence concept
 
-A swarm composes by negotiating local energy: crowding excites resonant voices,
-coherent motion opens a shared drone, and the performer seeds, herds, or disturbs
-formations without a step grid.
+Three particle populations compose by negotiating local energy and sensing one
+another: crowding excites resonant voices, encounters open the spectrum, coherent
+motion opens a shared drone, and the performer seeds, herds, or disturbs formations
+without a step grid.
 
 ## Creative axes
 
@@ -28,6 +29,8 @@ signals:
 - activity controls spatial width and delay feedback;
 - abrupt energy changes excite short resonant strikes;
 - connected formations select intervals from the partial lattice.
+- cross-population encounter pressure brightens the field, widens its tuning, and
+  shortens the space between sparse tones.
 
 The visual image and the audio mix read the same deterministic simulation snapshot.
 

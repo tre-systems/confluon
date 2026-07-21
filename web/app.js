@@ -23,6 +23,7 @@ const elements = {
   energy: document.querySelector("#energy-value"),
   coherence: document.querySelector("#coherence-value"),
   activity: document.querySelector("#activity-value"),
+  encounter: document.querySelector("#encounter-value"),
   renderer: document.querySelector("#renderer-value"),
   audioState: document.querySelector("#audio-state"),
   runtimeStatus: document.querySelector("#runtime-status"),
@@ -280,6 +281,7 @@ function frame(milliseconds) {
     elements.energy.textContent = metrics[0].toFixed(2);
     elements.coherence.textContent = metrics[1].toFixed(2);
     elements.activity.textContent = metrics[2].toFixed(2);
+    elements.encounter.textContent = metrics[6].toFixed(2);
     setAudioState();
     lastReadout = milliseconds;
   }

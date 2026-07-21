@@ -3,15 +3,55 @@ use std::f32::consts::TAU;
 const DEFAULT_PARTICLES: usize = 180;
 const MAX_PARTICLES: usize = 320;
 const MAX_SPEED: f32 = 1.35;
-const KERNEL_RADIUS: f32 = 0.46;
-const KERNEL_WIDTH: f32 = 0.12;
-const KERNEL_WEIGHT: f32 = 0.026;
-const GROWTH_TARGET: f32 = 0.60;
-const GROWTH_WIDTH: f32 = 0.16;
 const REPULSION_RADIUS: f32 = 0.12;
 const REPULSION_STRENGTH: f32 = 0.82;
 const MOTION_SCALE: f32 = 0.018;
 const FORMATION_DISTANCE: f32 = 0.23;
+const SPECIES_COUNT: usize = 3;
+const SENSE_RADIUS: f32 = 0.56;
+
+#[derive(Clone, Copy, Debug)]
+struct Species {
+    kernel_radius: f32,
+    kernel_width: f32,
+    kernel_weight: f32,
+    growth_target: f32,
+    growth_width: f32,
+    motion: f32,
+}
+
+const SPECIES: [Species; SPECIES_COUNT] = [
+    Species {
+        kernel_radius: 0.31,
+        kernel_width: 0.090,
+        kernel_weight: 0.044,
+        growth_target: 0.58,
+        growth_width: 0.15,
+        motion: 0.95,
+    },
+    Species {
+        kernel_radius: 0.39,
+        kernel_width: 0.115,
+        kernel_weight: 0.036,
+        growth_target: 0.52,
+        growth_width: 0.14,
+        motion: 1.05,
+    },
+    Species {
+        kernel_radius: 0.25,
+        kernel_width: 0.075,
+        kernel_weight: 0.052,
+        growth_target: 0.64,
+        growth_width: 0.16,
+        motion: 0.88,
+    },
+];
+
+// A cyclic, deliberately non-symmetric ecology. Negative values attract and
+// positive values avoid. Every population follows one other population and flees
+// the third, producing encounters without assigning a fixed predator/prey hierarchy.
+const CROSS_SENSE: [[f32; SPECIES_COUNT]; SPECIES_COUNT] =
+    [[0.0, -0.26, 0.38], [0.42, 0.0, -0.23], [-0.25, 0.36, 0.0]];
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 struct Particle {
@@ -21,6 +61,7 @@ struct Particle {
     vy: f32,
     energy: f32,
     speed: f32,
+    species: u8,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -52,7 +93,7 @@ pub(crate) struct Simulation {
     initial_count: usize,
     particles: Vec<Particle>,
     rng: SmallRng,
-    metrics: [f32; 6],
+    metrics: [f32; 7],
     previous_energy: f32,
     previous_activity: f32,
 }
@@ -65,7 +106,7 @@ impl Simulation {
             initial_count,
             particles: Vec::with_capacity(MAX_PARTICLES),
             rng: SmallRng::new(seed),
-            metrics: [0.0; 6],
+            metrics: [0.0; 7],
             previous_energy: 0.5,
             previous_activity: 0.0,
         };
@@ -85,20 +126,24 @@ impl Simulation {
         };
         let centre_phase = self.rng.unit() * TAU;
         for index in 0..count {
-            let group = (index % 4) as f32;
-            let angle = centre_phase + group * TAU / 4.0;
-            let centre_x = angle.cos() * 0.42;
-            let centre_y = angle.sin() * 0.42;
+            let species = index % SPECIES_COUNT;
+            let colony = (index / SPECIES_COUNT) % 2;
+            let angle =
+                centre_phase + species as f32 * TAU / SPECIES_COUNT as f32 + colony as f32 * 0.34;
+            let centre_radius = 0.42 + colony as f32 * 0.08;
+            let centre_x = angle.cos() * centre_radius;
+            let centre_y = angle.sin() * centre_radius;
             let jitter_angle = self.rng.unit() * TAU;
-            let jitter_radius = self.rng.unit().sqrt() * 0.30;
+            let jitter_radius = self.rng.unit().sqrt() * 0.22;
             self.particles.push(Particle {
                 x: wrap(centre_x + jitter_angle.cos() * jitter_radius),
                 y: wrap(centre_y + jitter_angle.sin() * jitter_radius),
+                species: species as u8,
                 ..Particle::default()
             });
         }
 
-        self.metrics = [0.0; 6];
+        self.metrics = [0.0; 7];
         self.previous_energy = 0.5;
         self.previous_activity = 0.0;
         self.refresh_metrics();
@@ -120,6 +165,7 @@ impl Simulation {
         let count = self.particles.len();
         let mut fields = vec![0.0_f32; count];
         let mut repulsion_energies = vec![0.0_f32; count];
+        let mut cross_energies = vec![0.0_f32; count];
 
         for i in 0..count {
             for j in (i + 1)..count {
@@ -130,9 +176,17 @@ impl Simulation {
                     self.particles[j].y,
                 );
                 let distance = (dx * dx + dy * dy).sqrt().max(0.000_1);
-                let kernel = shell_kernel(distance);
-                fields[i] += kernel;
-                fields[j] += kernel;
+                let species_i = self.particles[i].species as usize;
+                let species_j = self.particles[j].species as usize;
+                if species_i == species_j {
+                    let kernel = shell_kernel(distance, SPECIES[species_i]);
+                    fields[i] += kernel;
+                    fields[j] += kernel;
+                } else {
+                    let sensed = sense_kernel(distance);
+                    cross_energies[i] += CROSS_SENSE[species_i][species_j] * sensed;
+                    cross_energies[j] += CROSS_SENSE[species_j][species_i] * sensed;
+                }
 
                 if distance < REPULSION_RADIUS {
                     let overlap = 1.0 - distance / REPULSION_RADIUS;
@@ -145,10 +199,12 @@ impl Simulation {
 
         let mut forces = vec![(0.0_f32, 0.0_f32); count];
         for i in 0..count {
-            let growth = growth(fields[i]);
-            self.particles[i].energy = repulsion_energies[i] - growth;
+            let species_i = self.particles[i].species as usize;
+            let species = SPECIES[species_i];
+            let growth = growth(fields[i], species);
+            self.particles[i].energy = repulsion_energies[i] - growth + cross_energies[i] * 0.08;
             let growth_derivative =
-                growth * -2.0 * (fields[i] - GROWTH_TARGET) / GROWTH_WIDTH.powi(2);
+                growth * -2.0 * (fields[i] - species.growth_target) / species.growth_width.powi(2);
 
             for j in 0..count {
                 if i == j {
@@ -161,17 +217,30 @@ impl Simulation {
                     self.particles[j].y,
                 );
                 let distance = (dx * dx + dy * dy).sqrt().max(0.000_1);
-                let kernel = shell_kernel(distance);
-                let kernel_derivative =
-                    kernel * -2.0 * (distance - KERNEL_RADIUS) / KERNEL_WIDTH.powi(2);
+                let species_j = self.particles[j].species as usize;
+                let same_species_derivative = if species_i == species_j {
+                    let kernel = shell_kernel(distance, species);
+                    let kernel_derivative = kernel * -2.0 * (distance - species.kernel_radius)
+                        / species.kernel_width.powi(2);
+                    -growth_derivative * kernel_derivative
+                } else {
+                    0.0
+                };
                 let repulsion_derivative = if distance < REPULSION_RADIUS {
                     -REPULSION_STRENGTH * (1.0 - distance / REPULSION_RADIUS) / REPULSION_RADIUS
                 } else {
                     0.0
                 };
+                let cross_derivative = if species_i != species_j {
+                    let sensed = sense_kernel(distance);
+                    CROSS_SENSE[species_i][species_j] * sensed * -2.0 * distance
+                        / SENSE_RADIUS.powi(2)
+                } else {
+                    0.0
+                };
                 let energy_derivative =
-                    repulsion_derivative - growth_derivative * kernel_derivative;
-                let force = -energy_derivative * MOTION_SCALE;
+                    repulsion_derivative + same_species_derivative + cross_derivative;
+                let force = -energy_derivative * MOTION_SCALE * species.motion;
                 forces[i].0 += force * dx / distance;
                 forces[i].1 += force * dy / distance;
             }
@@ -215,12 +284,14 @@ impl Simulation {
 
     pub(crate) fn spawn_at(&mut self, x: f32, y: f32, count: usize) {
         let available = MAX_PARTICLES.saturating_sub(self.particles.len());
-        for _ in 0..count.min(available) {
+        let start = self.particles.len();
+        for index in 0..count.min(available) {
             let angle = self.rng.unit() * TAU;
             let radius = self.rng.unit().sqrt() * 0.12;
             self.particles.push(Particle {
                 x: wrap(x + angle.cos() * radius),
                 y: wrap(y + angle.sin() * radius),
+                species: ((start + index) % SPECIES_COUNT) as u8,
                 ..Particle::default()
             });
         }
@@ -232,13 +303,14 @@ impl Simulation {
         for particle in &self.particles {
             values.push(particle.x);
             values.push(particle.y);
-            values.push(((particle.energy + 1.0) * 0.5).clamp(0.0, 1.0));
+            let energy = ((particle.energy + 1.0) * 0.5).clamp(0.0, 0.999);
+            values.push(particle.species as f32 + energy);
             values.push((particle.speed / MAX_SPEED).clamp(0.0, 1.0));
         }
         values
     }
 
-    pub(crate) fn metrics(&self) -> [f32; 6] {
+    pub(crate) fn metrics(&self) -> [f32; 7] {
         self.metrics
     }
 
@@ -252,7 +324,7 @@ impl Simulation {
 
     fn refresh_metrics(&mut self) {
         if self.particles.is_empty() {
-            self.metrics = [0.0; 6];
+            self.metrics = [0.0; 7];
             return;
         }
 
@@ -282,11 +354,37 @@ impl Simulation {
                     self.particles[j].x,
                     self.particles[j].y,
                 );
-                let contribution = shell_kernel((dx * dx + dy * dy).sqrt());
-                mean_field += contribution * 2.0;
+                if self.particles[i].species == self.particles[j].species {
+                    let species = SPECIES[self.particles[i].species as usize];
+                    let contribution = shell_kernel((dx * dx + dy * dy).sqrt(), species);
+                    mean_field += contribution * 2.0;
+                }
             }
         }
-        let density = (mean_field / count / 1.05).clamp(0.0, 1.0);
+        let density = (mean_field / count / 0.9).clamp(0.0, 1.0);
+
+        let mut encounter_field = 0.0;
+        let mut cross_pairs = 0.0;
+        for i in 0..self.particles.len() {
+            for j in (i + 1)..self.particles.len() {
+                if self.particles[i].species == self.particles[j].species {
+                    continue;
+                }
+                let (dx, dy) = torus_delta(
+                    self.particles[i].x,
+                    self.particles[i].y,
+                    self.particles[j].x,
+                    self.particles[j].y,
+                );
+                encounter_field += sense_kernel((dx * dx + dy * dy).sqrt());
+                cross_pairs += 1.0;
+            }
+        }
+        let encounters = if cross_pairs > 0.0 {
+            (encounter_field / cross_pairs * 4.8).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
 
         let (centre_x, centre_y) = circular_centre(&self.particles);
         let mut direction_x = 0.0;
@@ -321,19 +419,26 @@ impl Simulation {
             + (activity - self.previous_activity).abs() * 2.6)
             .clamp(0.0, 1.0);
 
-        self.metrics = [energy, coherence, activity, density, formations, transition];
+        self.metrics = [
+            energy, coherence, activity, density, formations, transition, encounters,
+        ];
         self.previous_energy = energy;
         self.previous_activity = activity;
     }
 }
 
-fn shell_kernel(distance: f32) -> f32 {
-    let normalized = (distance - KERNEL_RADIUS) / KERNEL_WIDTH;
-    (-normalized * normalized).exp() * KERNEL_WEIGHT
+fn shell_kernel(distance: f32, species: Species) -> f32 {
+    let normalized = (distance - species.kernel_radius) / species.kernel_width;
+    (-normalized * normalized).exp() * species.kernel_weight
 }
 
-fn growth(field: f32) -> f32 {
-    let normalized = (field - GROWTH_TARGET) / GROWTH_WIDTH;
+fn growth(field: f32, species: Species) -> f32 {
+    let normalized = (field - species.growth_target) / species.growth_width;
+    (-normalized * normalized).exp()
+}
+
+fn sense_kernel(distance: f32) -> f32 {
+    let normalized = distance / SENSE_RADIUS;
     (-normalized * normalized).exp()
 }
 
@@ -381,6 +486,9 @@ fn formation_count(particles: &[Particle]) -> usize {
     let mut parents: Vec<usize> = (0..particles.len()).collect();
     for i in 0..particles.len() {
         for j in (i + 1)..particles.len() {
+            if particles[i].species != particles[j].species {
+                continue;
+            }
             let (dx, dy) = torus_delta(
                 particles[i].x,
                 particles[i].y,
@@ -452,7 +560,8 @@ mod tests {
             assert!(record.iter().all(|value| value.is_finite()));
             assert!((-1.0..=1.0).contains(&record[0]));
             assert!((-1.0..=1.0).contains(&record[1]));
-            assert!((0.0..=1.0).contains(&record[2]));
+            assert!((0.0..3.0).contains(&record[2]));
+            assert!(record[2].floor() <= 2.0);
             assert!((0.0..=1.0).contains(&record[3]));
         }
     }
@@ -494,5 +603,16 @@ mod tests {
         }
         assert!((1.0..=12.0).contains(&metrics[4]));
         assert!((0.0..=1.0).contains(&metrics[5]));
+        assert!((0.0..=1.0).contains(&metrics[6]));
+    }
+
+    #[test]
+    fn initial_field_contains_all_populations() {
+        let simulation = Simulation::new(5, 72);
+        let mut present = [false; SPECIES_COUNT];
+        for record in simulation.snapshot().chunks_exact(4) {
+            present[record[2].floor() as usize] = true;
+        }
+        assert!(present.into_iter().all(|value| value));
     }
 }

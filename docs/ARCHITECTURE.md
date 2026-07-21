@@ -24,10 +24,14 @@ Engine.step(dt, pointer_x, pointer_y, pointer_strength, settle)
 
 The engine exposes two flat arrays:
 
-- `snapshot()`: repeated `[x, y, energy, speed]` records;
-- `metrics()`: `[energy, coherence, activity, density, formations, transition]`.
+- `snapshot()`: repeated `[x, y, species + energy, speed]` records. The integer
+  portion of the packed third value is the population (`0..2`); its fractional
+  portion is normalised energy.
+- `metrics()`: `[energy, coherence, activity, density, formations, transition,
+  encounters]`.
 
-Both are values in documented bounded ranges. This small contract keeps the renderer
+The normalised metrics remain bounded to `0..1` except formation count. `encounters`
+measures cross-population sensing pressure. This small contract keeps the renderer
 replaceable and makes offline reproduction practical.
 
 ## Determinism

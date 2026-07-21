@@ -1,9 +1,10 @@
 # Geno-5 // Confluence
 
-Confluence is an original interactive audiovisual instrument in which a deterministic
-particle swarm composes long-form electronic music. Local crowding excites resonant
-voices, coherent movement opens a shared drone, and changes in collective energy
-produce strikes and transitions.
+Confluence is an original interactive audiovisual instrument in which three
+deterministic particle populations compose long-form electronic music. Each forms
+its own structures while cyclic attraction and avoidance pull the populations into
+encounters. Local crowding excites resonant voices, coherent movement opens a shared
+drone, and changes in collective energy produce strikes and transitions.
 
 The same Rust/WASM simulation drives WebGPU visuals and WebAudio sound. There is no
 sequencer and no separate audio-reactive animation: the image and music are two views
@@ -11,11 +12,11 @@ of one evolving state.
 
 ## What is here
 
-- An energy-inspired particle model with a shell field, preferred local density,
-  close-range repulsion, and performance forces.
+- An energy-inspired, three-population particle model with distinct shell fields,
+  cyclic cross-population sensing, close-range repulsion, and performance forces.
 - Deterministic reproduction from an integer seed and fixed simulation timestep.
-- A canvas-first WebGPU particle field with luminous cores, persistent filaments,
-  motion traces, and a Canvas 2D fallback.
+- A canvas-first WebGPU particle field with population colour, living membrane
+  meshes, motion traces, and a Canvas 2D fallback.
 - An audible WebAudio harmonic field with six sustained voices, sub foundation,
   filtered air, sparse scale-locked tones, delay, generated reverb, compression,
   and an output meter.

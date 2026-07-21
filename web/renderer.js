@@ -23,6 +23,7 @@ struct VertexOutput {
   @location(1) energy: f32,
   @location(2) speed: f32,
   @location(3) breath: f32,
+  @location(4) species: f32,
 }
 
 @vertex
@@ -47,7 +48,8 @@ fn vs_main(
   var output: VertexOutput;
   output.position = vec4<f32>(particle.position + offset, 0.0, 1.0);
   output.local = local;
-  output.energy = particle.energy;
+  output.species = floor(particle.energy);
+  output.energy = particle.energy - output.species;
   output.speed = particle.speed;
   output.breath = breath;
   return output;
@@ -62,10 +64,17 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
   let core = 1.0 - smoothstep(0.035, 0.22, distance);
   let body = 1.0 - smoothstep(0.14, 0.56, distance);
   let halo = 1.0 - smoothstep(0.16, 1.0, distance);
-  let cool = vec3<f32>(0.20, 0.57, 0.62);
-  let warm = vec3<f32>(0.92, 0.49, 0.27);
+  let tide = vec3<f32>(0.15, 0.64, 0.69);
+  let ember = vec3<f32>(0.95, 0.38, 0.24);
+  let bloom = vec3<f32>(0.72, 0.49, 0.90);
   let pearl = vec3<f32>(0.91, 1.0, 0.94);
-  var colour = mix(cool, warm, smoothstep(0.24, 0.78, input.energy));
+  var base = tide;
+  if (input.species > 1.5) {
+    base = bloom;
+  } else if (input.species > 0.5) {
+    base = ember;
+  }
+  var colour = mix(base * 0.42, base, 0.48 + input.energy * 0.52);
   colour = mix(colour, pearl, core * (0.62 + input.speed * 0.34));
   let alpha = core * 0.96 + body * 0.42 + halo * (0.075 + input.speed * 0.13 + input.breath * 0.035);
   return vec4<f32>(colour, alpha);
@@ -129,36 +138,46 @@ class TrailRenderer {
   drawConnections(snapshot, metrics) {
     const { context, canvas } = this;
     const count = snapshot.length / 4;
-    const maxDistanceSq = 0.085;
+    const maxDistanceSq = 0.105;
     context.lineCap = "round";
     for (let index = 0; index < count; index += 1) {
       const offset = index * 4;
-      let nearest = -1;
-      let nearestDistanceSq = maxDistanceSq;
+      const species = speciesOf(snapshot[offset + 2]);
+      const nearest = [
+        { offset: -1, distanceSq: maxDistanceSq },
+        { offset: -1, distanceSq: maxDistanceSq },
+      ];
       for (let other = 0; other < count; other += 1) {
         if (other === index) continue;
         const otherOffset = other * 4;
+        if (speciesOf(snapshot[otherOffset + 2]) !== species) continue;
         const dx = snapshot[otherOffset] - snapshot[offset];
         const dy = snapshot[otherOffset + 1] - snapshot[offset + 1];
         if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) continue;
         const distanceSq = dx * dx + dy * dy;
-        if (distanceSq < nearestDistanceSq) {
-          nearestDistanceSq = distanceSq;
-          nearest = otherOffset;
+        if (distanceSq < nearest[0].distanceSq) {
+          nearest[1] = nearest[0];
+          nearest[0] = { offset: otherOffset, distanceSq };
+        } else if (distanceSq < nearest[1].distanceSq) {
+          nearest[1] = { offset: otherOffset, distanceSq };
         }
       }
-      if (nearest < 0 || nearest < offset) continue;
-      const closeness = 1 - nearestDistanceSq / maxDistanceSq;
-      const energy = (snapshot[offset + 2] + snapshot[nearest + 2]) * 0.5;
-      const red = Math.round(68 + energy * 102);
-      const green = Math.round(126 + (1 - energy) * 45);
-      const blue = Math.round(132 + (1 - energy) * 42);
-      context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${0.035 + closeness * 0.13 + metrics[1] * 0.035})`;
-      context.lineWidth = deviceScale() * (0.35 + closeness * 0.45);
-      context.beginPath();
-      context.moveTo(toX(snapshot[offset], canvas.width), toY(snapshot[offset + 1], canvas.height));
-      context.lineTo(toX(snapshot[nearest], canvas.width), toY(snapshot[nearest + 1], canvas.height));
-      context.stroke();
+      for (const connection of nearest) {
+        if (connection.offset < 0 || connection.offset < offset) continue;
+        const closeness = 1 - connection.distanceSq / maxDistanceSq;
+        const energy =
+          (energyOf(snapshot[offset + 2]) + energyOf(snapshot[connection.offset + 2])) * 0.5;
+        const [red, green, blue] = speciesColour(species, 0.72 + energy * 0.35);
+        context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${0.026 + closeness * 0.11 + metrics[1] * 0.025})`;
+        context.lineWidth = deviceScale() * (0.28 + closeness * 0.38);
+        context.beginPath();
+        context.moveTo(toX(snapshot[offset], canvas.width), toY(snapshot[offset + 1], canvas.height));
+        context.lineTo(
+          toX(snapshot[connection.offset], canvas.width),
+          toY(snapshot[connection.offset + 1], canvas.height),
+        );
+        context.stroke();
+      }
     }
   }
 
@@ -171,10 +190,9 @@ class TrailRenderer {
       const dy = snapshot[offset + 1] - this.previous[offset + 1];
       if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) continue;
       const speed = snapshot[offset + 3];
-      const energy = snapshot[offset + 2];
-      const red = Math.round(62 + energy * 145);
-      const green = Math.round(137 + energy * 20);
-      const blue = Math.round(151 - energy * 57);
+      const packedEnergy = snapshot[offset + 2];
+      const energy = energyOf(packedEnergy);
+      const [red, green, blue] = speciesColour(speciesOf(packedEnergy), 0.72 + energy * 0.35);
       context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${0.05 + speed * 0.32 + metrics[2] * 0.04})`;
       context.lineWidth = deviceScale() * (0.45 + speed * 1.25);
       context.beginPath();
@@ -188,17 +206,17 @@ class TrailRenderer {
     const { context, canvas } = this;
     context.filter = `blur(${Math.round(8 * deviceScale())}px)`;
     const radius = (3.2 + metrics[3] * 4.2) * deviceScale();
-    for (const warm of [false, true]) {
+    const auraColours = ["rgba(44, 174, 182, 0.004)", "rgba(224, 75, 43, 0.004)", "rgba(155, 98, 211, 0.004)"];
+    for (let species = 0; species < 3; species += 1) {
       context.beginPath();
       for (let offset = 0; offset < snapshot.length; offset += 4) {
-        const energy = snapshot[offset + 2];
-        if ((energy >= 0.54) !== warm) continue;
+        if (speciesOf(snapshot[offset + 2]) !== species) continue;
         const x = toX(snapshot[offset], canvas.width);
         const y = toY(snapshot[offset + 1], canvas.height);
         context.moveTo(x + radius, y);
         context.arc(x, y, radius, 0, Math.PI * 2);
       }
-      context.fillStyle = warm ? "rgba(203, 103, 57, 0.004)" : "rgba(62, 158, 164, 0.005)";
+      context.fillStyle = auraColours[species];
       context.fill();
     }
     context.filter = "none";
@@ -315,14 +333,14 @@ class CanvasRenderer {
     for (let offset = 0; offset < snapshot.length; offset += 4) {
       const x = toX(snapshot[offset], canvas.width);
       const y = toY(snapshot[offset + 1], canvas.height);
-      const energy = snapshot[offset + 2];
+      const packedEnergy = snapshot[offset + 2];
+      const species = speciesOf(packedEnergy);
+      const energy = energyOf(packedEnergy);
       const speed = snapshot[offset + 3];
       const breath = 0.5 + 0.5 * Math.sin(time * 0.46 + offset * 0.0475);
       const radius = (4.2 + speed * 6 + breath * metrics[1] * 2.2) * deviceScale();
       const particle = context.createRadialGradient(x, y, 0, x, y, radius * 2.4);
-      const red = Math.round(51 + energy * 184);
-      const green = Math.round(145 + energy * 20);
-      const blue = Math.round(158 - energy * 89);
+      const [red, green, blue] = speciesColour(species, 0.72 + energy * 0.35);
       particle.addColorStop(0, `rgba(233, 255, 241, ${0.92 + speed * 0.08})`);
       particle.addColorStop(0.18, `rgba(${red}, ${green}, ${blue}, 0.82)`);
       particle.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`);
@@ -333,6 +351,23 @@ class CanvasRenderer {
     }
     context.globalCompositeOperation = "source-over";
   }
+}
+
+function speciesOf(packedEnergy) {
+  return Math.max(0, Math.min(2, Math.floor(packedEnergy)));
+}
+
+function energyOf(packedEnergy) {
+  return Math.max(0, Math.min(0.999, packedEnergy - speciesOf(packedEnergy)));
+}
+
+function speciesColour(species, brightness = 1) {
+  const colours = [
+    [43, 177, 185],
+    [235, 83, 49],
+    [177, 116, 221],
+  ];
+  return colours[species].map((channel) => Math.round(Math.min(255, channel * brightness)));
 }
 
 function toX(value, width) {

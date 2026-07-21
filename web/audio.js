@@ -14,7 +14,7 @@ export class ConfluenceAudio {
     this.lastStrike = -Infinity;
     this.nextNoteTime = Infinity;
     this.currentRoot = 48;
-    this.latestMetrics = [0.5, 0, 0, 0.5, 1, 0];
+    this.latestMetrics = [0.5, 0, 0, 0.5, 1, 0, 0];
   }
 
   async start() {
@@ -155,7 +155,7 @@ export class ConfluenceAudio {
   update(metrics) {
     if (!this.context) return;
     this.latestMetrics = Array.from(metrics);
-    const [energy, coherence, activity, density, formations] = metrics;
+    const [energy, coherence, activity, density, formations, , encounters = 0] = metrics;
     const now = this.context.currentTime;
     const formation = Math.max(0, Math.round(formations) - 1);
     const rootStep = ROOT_STEPS[formation % ROOT_STEPS.length];
@@ -164,9 +164,15 @@ export class ConfluenceAudio {
     const breath = 0.9 + Math.sin(now * 0.52) * 0.1;
 
     this.voices.forEach((voice, index) => {
-      const drift = Math.sin(now * (0.031 + index * 0.008) + index * 1.31) * (1.4 + activity * 2.8);
+      const drift =
+        Math.sin(now * (0.031 + index * 0.008) + index * 1.31) *
+        (1.4 + activity * 2.8 + encounters * 1.6);
       voice.oscillator.frequency.setTargetAtTime(this.currentRoot * PARTIALS[index], now, 0.65 + index * 0.1);
-      voice.oscillator.detune.setTargetAtTime((index - 2.5) * 2.1 + drift, now, 0.8);
+      voice.oscillator.detune.setTargetAtTime(
+        (index - 2.5) * (2.1 + encounters * 0.85) + drift,
+        now,
+        0.8,
+      );
       const hierarchy = 1 / Math.pow(index + 1, 0.62);
       const voiceLevel =
         (0.012 + hierarchy * (0.04 + coherence * 0.038) * (0.72 + density * 0.38)) *
@@ -179,29 +185,39 @@ export class ConfluenceAudio {
 
     this.sub.frequency.setTargetAtTime(Math.max(32, this.currentRoot * 0.5), now, 0.8);
     this.subGain.gain.setTargetAtTime((0.026 + density * 0.032 + coherence * 0.018) * breath, now, 0.6);
-    this.padFilter.frequency.setTargetAtTime(520 + density * 1650 + activity * 1100, now, 0.32);
+    this.padFilter.frequency.setTargetAtTime(
+      520 + density * 1650 + activity * 1100 + encounters * 620,
+      now,
+      0.32,
+    );
     this.padFilter.Q.setTargetAtTime(0.8 + energy * 2.4, now, 0.4);
     this.fieldPan.pan.setTargetAtTime(Math.sin(now * 0.043) * (0.14 + coherence * 0.24), now, 0.9);
     this.noiseFilter.frequency.setTargetAtTime(260 + density * 1250 + energy * 760, now, 0.38);
-    this.noiseGain.gain.setTargetAtTime(0.006 + activity * 0.026 * (1 - coherence * 0.42), now, 0.28);
+    this.noiseGain.gain.setTargetAtTime(
+      0.006 + activity * 0.026 * (1 - coherence * 0.42) + encounters * 0.012,
+      now,
+      0.28,
+    );
     this.delay.delayTime.setTargetAtTime(0.43 + (1 - coherence) * 0.42, now, 0.7);
-    this.feedback.gain.setTargetAtTime(0.23 + activity * 0.2, now, 0.6);
+    this.feedback.gain.setTargetAtTime(0.23 + activity * 0.2 + encounters * 0.07, now, 0.6);
     this.reverbGain.gain.setTargetAtTime(0.3 + coherence * 0.18, now, 0.8);
 
     if (!this.paused && now >= this.nextNoteTime) {
       this.playFieldNote(metrics, now);
-      const space = 1.55 - activity * 0.46 - density * 0.24 + this.random() * 0.55;
+      const space =
+        1.55 - activity * 0.46 - density * 0.24 - encounters * 0.3 + this.random() * 0.55;
       this.nextNoteTime = now + Math.max(0.78, space);
     }
   }
 
   playFieldNote(metrics, when) {
-    const [energy, coherence, activity, density, formations] = metrics;
+    const [energy, coherence, activity, density, formations, , encounters = 0] = metrics;
     const walk = Math.floor(this.random() * Math.min(SCALE.length, 4 + Math.round(density * 4)));
     const octave = formations > 4 && this.random() > 0.62 ? 12 : 0;
     const semitones = SCALE[walk] + octave;
     const frequency = this.currentRoot * 2 * Math.pow(2, semitones / 12);
-    const peak = 0.045 + coherence * 0.038 + activity * 0.024 + this.random() * 0.018;
+    const peak =
+      0.045 + coherence * 0.038 + activity * 0.024 + encounters * 0.016 + this.random() * 0.018;
     const duration = 2.7 + (1 - activity) * 2.6 + this.random() * 1.5;
     const pan = (this.random() * 2 - 1) * (0.46 + activity * 0.35);
     this.playTone(frequency * (0.995 + energy * 0.01), peak, when, duration, pan);
