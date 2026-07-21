@@ -81,6 +81,147 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
 }
 `;
 
+class CellRenderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.context = canvas.getContext("2d", { alpha: true });
+  }
+
+  reset() {
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+
+  render(snapshot, metrics, time) {
+    resizeCanvas(this.canvas);
+    const { context, canvas } = this;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.globalCompositeOperation = "source-over";
+
+    for (let species = 0; species < 3; species += 1) {
+      const points = [];
+      for (let offset = 0; offset < snapshot.length; offset += 4) {
+        if (speciesOf(snapshot[offset + 2]) !== species) continue;
+        points.push({
+          x: toX(snapshot[offset], canvas.width),
+          y: toY(snapshot[offset + 1], canvas.height),
+          nx: snapshot[offset],
+          ny: snapshot[offset + 1],
+          energy: energyOf(snapshot[offset + 2]),
+        });
+      }
+
+      for (const component of connectedComponents(points, 0.04)) {
+        if (component.length < 5) continue;
+        const hull = convexHull(component);
+        if (hull.length < 3) continue;
+        this.drawCell(hull, component, species, metrics, time);
+      }
+    }
+  }
+
+  drawCell(hull, component, species, metrics, time) {
+    const { context } = this;
+    const centre = component.reduce(
+      (sum, point) => ({ x: sum.x + point.x / component.length, y: sum.y + point.y / component.length }),
+      { x: 0, y: 0 },
+    );
+    const pulse = 0.5 + 0.5 * Math.sin(time * 0.52 + species * 1.9 + component.length * 0.07);
+    const padding = deviceScale() * (9 + Math.min(13, Math.sqrt(component.length) * 1.7) + pulse * 2.5);
+    const membrane = hull.map((point, index) => {
+      const dx = point.x - centre.x;
+      const dy = point.y - centre.y;
+      const length = Math.hypot(dx, dy) || 1;
+      const angle = Math.atan2(dy, dx);
+      const undulation =
+        0.88 +
+        0.1 * Math.sin(angle * 3 + time * 0.47 + species * 1.8) +
+        0.055 * Math.sin(index * 2.17 - time * 0.31);
+      return {
+        x: point.x + (dx / length) * padding * undulation,
+        y: point.y + (dy / length) * padding * undulation,
+      };
+    });
+
+    const radius = Math.max(
+      padding * 2,
+      ...membrane.map((point) => Math.hypot(point.x - centre.x, point.y - centre.y)),
+    );
+    const [red, green, blue] = speciesColour(species, 0.9);
+    const encounter = metrics[6] ?? 0;
+    const energy =
+      component.reduce((sum, point) => sum + point.energy, 0) / Math.max(1, component.length);
+
+    smoothClosedPath(context, membrane);
+    const cytoplasm = context.createRadialGradient(
+      centre.x - radius * 0.12,
+      centre.y - radius * 0.1,
+      0,
+      centre.x,
+      centre.y,
+      radius,
+    );
+    cytoplasm.addColorStop(0, `rgba(${red}, ${green}, ${blue}, ${0.07 + energy * 0.035})`);
+    cytoplasm.addColorStop(0.72, `rgba(${red}, ${green}, ${blue}, ${0.035 + encounter * 0.018})`);
+    cytoplasm.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0.012)`);
+    context.fillStyle = cytoplasm;
+    context.fill();
+
+    context.save();
+    context.shadowColor = `rgba(${red}, ${green}, ${blue}, 0.42)`;
+    context.shadowBlur = deviceScale() * (5 + encounter * 5);
+    context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${0.24 + encounter * 0.1})`;
+    context.lineWidth = deviceScale() * (0.8 + pulse * 0.35);
+    context.stroke();
+    context.restore();
+
+    smoothClosedPath(
+      context,
+      membrane.map((point) => ({
+        x: point.x + (centre.x - point.x) * 0.025,
+        y: point.y + (centre.y - point.y) * 0.025,
+      })),
+    );
+    context.strokeStyle = `rgba(235, 250, 244, ${0.055 + energy * 0.035})`;
+    context.lineWidth = deviceScale() * 0.45;
+    context.stroke();
+
+    if (component.length >= 9) {
+      const nucleusRadius = deviceScale() * Math.min(19, 5.5 + Math.sqrt(component.length) * 1.35);
+      const nucleus = context.createRadialGradient(
+        centre.x - nucleusRadius * 0.2,
+        centre.y - nucleusRadius * 0.2,
+        0,
+        centre.x,
+        centre.y,
+        nucleusRadius,
+      );
+      nucleus.addColorStop(0, `rgba(244, 255, 249, ${0.15 + encounter * 0.06})`);
+      nucleus.addColorStop(0.35, `rgba(${red}, ${green}, ${blue}, 0.105)`);
+      nucleus.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`);
+      context.fillStyle = nucleus;
+      context.beginPath();
+      context.arc(centre.x, centre.y, nucleusRadius, 0, Math.PI * 2);
+      context.fill();
+
+      context.save();
+      context.translate(centre.x, centre.y);
+      context.rotate(species * 0.74 + Math.sin(time * 0.13 + component.length) * 0.22);
+      context.beginPath();
+      context.ellipse(0, 0, nucleusRadius * 0.72, nucleusRadius * 0.54, 0, 0, Math.PI * 2);
+      context.fillStyle = `rgba(${red}, ${green}, ${blue}, ${0.075 + energy * 0.035})`;
+      context.fill();
+      context.strokeStyle = `rgba(229, 248, 243, ${0.1 + encounter * 0.035})`;
+      context.lineWidth = deviceScale() * 0.55;
+      context.stroke();
+      context.beginPath();
+      context.arc(-nucleusRadius * 0.12, nucleusRadius * 0.04, nucleusRadius * 0.12, 0, Math.PI * 2);
+      context.fillStyle = `rgba(238, 255, 249, ${0.2 + energy * 0.06})`;
+      context.fill();
+      context.restore();
+    }
+  }
+}
+
 class TrailRenderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -168,8 +309,8 @@ class TrailRenderer {
         const energy =
           (energyOf(snapshot[offset + 2]) + energyOf(snapshot[connection.offset + 2])) * 0.5;
         const [red, green, blue] = speciesColour(species, 0.72 + energy * 0.35);
-        context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${0.026 + closeness * 0.11 + metrics[1] * 0.025})`;
-        context.lineWidth = deviceScale() * (0.28 + closeness * 0.38);
+        context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${0.012 + closeness * 0.052 + metrics[1] * 0.012})`;
+        context.lineWidth = deviceScale() * (0.24 + closeness * 0.28);
         context.beginPath();
         context.moveTo(toX(snapshot[offset], canvas.width), toY(snapshot[offset + 1], canvas.height));
         context.lineTo(
@@ -224,13 +365,14 @@ class TrailRenderer {
 }
 
 class WebGpuRenderer {
-  constructor(canvas, trailCanvas, device, context, format) {
+  constructor(canvas, trailCanvas, cellCanvas, device, context, format) {
     this.canvas = canvas;
     this.device = device;
     this.context = context;
     this.format = format;
     this.kind = "WEBGPU";
     this.trails = new TrailRenderer(trailCanvas);
+    this.cells = new CellRenderer(cellCanvas);
     this.particleBuffer = device.createBuffer({
       label: "particle snapshot",
       size: MAX_PARTICLES * 4 * Float32Array.BYTES_PER_ELEMENT,
@@ -280,11 +422,13 @@ class WebGpuRenderer {
 
   resetTrails() {
     this.trails.reset();
+    this.cells.reset();
   }
 
   render(snapshot, metrics, time) {
     resizeCanvas(this.canvas);
     this.trails.render(snapshot, metrics, time);
+    this.cells.render(snapshot, metrics, time);
     const particleCount = snapshot.length / 4;
     this.device.queue.writeBuffer(this.particleBuffer, 0, snapshot);
     this.device.queue.writeBuffer(
@@ -313,20 +457,23 @@ class WebGpuRenderer {
 }
 
 class CanvasRenderer {
-  constructor(canvas, trailCanvas) {
+  constructor(canvas, trailCanvas, cellCanvas) {
     this.canvas = canvas;
     this.context = canvas.getContext("2d", { alpha: true });
     this.kind = "CANVAS";
     this.trails = new TrailRenderer(trailCanvas);
+    this.cells = new CellRenderer(cellCanvas);
   }
 
   resetTrails() {
     this.trails.reset();
+    this.cells.reset();
   }
 
   render(snapshot, metrics, time) {
     resizeCanvas(this.canvas);
     this.trails.render(snapshot, metrics, time);
+    this.cells.render(snapshot, metrics, time);
     const { context, canvas } = this;
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.globalCompositeOperation = "lighter";
@@ -351,6 +498,75 @@ class CanvasRenderer {
     }
     context.globalCompositeOperation = "source-over";
   }
+}
+
+function connectedComponents(points, maxDistanceSq) {
+  const parents = points.map((_, index) => index);
+  const root = (start) => {
+    let index = start;
+    while (parents[index] !== index) {
+      parents[index] = parents[parents[index]];
+      index = parents[index];
+    }
+    return index;
+  };
+  const join = (left, right) => {
+    const leftRoot = root(left);
+    const rightRoot = root(right);
+    if (leftRoot !== rightRoot) parents[rightRoot] = leftRoot;
+  };
+
+  for (let left = 0; left < points.length; left += 1) {
+    for (let right = left + 1; right < points.length; right += 1) {
+      const dx = points[left].nx - points[right].nx;
+      const dy = points[left].ny - points[right].ny;
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) continue;
+      if (dx * dx + dy * dy <= maxDistanceSq) join(left, right);
+    }
+  }
+
+  const groups = new Map();
+  for (let index = 0; index < points.length; index += 1) {
+    const key = root(index);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(points[index]);
+  }
+  return groups.values();
+}
+
+function convexHull(points) {
+  if (points.length <= 3) return [...points];
+  const sorted = [...points].sort((left, right) => left.x - right.x || left.y - right.y);
+  const cross = (origin, left, right) =>
+    (left.x - origin.x) * (right.y - origin.y) - (left.y - origin.y) * (right.x - origin.x);
+  const lower = [];
+  for (const point of sorted) {
+    while (lower.length >= 2 && cross(lower.at(-2), lower.at(-1), point) <= 0) lower.pop();
+    lower.push(point);
+  }
+  const upper = [];
+  for (let index = sorted.length - 1; index >= 0; index -= 1) {
+    const point = sorted[index];
+    while (upper.length >= 2 && cross(upper.at(-2), upper.at(-1), point) <= 0) upper.pop();
+    upper.push(point);
+  }
+  lower.pop();
+  upper.pop();
+  return lower.concat(upper);
+}
+
+function smoothClosedPath(context, points) {
+  if (points.length < 3) return;
+  const midpoint = (left, right) => ({ x: (left.x + right.x) * 0.5, y: (left.y + right.y) * 0.5 });
+  context.beginPath();
+  const start = midpoint(points.at(-1), points[0]);
+  context.moveTo(start.x, start.y);
+  for (let index = 0; index < points.length; index += 1) {
+    const next = points[(index + 1) % points.length];
+    const middle = midpoint(points[index], next);
+    context.quadraticCurveTo(points[index].x, points[index].y, middle.x, middle.y);
+  }
+  context.closePath();
 }
 
 function speciesOf(packedEnergy) {
@@ -394,19 +610,19 @@ function resizeCanvas(canvas) {
   return false;
 }
 
-export async function createRenderer(canvas, trailCanvas) {
-  if (!navigator.gpu) return new CanvasRenderer(canvas, trailCanvas);
+export async function createRenderer(canvas, trailCanvas, cellCanvas) {
+  if (!navigator.gpu) return new CanvasRenderer(canvas, trailCanvas, cellCanvas);
 
   try {
     const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
-    if (!adapter) return new CanvasRenderer(canvas, trailCanvas);
+    if (!adapter) return new CanvasRenderer(canvas, trailCanvas, cellCanvas);
     const device = await adapter.requestDevice();
     const context = canvas.getContext("webgpu");
     const format = navigator.gpu.getPreferredCanvasFormat();
     context.configure({ device, format, alphaMode: "premultiplied" });
-    return new WebGpuRenderer(canvas, trailCanvas, device, context, format);
+    return new WebGpuRenderer(canvas, trailCanvas, cellCanvas, device, context, format);
   } catch (error) {
     console.warn("WebGPU unavailable; using Canvas fallback", error);
-    return new CanvasRenderer(canvas, trailCanvas);
+    return new CanvasRenderer(canvas, trailCanvas, cellCanvas);
   }
 }

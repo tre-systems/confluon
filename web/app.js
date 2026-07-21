@@ -10,6 +10,7 @@ const elements = {
   instrument: document.querySelector("#instrument"),
   field: document.querySelector("#field"),
   traces: document.querySelector("#traces"),
+  cells: document.querySelector("#cells"),
   welcome: document.querySelector("#welcome"),
   begin: document.querySelector("#begin"),
   controls: document.querySelector("#controls"),
@@ -50,7 +51,7 @@ let idleTimer;
 try {
   await init();
   engine = new Engine(seed, INITIAL_PARTICLES);
-  renderer = await createRenderer(elements.field, elements.traces);
+  renderer = await createRenderer(elements.field, elements.traces, elements.cells);
   audio = new ConfluenceAudio(seed);
   elements.renderer.textContent = renderer.kind;
   elements.seed.textContent = formatSeed(seed);

@@ -7,8 +7,11 @@ parts:
 
 1. `src/simulation.rs` owns deterministic particle state, the energy-inspired motion
    rule, performance forces, and collective metrics.
-2. `web/renderer.js` uploads the snapshot to WebGPU and renders the energy field. A
-   Canvas 2D fallback keeps the instrument usable when WebGPU is unavailable.
+2. `web/renderer.js` uploads the snapshot to WebGPU and renders the energy field. It
+   also derives closed cell bodies from same-population connected components, so the
+   translucent cytoplasm, doubled membranes, and nucleus-like centres deform, divide,
+   and disappear with the actual ecology rather than playing as an independent visual
+   effect. A Canvas 2D fallback keeps the instrument usable when WebGPU is unavailable.
 3. `web/audio.js` maps the same metrics onto a slow, layered WebAudio graph.
 
 `web/app.js` is the thin frame coordinator. Simulation state does not live in the
@@ -65,6 +68,8 @@ space between longer tones. The analyser exposes RMS and peak output for smoke t
 - Particle motion is finite, speed-limited, and wrapped on a torus.
 - Master gain stays conservative and passes through a compressor.
 - Rendering resolution is capped at device pixel ratio 2.
+- Cell topology is recalculated from the current snapshot and does not introduce
+  hidden simulation state.
 
 ## Hosting and delivery
 

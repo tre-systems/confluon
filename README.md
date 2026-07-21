@@ -15,8 +15,9 @@ of one evolving state.
 - An energy-inspired, three-population particle model with distinct shell fields,
   cyclic cross-population sensing, close-range repulsion, and performance forces.
 - Deterministic reproduction from an integer seed and fixed simulation timestep.
-- A canvas-first WebGPU particle field with population colour, living membrane
-  meshes, motion traces, and a Canvas 2D fallback.
+- A canvas-first WebGPU particle field whose connected populations become translucent
+  cell bodies with flexing double membranes and nucleus-like centres, plus motion
+  traces and a Canvas 2D fallback.
 - An audible WebAudio harmonic field with six sustained voices, sub foundation,
   filtered air, sparse scale-locked tones, delay, generated reverb, compression,
   and an output meter.

@@ -46,6 +46,7 @@ button {
 }
 
 #traces,
+#cells,
 #field {
   position: absolute;
   inset: 0;
@@ -58,8 +59,13 @@ button {
   pointer-events: none;
 }
 
-#field {
+#cells {
   z-index: 1;
+  pointer-events: none;
+}
+
+#field {
+  z-index: 2;
   touch-action: none;
   cursor: grab;
 }
