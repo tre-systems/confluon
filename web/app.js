@@ -2,15 +2,14 @@ import init, { Engine } from "/pkg/geno5.js";
 import { ConfluenceAudio } from "./audio.js";
 import { createRenderer } from "./renderer.js";
 
-const FIXED_STEP = 1 / 60;
-const INITIAL_PARTICLES = 180;
+const FIXED_STEP = 1 / 30;
+const INITIAL_PARTICLES = 1_200;
 const IDLE_CONTROLS_MS = 9000;
 
 const elements = {
   instrument: document.querySelector("#instrument"),
   field: document.querySelector("#field"),
   traces: document.querySelector("#traces"),
-  cells: document.querySelector("#cells"),
   welcome: document.querySelector("#welcome"),
   begin: document.querySelector("#begin"),
   controls: document.querySelector("#controls"),
@@ -51,7 +50,7 @@ let idleTimer;
 try {
   await init();
   engine = new Engine(seed, INITIAL_PARTICLES);
-  renderer = await createRenderer(elements.field, elements.traces, elements.cells);
+  renderer = await createRenderer(elements.field, elements.traces);
   audio = new ConfluenceAudio(seed);
   elements.renderer.textContent = renderer.kind;
   elements.seed.textContent = formatSeed(seed);
@@ -245,8 +244,18 @@ function wakeControls() {
 let previousTime = performance.now() / 1000;
 let accumulator = 0;
 let lastReadout = 0;
+let fpsWindowStarted = performance.now();
+let fpsFrameCount = 0;
+let measuredFps = 0;
 
 function frame(milliseconds) {
+  fpsFrameCount += 1;
+  if (milliseconds - fpsWindowStarted >= 1000) {
+    measuredFps = (fpsFrameCount * 1000) / (milliseconds - fpsWindowStarted);
+    elements.instrument.dataset.fps = measuredFps.toFixed(1);
+    fpsFrameCount = 0;
+    fpsWindowStarted = milliseconds;
+  }
   const time = milliseconds / 1000;
   const elapsed = Math.min(0.05, Math.max(0, time - previousTime));
   previousTime = time;
@@ -254,7 +263,7 @@ function frame(milliseconds) {
 
   if (state.running) {
     let steps = 0;
-    while (accumulator >= FIXED_STEP && steps < 3) {
+    while (accumulator >= FIXED_STEP && steps < 2) {
       engine.step(
         FIXED_STEP,
         state.pointer.x,
@@ -290,7 +299,7 @@ function frame(milliseconds) {
 }
 
 function spawn(x, y) {
-  engine.spawn_at(x, y, 18);
+  engine.spawn_at(x, y, 50);
   audio.strike(0.84, engine.metrics()[0]);
 }
 
@@ -333,6 +342,7 @@ function exposeDiagnostics() {
     renderer: () => renderer.kind,
     metrics: () => Array.from(engine.metrics()),
     particleCount: () => engine.particle_count(),
+    fps: () => measuredFps,
   });
 }
 

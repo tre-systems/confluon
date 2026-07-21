@@ -7,11 +7,13 @@ parts:
 
 1. `src/simulation.rs` owns deterministic particle state, the energy-inspired motion
    rule, performance forces, and collective metrics.
-2. `web/renderer.js` uploads the snapshot to WebGPU and renders the energy field. It
-   also derives closed cell bodies from same-population connected components, so the
-   translucent cytoplasm, doubled membranes, and nucleus-like centres deform, divide,
-   and disappear with the actual ecology rather than playing as an independent visual
-   effect. A Canvas 2D fallback keeps the instrument usable when WebGPU is unavailable.
+2. `web/renderer.js` uploads the snapshot to WebGPU. An instanced additive pass splats
+   each particle's species-specific shell kernel into an `rgba16float` texture at one
+   third display resolution. A full-screen pass maps the accumulated field through
+   the same growth-response ranges as the simulation, then a second instanced pass
+   draws the small particle cores. There are no hulls or inferred nuclei: visible
+   membranes are made by the particles and their measured field. A cached-sprite
+   Canvas 2D fallback keeps the instrument usable when WebGPU is unavailable.
 3. `web/audio.js` maps the same metrics onto a slow, layered WebAudio graph.
 
 `web/app.js` is the thin frame coordinator. Simulation state does not live in the
@@ -63,12 +65,17 @@ space between longer tones. The analyser exposes RMS and peak output for smoke t
 
 ## Performance constraints
 
-- The simulation is capped at 320 particles.
-- The browser advances at most four fixed steps per animation frame.
+- The normal field contains 1,200 particles in 24 compact colonies and is capped at
+  1,600 after performed seeding.
+- A wrapped 20-by-20 spatial grid limits each field and force calculation to nearby
+  particles instead of scanning every possible pair.
+- The browser advances the deterministic simulation at 30 Hz and performs at most
+  two catch-up steps per animation frame; rendering and audio control remain tied to
+  display frames.
 - Particle motion is finite, speed-limited, and wrapped on a torus.
 - Master gain stays conservative and passes through a compressor.
 - Rendering resolution is capped at device pixel ratio 2.
-- Cell topology is recalculated from the current snapshot and does not introduce
+- The kernel field is rebuilt from the current snapshot each frame and introduces no
   hidden simulation state.
 
 ## Hosting and delivery

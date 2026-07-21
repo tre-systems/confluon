@@ -15,9 +15,10 @@ of one evolving state.
 - An energy-inspired, three-population particle model with distinct shell fields,
   cyclic cross-population sensing, close-range repulsion, and performance forces.
 - Deterministic reproduction from an integer seed and fixed simulation timestep.
-- A canvas-first WebGPU particle field whose connected populations become translucent
-  cell bodies with flexing double membranes and nucleus-like centres, plus motion
-  traces and a Canvas 2D fallback.
+- A 1,200-particle field initialised as 24 compact colonies. The WebGPU renderer
+  accumulates every particle's shell kernel into a floating-point field texture, then
+  reveals growth contours behind small luminous particle cores and motion traces. A
+  cached-sprite Canvas 2D fallback preserves the same point-built image.
 - An audible WebAudio harmonic field with six sustained voices, sub foundation,
   filtered air, sparse scale-locked tones, delay, generated reverb, compression,
   and an output meter.
@@ -63,12 +64,11 @@ Actions page. Local deployment is available to an authenticated operator with
 
 - Press and drag: herd the swarm toward the pointer.
 - Option/Alt + drag: repel particles and open a cavity.
-- Double click/tap: seed eighteen particles at the pointer.
+- Double click/tap: seed a compact 50-particle colony at the pointer.
 - Hold `S` or **Hold to settle**: move toward a quieter common state.
 - Release Settle: return to local negotiation, often provoking a transition.
 - `R`: rebuild the displayed seed.
 - `Space`: pause or resume.
-- `H`: show or hide the performance map.
 
 Append `?seed=12345` to the URL to start from a specific field.
 
@@ -95,8 +95,8 @@ collective musical mapping; it includes no upstream code or creative assets.
 
 - Export a take as audio, video, seed, engine version, and gesture stream for direct
   ingestion into the Multivibrator review pipeline.
-- Move the field renderer to a feedback texture for persistent trails and energy
-  contours.
+- Add bounded field feedback for longer-lived energy contours without obscuring the
+  particle-built membranes.
 - Add an offline render path that uses the same fixed-step contract.
 - Test and tune several six-minute seeds by listening, then record defended seeds in a
   small local preset ledger.

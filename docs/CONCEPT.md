@@ -11,8 +11,8 @@ without a step grid.
 
 - Synthesis: additive resonator swarm plus filtered noise.
 - Form: emergent energy-attractor transitions; no sequencer or fixed bars.
-- Visual family: glowing particulate matter gathering into translucent, breathing
-  cellular bodies.
+- Visual family: dense, point-built membranes moving through restrained translucent
+  kernel fields; the organisms remain visibly particulate at every scale.
 - Harmony: a non-octave partial lattice that becomes more consonant as motion aligns.
 - Energy: breathing ambient motion that can break into dense, unstable clusters.
 - Risk: wild. The simulation is allowed to settle into silence or rupture into noisy

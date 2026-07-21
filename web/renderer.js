@@ -1,6 +1,7 @@
-const MAX_PARTICLES = 320;
+const MAX_PARTICLES = 2048;
+const FIELD_FORMAT = "rgba16float";
 
-const shaderSource = /* wgsl */ `
+const fieldShader = /* wgsl */ `
 struct Particle {
   position: vec2<f32>,
   energy: f32,
@@ -12,25 +13,31 @@ struct Uniforms {
   time: f32,
   coherence: f32,
   density: f32,
+  encounter: f32,
+  activity: f32,
+  padding0: f32,
+  padding1: f32,
 }
 
 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
 @group(0) @binding(1) var<uniform> uniforms: Uniforms;
 
-struct VertexOutput {
+struct FieldVertexOutput {
+  @builtin(position) position: vec4<f32>,
+  @location(0) local: vec2<f32>,
+  @location(1) @interpolate(flat) species: u32,
+}
+
+struct ParticleVertexOutput {
   @builtin(position) position: vec4<f32>,
   @location(0) local: vec2<f32>,
   @location(1) energy: f32,
   @location(2) speed: f32,
   @location(3) breath: f32,
-  @location(4) species: f32,
+  @location(4) @interpolate(flat) species: u32,
 }
 
-@vertex
-fn vs_main(
-  @builtin(vertex_index) vertex_index: u32,
-  @builtin(instance_index) instance_index: u32,
-) -> VertexOutput {
+fn corner(vertex_index: u32) -> vec2<f32> {
   let corners = array<vec2<f32>, 6>(
     vec2<f32>(-1.0, -1.0),
     vec2<f32>( 1.0, -1.0),
@@ -39,188 +46,190 @@ fn vs_main(
     vec2<f32>( 1.0, -1.0),
     vec2<f32>( 1.0,  1.0),
   );
-  let particle = particles[instance_index];
-  let local = corners[vertex_index];
-  let breath = 0.5 + 0.5 * sin(uniforms.time * 0.46 + f32(instance_index) * 0.19);
-  let radius = 0.018 + particle.speed * 0.018 + breath * uniforms.coherence * 0.006;
-  let offset = vec2<f32>(local.x / max(uniforms.aspect, 0.01), local.y) * radius;
+  return corners[vertex_index];
+}
 
-  var output: VertexOutput;
+fn kernel_radius(species: u32) -> f32 {
+  if (species == 1u) { return 0.054; }
+  if (species == 2u) { return 0.072; }
+  return 0.063;
+}
+
+fn kernel_width(species: u32) -> f32 {
+  if (species == 1u) { return 0.014; }
+  if (species == 2u) { return 0.019; }
+  return 0.017;
+}
+
+fn kernel_weight(species: u32) -> f32 {
+  if (species == 1u) { return 0.041; }
+  if (species == 2u) { return 0.031; }
+  return 0.035;
+}
+
+@vertex
+fn field_vs(
+  @builtin(vertex_index) vertex_index: u32,
+  @builtin(instance_index) instance_index: u32,
+) -> FieldVertexOutput {
+  let particle = particles[instance_index];
+  let species = u32(floor(particle.energy));
+  let local = corner(vertex_index);
+  let support = kernel_radius(species) + kernel_width(species) * 3.5;
+  // The simulation's torus occupies clip space directly. Its neighbourhood
+  // metric therefore stretches with the viewport too; keep the field aligned
+  // with the particles instead of drawing aesthetically round but false rings.
+  let offset = local * support;
+
+  var output: FieldVertexOutput;
   output.position = vec4<f32>(particle.position + offset, 0.0, 1.0);
   output.local = local;
-  output.species = floor(particle.energy);
-  output.energy = particle.energy - output.species;
+  output.species = species;
+  return output;
+}
+
+@fragment
+fn field_fs(input: FieldVertexOutput) -> @location(0) vec4<f32> {
+  let support = kernel_radius(input.species) + kernel_width(input.species) * 3.5;
+  let radius = length(input.local) * support;
+  if (radius > support) { discard; }
+  let t = (radius - kernel_radius(input.species)) / kernel_width(input.species);
+  let value = kernel_weight(input.species) * exp(-t * t);
+  var channels = vec4<f32>(0.0);
+  if (input.species == 0u) {
+    channels.x = value;
+  } else if (input.species == 1u) {
+    channels.y = value;
+  } else {
+    channels.z = value;
+  }
+  return channels;
+}
+
+@vertex
+fn particle_vs(
+  @builtin(vertex_index) vertex_index: u32,
+  @builtin(instance_index) instance_index: u32,
+) -> ParticleVertexOutput {
+  let particle = particles[instance_index];
+  let local = corner(vertex_index);
+  let breath = 0.5 + 0.5 * sin(uniforms.time * 0.57 + f32(instance_index) * 0.37);
+  let radius = 0.010 + particle.speed * 0.003 + breath * uniforms.coherence * 0.0015;
+  let offset = vec2<f32>(local.x / max(uniforms.aspect, 0.01), local.y) * radius;
+
+  var output: ParticleVertexOutput;
+  output.position = vec4<f32>(particle.position + offset, 0.0, 1.0);
+  output.local = local;
+  output.species = u32(floor(particle.energy));
+  output.energy = fract(particle.energy);
   output.speed = particle.speed;
   output.breath = breath;
   return output;
 }
 
+fn species_colour(species: u32) -> vec3<f32> {
+  if (species == 1u) { return vec3<f32>(1.12, 0.24, 0.10); }
+  if (species == 2u) { return vec3<f32>(0.76, 0.39, 1.08); }
+  return vec3<f32>(0.12, 0.82, 0.87);
+}
+
 @fragment
-fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
+fn particle_fs(input: ParticleVertexOutput) -> @location(0) vec4<f32> {
   let distance = length(input.local);
-  if (distance > 1.0) {
-    discard;
-  }
-  let core = 1.0 - smoothstep(0.035, 0.22, distance);
-  let body = 1.0 - smoothstep(0.14, 0.56, distance);
-  let halo = 1.0 - smoothstep(0.16, 1.0, distance);
-  let tide = vec3<f32>(0.15, 0.64, 0.69);
-  let ember = vec3<f32>(0.95, 0.38, 0.24);
-  let bloom = vec3<f32>(0.72, 0.49, 0.90);
-  let pearl = vec3<f32>(0.91, 1.0, 0.94);
-  var base = tide;
-  if (input.species > 1.5) {
-    base = bloom;
-  } else if (input.species > 0.5) {
-    base = ember;
-  }
-  var colour = mix(base * 0.42, base, 0.48 + input.energy * 0.52);
-  colour = mix(colour, pearl, core * (0.62 + input.speed * 0.34));
-  let alpha = core * 0.96 + body * 0.42 + halo * (0.075 + input.speed * 0.13 + input.breath * 0.035);
-  return vec4<f32>(colour, alpha);
+  if (distance > 1.0) { discard; }
+  let core = exp(-distance * distance * 10.0);
+  let body = exp(-distance * distance * 4.2);
+  let halo = pow(max(0.0, 1.0 - distance), 3.4);
+  let base = species_colour(input.species);
+  let pearl = vec3<f32>(0.91, 1.0, 0.95);
+  let colour = mix(base * (0.9 + input.energy * 0.38), pearl * 1.24, core * 0.82);
+  let intensity = core * 1.62 + body * 0.48 + halo * (0.15 + input.speed * 0.1);
+  return vec4<f32>(colour * intensity, intensity);
 }
 `;
 
-class CellRenderer {
-  constructor(canvas) {
-    this.canvas = canvas;
-    this.context = canvas.getContext("2d", { alpha: true });
-  }
-
-  reset() {
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-  }
-
-  render(snapshot, metrics, time) {
-    resizeCanvas(this.canvas);
-    const { context, canvas } = this;
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.globalCompositeOperation = "source-over";
-
-    for (let species = 0; species < 3; species += 1) {
-      const points = [];
-      for (let offset = 0; offset < snapshot.length; offset += 4) {
-        if (speciesOf(snapshot[offset + 2]) !== species) continue;
-        points.push({
-          x: toX(snapshot[offset], canvas.width),
-          y: toY(snapshot[offset + 1], canvas.height),
-          nx: snapshot[offset],
-          ny: snapshot[offset + 1],
-          energy: energyOf(snapshot[offset + 2]),
-        });
-      }
-
-      for (const component of connectedComponents(points, 0.04)) {
-        if (component.length < 5) continue;
-        const hull = convexHull(component);
-        if (hull.length < 3) continue;
-        this.drawCell(hull, component, species, metrics, time);
-      }
-    }
-  }
-
-  drawCell(hull, component, species, metrics, time) {
-    const { context } = this;
-    const centre = component.reduce(
-      (sum, point) => ({ x: sum.x + point.x / component.length, y: sum.y + point.y / component.length }),
-      { x: 0, y: 0 },
-    );
-    const pulse = 0.5 + 0.5 * Math.sin(time * 0.52 + species * 1.9 + component.length * 0.07);
-    const padding = deviceScale() * (9 + Math.min(13, Math.sqrt(component.length) * 1.7) + pulse * 2.5);
-    const membrane = hull.map((point, index) => {
-      const dx = point.x - centre.x;
-      const dy = point.y - centre.y;
-      const length = Math.hypot(dx, dy) || 1;
-      const angle = Math.atan2(dy, dx);
-      const undulation =
-        0.88 +
-        0.1 * Math.sin(angle * 3 + time * 0.47 + species * 1.8) +
-        0.055 * Math.sin(index * 2.17 - time * 0.31);
-      return {
-        x: point.x + (dx / length) * padding * undulation,
-        y: point.y + (dy / length) * padding * undulation,
-      };
-    });
-
-    const radius = Math.max(
-      padding * 2,
-      ...membrane.map((point) => Math.hypot(point.x - centre.x, point.y - centre.y)),
-    );
-    const [red, green, blue] = speciesColour(species, 0.9);
-    const encounter = metrics[6] ?? 0;
-    const energy =
-      component.reduce((sum, point) => sum + point.energy, 0) / Math.max(1, component.length);
-
-    smoothClosedPath(context, membrane);
-    const cytoplasm = context.createRadialGradient(
-      centre.x - radius * 0.12,
-      centre.y - radius * 0.1,
-      0,
-      centre.x,
-      centre.y,
-      radius,
-    );
-    cytoplasm.addColorStop(0, `rgba(${red}, ${green}, ${blue}, ${0.07 + energy * 0.035})`);
-    cytoplasm.addColorStop(0.72, `rgba(${red}, ${green}, ${blue}, ${0.035 + encounter * 0.018})`);
-    cytoplasm.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0.012)`);
-    context.fillStyle = cytoplasm;
-    context.fill();
-
-    context.save();
-    context.shadowColor = `rgba(${red}, ${green}, ${blue}, 0.42)`;
-    context.shadowBlur = deviceScale() * (5 + encounter * 5);
-    context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${0.24 + encounter * 0.1})`;
-    context.lineWidth = deviceScale() * (0.8 + pulse * 0.35);
-    context.stroke();
-    context.restore();
-
-    smoothClosedPath(
-      context,
-      membrane.map((point) => ({
-        x: point.x + (centre.x - point.x) * 0.025,
-        y: point.y + (centre.y - point.y) * 0.025,
-      })),
-    );
-    context.strokeStyle = `rgba(235, 250, 244, ${0.055 + energy * 0.035})`;
-    context.lineWidth = deviceScale() * 0.45;
-    context.stroke();
-
-    if (component.length >= 9) {
-      const nucleusRadius = deviceScale() * Math.min(19, 5.5 + Math.sqrt(component.length) * 1.35);
-      const nucleus = context.createRadialGradient(
-        centre.x - nucleusRadius * 0.2,
-        centre.y - nucleusRadius * 0.2,
-        0,
-        centre.x,
-        centre.y,
-        nucleusRadius,
-      );
-      nucleus.addColorStop(0, `rgba(244, 255, 249, ${0.15 + encounter * 0.06})`);
-      nucleus.addColorStop(0.35, `rgba(${red}, ${green}, ${blue}, 0.105)`);
-      nucleus.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`);
-      context.fillStyle = nucleus;
-      context.beginPath();
-      context.arc(centre.x, centre.y, nucleusRadius, 0, Math.PI * 2);
-      context.fill();
-
-      context.save();
-      context.translate(centre.x, centre.y);
-      context.rotate(species * 0.74 + Math.sin(time * 0.13 + component.length) * 0.22);
-      context.beginPath();
-      context.ellipse(0, 0, nucleusRadius * 0.72, nucleusRadius * 0.54, 0, 0, Math.PI * 2);
-      context.fillStyle = `rgba(${red}, ${green}, ${blue}, ${0.075 + energy * 0.035})`;
-      context.fill();
-      context.strokeStyle = `rgba(229, 248, 243, ${0.1 + encounter * 0.035})`;
-      context.lineWidth = deviceScale() * 0.55;
-      context.stroke();
-      context.beginPath();
-      context.arc(-nucleusRadius * 0.12, nucleusRadius * 0.04, nucleusRadius * 0.12, 0, Math.PI * 2);
-      context.fillStyle = `rgba(238, 255, 249, ${0.2 + energy * 0.06})`;
-      context.fill();
-      context.restore();
-    }
-  }
+const compositeShader = /* wgsl */ `
+struct Uniforms {
+  aspect: f32,
+  time: f32,
+  coherence: f32,
+  density: f32,
+  encounter: f32,
+  activity: f32,
+  padding0: f32,
+  padding1: f32,
 }
+
+@group(0) @binding(0) var field_texture: texture_2d<f32>;
+@group(0) @binding(1) var field_sampler: sampler;
+@group(0) @binding(2) var<uniform> uniforms: Uniforms;
+
+struct VertexOutput {
+  @builtin(position) position: vec4<f32>,
+  @location(0) uv: vec2<f32>,
+}
+
+@vertex
+fn composite_vs(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
+  let positions = array<vec2<f32>, 3>(
+    vec2<f32>(-1.0, -1.0),
+    vec2<f32>( 3.0, -1.0),
+    vec2<f32>(-1.0,  3.0),
+  );
+  let position = positions[vertex_index];
+  var output: VertexOutput;
+  output.position = vec4<f32>(position, 0.0, 1.0);
+  output.uv = vec2<f32>(position.x * 0.5 + 0.5, 1.0 - (position.y * 0.5 + 0.5));
+  return output;
+}
+
+fn response(value: f32, centre: f32, width: f32) -> f32 {
+  let t = (value - centre) / width;
+  return exp(-t * t) * (1.0 - exp(-value * 42.0));
+}
+
+fn layer(value: f32, soft: f32, centre: f32, width: f32, colour: vec3<f32>) -> vec3<f32> {
+  let matter = 1.0 - exp(-value * 7.5);
+  let aura = 1.0 - exp(-soft * 4.0);
+  let membrane = response(value, centre, width);
+  let inner = response(value, centre * 0.62, width * 1.3);
+  let deep = colour * (colour * 0.45 + vec3<f32>(0.08));
+  return deep * (matter * 0.16 + aura * 0.05) + colour * (membrane * 0.58 + inner * 0.13);
+}
+
+@fragment
+fn composite_fs(input: VertexOutput) -> @location(0) vec4<f32> {
+  let dimensions = vec2<f32>(textureDimensions(field_texture));
+  let texel = 1.0 / dimensions;
+  let field = textureSample(field_texture, field_sampler, input.uv);
+  var soft = field * 0.28;
+  soft += textureSample(field_texture, field_sampler, input.uv + vec2<f32>(texel.x * 2.0, 0.0)) * 0.12;
+  soft += textureSample(field_texture, field_sampler, input.uv - vec2<f32>(texel.x * 2.0, 0.0)) * 0.12;
+  soft += textureSample(field_texture, field_sampler, input.uv + vec2<f32>(0.0, texel.y * 2.0)) * 0.12;
+  soft += textureSample(field_texture, field_sampler, input.uv - vec2<f32>(0.0, texel.y * 2.0)) * 0.12;
+  soft += textureSample(field_texture, field_sampler, input.uv + texel * vec2<f32>(4.0, 4.0)) * 0.06;
+  soft += textureSample(field_texture, field_sampler, input.uv + texel * vec2<f32>(-4.0, 4.0)) * 0.06;
+  soft += textureSample(field_texture, field_sampler, input.uv + texel * vec2<f32>(4.0, -4.0)) * 0.06;
+  soft += textureSample(field_texture, field_sampler, input.uv - texel * vec2<f32>(4.0, 4.0)) * 0.06;
+
+  let tide = vec3<f32>(0.10, 0.73, 0.78);
+  let ember = vec3<f32>(1.0, 0.22, 0.09);
+  let bloom = vec3<f32>(0.67, 0.34, 0.96);
+  var colour = vec3<f32>(0.0);
+  colour += layer(field.x, soft.x, 0.46, 0.12, tide);
+  colour += layer(field.y, soft.y, 0.50, 0.11, ember);
+  colour += layer(field.z, soft.z, 0.42, 0.13, bloom);
+
+  let glow = soft.x * tide + soft.y * ember + soft.z * bloom;
+  colour += glow * (0.11 + uniforms.encounter * 0.055);
+  colour *= 0.98 + uniforms.density * 0.32;
+  colour = vec3<f32>(1.0) - exp(-colour * 1.95);
+  let vignette = 1.0 - 0.24 * smoothstep(0.48, 1.1, length(input.uv - 0.5) * 1.45);
+  colour *= vignette;
+  let alpha = clamp(max(max(colour.r, colour.g), colour.b) * 1.35, 0.0, 0.94);
+  return vec4<f32>(colour, alpha);
+}
+`;
 
 class TrailRenderer {
   constructor(canvas) {
@@ -239,140 +248,70 @@ class TrailRenderer {
   render(snapshot, metrics, time) {
     const resized = resizeCanvas(this.canvas);
     const { context, canvas } = this;
-    const width = canvas.width;
-    const height = canvas.height;
     if (resized || !this.ready) {
       context.fillStyle = "rgb(4 6 9)";
-      context.fillRect(0, 0, width, height);
+      context.fillRect(0, 0, canvas.width, canvas.height);
       this.previous = null;
       this.ready = true;
     } else {
-      const fade = 0.072 + metrics[2] * 0.04;
       context.globalCompositeOperation = "source-over";
-      context.fillStyle = `rgba(4, 6, 9, ${fade})`;
-      context.fillRect(0, 0, width, height);
+      context.fillStyle = `rgba(4, 6, 9, ${0.095 + metrics[2] * 0.035})`;
+      context.fillRect(0, 0, canvas.width, canvas.height);
     }
 
     const glow = context.createRadialGradient(
-      width * (0.48 + Math.sin(time * 0.031) * 0.04),
-      height * (0.48 + Math.cos(time * 0.027) * 0.035),
+      canvas.width * (0.48 + Math.sin(time * 0.031) * 0.035),
+      canvas.height * (0.5 + Math.cos(time * 0.027) * 0.03),
       0,
-      width * 0.5,
-      height * 0.5,
-      Math.max(width, height) * 0.64,
+      canvas.width * 0.5,
+      canvas.height * 0.5,
+      Math.max(canvas.width, canvas.height) * 0.62,
     );
-    glow.addColorStop(0, `rgba(28, 71, 72, ${0.018 + metrics[1] * 0.022})`);
-    glow.addColorStop(0.55, `rgba(65, 42, 32, ${0.01 + metrics[0] * 0.014})`);
+    glow.addColorStop(0, `rgba(25, 67, 70, ${0.014 + metrics[1] * 0.016})`);
+    glow.addColorStop(0.58, `rgba(58, 35, 30, ${0.007 + metrics[0] * 0.009})`);
     glow.addColorStop(1, "rgba(4, 6, 9, 0)");
     context.fillStyle = glow;
-    context.fillRect(0, 0, width, height);
+    context.fillRect(0, 0, canvas.width, canvas.height);
 
-    context.globalCompositeOperation = "lighter";
-    this.drawConnections(snapshot, metrics);
-    this.drawMotion(snapshot, metrics);
-    this.drawAuras(snapshot, metrics);
-    context.globalCompositeOperation = "source-over";
-    context.filter = "none";
-    this.previous = new Float32Array(snapshot);
-  }
-
-  drawConnections(snapshot, metrics) {
-    const { context, canvas } = this;
-    const count = snapshot.length / 4;
-    const maxDistanceSq = 0.105;
-    context.lineCap = "round";
-    for (let index = 0; index < count; index += 1) {
-      const offset = index * 4;
-      const species = speciesOf(snapshot[offset + 2]);
-      const nearest = [
-        { offset: -1, distanceSq: maxDistanceSq },
-        { offset: -1, distanceSq: maxDistanceSq },
-      ];
-      for (let other = 0; other < count; other += 1) {
-        if (other === index) continue;
-        const otherOffset = other * 4;
-        if (speciesOf(snapshot[otherOffset + 2]) !== species) continue;
-        const dx = snapshot[otherOffset] - snapshot[offset];
-        const dy = snapshot[otherOffset + 1] - snapshot[offset + 1];
-        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) continue;
-        const distanceSq = dx * dx + dy * dy;
-        if (distanceSq < nearest[0].distanceSq) {
-          nearest[1] = nearest[0];
-          nearest[0] = { offset: otherOffset, distanceSq };
-        } else if (distanceSq < nearest[1].distanceSq) {
-          nearest[1] = { offset: otherOffset, distanceSq };
-        }
-      }
-      for (const connection of nearest) {
-        if (connection.offset < 0 || connection.offset < offset) continue;
-        const closeness = 1 - connection.distanceSq / maxDistanceSq;
-        const energy =
-          (energyOf(snapshot[offset + 2]) + energyOf(snapshot[connection.offset + 2])) * 0.5;
-        const [red, green, blue] = speciesColour(species, 0.72 + energy * 0.35);
-        context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${0.012 + closeness * 0.052 + metrics[1] * 0.012})`;
-        context.lineWidth = deviceScale() * (0.24 + closeness * 0.28);
+    if (this.previous?.length === snapshot.length) {
+      context.globalCompositeOperation = "lighter";
+      context.lineCap = "round";
+      for (let offset = 0; offset < snapshot.length; offset += 8) {
+        const dx = snapshot[offset] - this.previous[offset];
+        const dy = snapshot[offset + 1] - this.previous[offset + 1];
+        if (Math.abs(dx) > 0.35 || Math.abs(dy) > 0.35) continue;
+        const speed = snapshot[offset + 3];
+        const packedEnergy = snapshot[offset + 2];
+        const [red, green, blue] = speciesColour(speciesOf(packedEnergy), 0.7);
+        context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${0.028 + speed * 0.12})`;
+        context.lineWidth = deviceScale() * (0.34 + speed * 0.5);
         context.beginPath();
-        context.moveTo(toX(snapshot[offset], canvas.width), toY(snapshot[offset + 1], canvas.height));
-        context.lineTo(
-          toX(snapshot[connection.offset], canvas.width),
-          toY(snapshot[connection.offset + 1], canvas.height),
-        );
+        context.moveTo(toX(this.previous[offset], canvas.width), toY(this.previous[offset + 1], canvas.height));
+        context.lineTo(toX(snapshot[offset], canvas.width), toY(snapshot[offset + 1], canvas.height));
         context.stroke();
       }
     }
-  }
-
-  drawMotion(snapshot, metrics) {
-    if (!this.previous || this.previous.length !== snapshot.length) return;
-    const { context, canvas } = this;
-    context.lineCap = "round";
-    for (let offset = 0; offset < snapshot.length; offset += 4) {
-      const dx = snapshot[offset] - this.previous[offset];
-      const dy = snapshot[offset + 1] - this.previous[offset + 1];
-      if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) continue;
-      const speed = snapshot[offset + 3];
-      const packedEnergy = snapshot[offset + 2];
-      const energy = energyOf(packedEnergy);
-      const [red, green, blue] = speciesColour(speciesOf(packedEnergy), 0.72 + energy * 0.35);
-      context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${0.05 + speed * 0.32 + metrics[2] * 0.04})`;
-      context.lineWidth = deviceScale() * (0.45 + speed * 1.25);
-      context.beginPath();
-      context.moveTo(toX(this.previous[offset], canvas.width), toY(this.previous[offset + 1], canvas.height));
-      context.lineTo(toX(snapshot[offset], canvas.width), toY(snapshot[offset + 1], canvas.height));
-      context.stroke();
-    }
-  }
-
-  drawAuras(snapshot, metrics) {
-    const { context, canvas } = this;
-    context.filter = `blur(${Math.round(8 * deviceScale())}px)`;
-    const radius = (3.2 + metrics[3] * 4.2) * deviceScale();
-    const auraColours = ["rgba(44, 174, 182, 0.004)", "rgba(224, 75, 43, 0.004)", "rgba(155, 98, 211, 0.004)"];
-    for (let species = 0; species < 3; species += 1) {
-      context.beginPath();
-      for (let offset = 0; offset < snapshot.length; offset += 4) {
-        if (speciesOf(snapshot[offset + 2]) !== species) continue;
-        const x = toX(snapshot[offset], canvas.width);
-        const y = toY(snapshot[offset + 1], canvas.height);
-        context.moveTo(x + radius, y);
-        context.arc(x, y, radius, 0, Math.PI * 2);
-      }
-      context.fillStyle = auraColours[species];
-      context.fill();
-    }
-    context.filter = "none";
+    context.globalCompositeOperation = "source-over";
+    this.previous = new Float32Array(snapshot);
   }
 }
 
 class WebGpuRenderer {
-  constructor(canvas, trailCanvas, cellCanvas, device, context, format) {
+  constructor(canvas, trailCanvas, device, context, format) {
     this.canvas = canvas;
     this.device = device;
     this.context = context;
     this.format = format;
     this.kind = "WEBGPU";
     this.trails = new TrailRenderer(trailCanvas);
-    this.cells = new CellRenderer(cellCanvas);
+    this.fieldTexture = null;
+    this.fieldView = null;
+    this.fieldWidth = 0;
+    this.fieldHeight = 0;
+    device.addEventListener("uncapturederror", (event) => {
+      console.error("WebGPU validation error:", event.error.message);
+    });
+
     this.particleBuffer = device.createBuffer({
       label: "particle snapshot",
       size: MAX_PARTICLES * 4 * Float32Array.BYTES_PER_ELEMENT,
@@ -380,30 +319,49 @@ class WebGpuRenderer {
     });
     this.uniformBuffer = device.createBuffer({
       label: "render uniforms",
-      size: 4 * Float32Array.BYTES_PER_ELEMENT,
+      size: 8 * Float32Array.BYTES_PER_ELEMENT,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
-    const module = device.createShaderModule({ label: "particle field", code: shaderSource });
-    const bindGroupLayout = device.createBindGroupLayout({
+    const fieldModule = device.createShaderModule({ label: "kernel field and particles", code: fieldShader });
+    const particleLayout = device.createBindGroupLayout({
       entries: [
         { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
-        { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "uniform" } },
+        { binding: 1, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
       ],
     });
-    const pipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] });
-    this.pipeline = device.createRenderPipeline({
-      label: "particle field pipeline",
-      layout: pipelineLayout,
-      vertex: { module, entryPoint: "vs_main" },
+    const particlePipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [particleLayout] });
+    this.fieldPipeline = device.createRenderPipeline({
+      label: "kernel field pipeline",
+      layout: particlePipelineLayout,
+      vertex: { module: fieldModule, entryPoint: "field_vs" },
       fragment: {
-        module,
-        entryPoint: "fs_main",
+        module: fieldModule,
+        entryPoint: "field_fs",
+        targets: [
+          {
+            format: FIELD_FORMAT,
+            blend: {
+              color: { srcFactor: "one", dstFactor: "one" },
+              alpha: { srcFactor: "one", dstFactor: "one" },
+            },
+          },
+        ],
+      },
+      primitive: { topology: "triangle-list" },
+    });
+    this.particlePipeline = device.createRenderPipeline({
+      label: "particle core pipeline",
+      layout: particlePipelineLayout,
+      vertex: { module: fieldModule, entryPoint: "particle_vs" },
+      fragment: {
+        module: fieldModule,
+        entryPoint: "particle_fs",
         targets: [
           {
             format,
             blend: {
-              color: { srcFactor: "src-alpha", dstFactor: "one" },
+              color: { srcFactor: "one", dstFactor: "one" },
               alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
             },
           },
@@ -411,72 +369,180 @@ class WebGpuRenderer {
       },
       primitive: { topology: "triangle-list" },
     });
-    this.bindGroup = device.createBindGroup({
-      layout: bindGroupLayout,
+    this.particleBindGroup = device.createBindGroup({
+      layout: particleLayout,
       entries: [
         { binding: 0, resource: { buffer: this.particleBuffer } },
         { binding: 1, resource: { buffer: this.uniformBuffer } },
       ],
     });
+
+    const compositeModule = device.createShaderModule({ label: "field composite", code: compositeShader });
+    this.compositeLayout = device.createBindGroupLayout({
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+        { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
+        { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+      ],
+    });
+    this.compositePipeline = device.createRenderPipeline({
+      label: "field composite pipeline",
+      layout: device.createPipelineLayout({ bindGroupLayouts: [this.compositeLayout] }),
+      vertex: { module: compositeModule, entryPoint: "composite_vs" },
+      fragment: { module: compositeModule, entryPoint: "composite_fs", targets: [{ format }] },
+      primitive: { topology: "triangle-list" },
+    });
+    this.fieldSampler = device.createSampler({
+      label: "field sampler",
+      magFilter: "linear",
+      minFilter: "linear",
+      addressModeU: "clamp-to-edge",
+      addressModeV: "clamp-to-edge",
+    });
   }
 
   resetTrails() {
     this.trails.reset();
-    this.cells.reset();
+  }
+
+  ensureFieldTexture() {
+    const width = Math.max(1, Math.floor(this.canvas.width / 3));
+    const height = Math.max(1, Math.floor(this.canvas.height / 3));
+    if (width === this.fieldWidth && height === this.fieldHeight) return;
+    this.fieldTexture?.destroy();
+    this.fieldWidth = width;
+    this.fieldHeight = height;
+    this.fieldTexture = this.device.createTexture({
+      label: "kernel field texture",
+      size: { width, height },
+      format: FIELD_FORMAT,
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+    });
+    this.fieldView = this.fieldTexture.createView();
+    this.compositeBindGroup = this.device.createBindGroup({
+      layout: this.compositeLayout,
+      entries: [
+        { binding: 0, resource: this.fieldView },
+        { binding: 1, resource: this.fieldSampler },
+        { binding: 2, resource: { buffer: this.uniformBuffer } },
+      ],
+    });
   }
 
   render(snapshot, metrics, time) {
     resizeCanvas(this.canvas);
     this.trails.render(snapshot, metrics, time);
-    this.cells.render(snapshot, metrics, time);
+    this.ensureFieldTexture();
     const particleCount = snapshot.length / 4;
     this.device.queue.writeBuffer(this.particleBuffer, 0, snapshot);
     this.device.queue.writeBuffer(
       this.uniformBuffer,
       0,
-      new Float32Array([this.canvas.width / this.canvas.height, time, metrics[1], metrics[3]]),
+      new Float32Array([
+        this.canvas.width / this.canvas.height,
+        time,
+        metrics[1],
+        metrics[3],
+        metrics[6] ?? 0,
+        metrics[2],
+        0,
+        0,
+      ]),
     );
 
-    const encoder = this.device.createCommandEncoder({ label: "field frame" });
-    const pass = encoder.beginRenderPass({
+    const encoder = this.device.createCommandEncoder({ label: "living field frame" });
+    const fieldPass = encoder.beginRenderPass({
       colorAttachments: [
         {
-          view: this.context.getCurrentTexture().createView(),
+          view: this.fieldView,
           clearValue: { r: 0, g: 0, b: 0, a: 0 },
           loadOp: "clear",
           storeOp: "store",
         },
       ],
     });
-    pass.setPipeline(this.pipeline);
-    pass.setBindGroup(0, this.bindGroup);
-    pass.draw(6, particleCount);
-    pass.end();
+    fieldPass.setPipeline(this.fieldPipeline);
+    fieldPass.setBindGroup(0, this.particleBindGroup);
+    fieldPass.draw(6, particleCount);
+    fieldPass.end();
+
+    const outputView = this.context.getCurrentTexture().createView();
+    const compositePass = encoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: outputView,
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    compositePass.setPipeline(this.compositePipeline);
+    compositePass.setBindGroup(0, this.compositeBindGroup);
+    compositePass.draw(3);
+    compositePass.end();
+
+    // Keep the cores in a separate load pass. Apart from making the field/core
+    // layering explicit, this avoids backend-specific pipeline state leakage
+    // when switching from a sampled full-screen pass to instanced storage data.
+    const particlePass = encoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: outputView,
+          loadOp: "load",
+          storeOp: "store",
+        },
+      ],
+    });
+    particlePass.setPipeline(this.particlePipeline);
+    particlePass.setBindGroup(0, this.particleBindGroup);
+    particlePass.draw(6, particleCount);
+    particlePass.end();
     this.device.queue.submit([encoder.finish()]);
   }
 }
 
 class CanvasRenderer {
-  constructor(canvas, trailCanvas, cellCanvas) {
+  constructor(canvas, trailCanvas) {
     this.canvas = canvas;
     this.context = canvas.getContext("2d", { alpha: true });
     this.kind = "CANVAS";
     this.trails = new TrailRenderer(trailCanvas);
-    this.cells = new CellRenderer(cellCanvas);
+    this.spriteScale = 0;
+    this.sprites = [];
   }
 
   resetTrails() {
     this.trails.reset();
-    this.cells.reset();
   }
 
   render(snapshot, metrics, time) {
     resizeCanvas(this.canvas);
     this.trails.render(snapshot, metrics, time);
-    this.cells.render(snapshot, metrics, time);
     const { context, canvas } = this;
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.globalCompositeOperation = "lighter";
+
+    context.save();
+    context.filter = `blur(${Math.round(5 * deviceScale())}px)`;
+    for (let species = 0; species < 3; species += 1) {
+      const [red, green, blue] = speciesColour(species, 0.72);
+      context.fillStyle = `rgba(${red}, ${green}, ${blue}, 0.012)`;
+      context.beginPath();
+      for (let offset = 0; offset < snapshot.length; offset += 4) {
+        if (speciesOf(snapshot[offset + 2]) !== species) continue;
+        const x = toX(snapshot[offset], canvas.width);
+        const y = toY(snapshot[offset + 1], canvas.height);
+        const radius = (11 + species * 2.2) * deviceScale();
+        context.moveTo(x + radius, y);
+        context.arc(x, y, radius, 0, Math.PI * 2);
+      }
+      context.fill();
+    }
+    context.restore();
+
+    this.ensureSprites();
+
     for (let offset = 0; offset < snapshot.length; offset += 4) {
       const x = toX(snapshot[offset], canvas.width);
       const y = toY(snapshot[offset + 1], canvas.height);
@@ -484,89 +550,34 @@ class CanvasRenderer {
       const species = speciesOf(packedEnergy);
       const energy = energyOf(packedEnergy);
       const speed = snapshot[offset + 3];
-      const breath = 0.5 + 0.5 * Math.sin(time * 0.46 + offset * 0.0475);
-      const radius = (4.2 + speed * 6 + breath * metrics[1] * 2.2) * deviceScale();
-      const particle = context.createRadialGradient(x, y, 0, x, y, radius * 2.4);
-      const [red, green, blue] = speciesColour(species, 0.72 + energy * 0.35);
-      particle.addColorStop(0, `rgba(233, 255, 241, ${0.92 + speed * 0.08})`);
-      particle.addColorStop(0.18, `rgba(${red}, ${green}, ${blue}, 0.82)`);
-      particle.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`);
-      context.fillStyle = particle;
-      context.beginPath();
-      context.arc(x, y, radius * 2.4, 0, Math.PI * 2);
-      context.fill();
+      const breath = 0.5 + 0.5 * Math.sin(time * 0.57 + offset * 0.0925);
+      const radius = (1.8 + speed * 1.2 + breath * metrics[1] * 0.45) * deviceScale();
+      const diameter = radius * (5.0 + energy * 0.45 + speed * 0.3);
+      context.drawImage(this.sprites[species], x - diameter / 2, y - diameter / 2, diameter, diameter);
     }
     context.globalCompositeOperation = "source-over";
   }
-}
 
-function connectedComponents(points, maxDistanceSq) {
-  const parents = points.map((_, index) => index);
-  const root = (start) => {
-    let index = start;
-    while (parents[index] !== index) {
-      parents[index] = parents[parents[index]];
-      index = parents[index];
-    }
-    return index;
-  };
-  const join = (left, right) => {
-    const leftRoot = root(left);
-    const rightRoot = root(right);
-    if (leftRoot !== rightRoot) parents[rightRoot] = leftRoot;
-  };
-
-  for (let left = 0; left < points.length; left += 1) {
-    for (let right = left + 1; right < points.length; right += 1) {
-      const dx = points[left].nx - points[right].nx;
-      const dy = points[left].ny - points[right].ny;
-      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) continue;
-      if (dx * dx + dy * dy <= maxDistanceSq) join(left, right);
-    }
+  ensureSprites() {
+    const scale = deviceScale();
+    if (scale === this.spriteScale) return;
+    this.spriteScale = scale;
+    this.sprites = [0, 1, 2].map((species) => {
+      const sprite = document.createElement("canvas");
+      sprite.width = Math.ceil(20 * scale);
+      sprite.height = sprite.width;
+      const spriteContext = sprite.getContext("2d");
+      const centre = sprite.width / 2;
+      const [red, green, blue] = speciesColour(species, 0.92);
+      const gradient = spriteContext.createRadialGradient(centre, centre, 0, centre, centre, centre);
+      gradient.addColorStop(0, "rgba(239, 255, 247, 0.98)");
+      gradient.addColorStop(0.28, `rgba(${red}, ${green}, ${blue}, 0.82)`);
+      gradient.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`);
+      spriteContext.fillStyle = gradient;
+      spriteContext.fillRect(0, 0, sprite.width, sprite.height);
+      return sprite;
+    });
   }
-
-  const groups = new Map();
-  for (let index = 0; index < points.length; index += 1) {
-    const key = root(index);
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(points[index]);
-  }
-  return groups.values();
-}
-
-function convexHull(points) {
-  if (points.length <= 3) return [...points];
-  const sorted = [...points].sort((left, right) => left.x - right.x || left.y - right.y);
-  const cross = (origin, left, right) =>
-    (left.x - origin.x) * (right.y - origin.y) - (left.y - origin.y) * (right.x - origin.x);
-  const lower = [];
-  for (const point of sorted) {
-    while (lower.length >= 2 && cross(lower.at(-2), lower.at(-1), point) <= 0) lower.pop();
-    lower.push(point);
-  }
-  const upper = [];
-  for (let index = sorted.length - 1; index >= 0; index -= 1) {
-    const point = sorted[index];
-    while (upper.length >= 2 && cross(upper.at(-2), upper.at(-1), point) <= 0) upper.pop();
-    upper.push(point);
-  }
-  lower.pop();
-  upper.pop();
-  return lower.concat(upper);
-}
-
-function smoothClosedPath(context, points) {
-  if (points.length < 3) return;
-  const midpoint = (left, right) => ({ x: (left.x + right.x) * 0.5, y: (left.y + right.y) * 0.5 });
-  context.beginPath();
-  const start = midpoint(points.at(-1), points[0]);
-  context.moveTo(start.x, start.y);
-  for (let index = 0; index < points.length; index += 1) {
-    const next = points[(index + 1) % points.length];
-    const middle = midpoint(points[index], next);
-    context.quadraticCurveTo(points[index].x, points[index].y, middle.x, middle.y);
-  }
-  context.closePath();
 }
 
 function speciesOf(packedEnergy) {
@@ -610,19 +621,20 @@ function resizeCanvas(canvas) {
   return false;
 }
 
-export async function createRenderer(canvas, trailCanvas, cellCanvas) {
-  if (!navigator.gpu) return new CanvasRenderer(canvas, trailCanvas, cellCanvas);
+export async function createRenderer(canvas, trailCanvas) {
+  const forceCanvas = new URL(window.location.href).searchParams.get("renderer") === "canvas";
+  if (forceCanvas || !navigator.gpu) return new CanvasRenderer(canvas, trailCanvas);
 
   try {
     const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
-    if (!adapter) return new CanvasRenderer(canvas, trailCanvas, cellCanvas);
+    if (!adapter) return new CanvasRenderer(canvas, trailCanvas);
     const device = await adapter.requestDevice();
     const context = canvas.getContext("webgpu");
     const format = navigator.gpu.getPreferredCanvasFormat();
     context.configure({ device, format, alphaMode: "premultiplied" });
-    return new WebGpuRenderer(canvas, trailCanvas, cellCanvas, device, context, format);
+    return new WebGpuRenderer(canvas, trailCanvas, device, context, format);
   } catch (error) {
     console.warn("WebGPU unavailable; using Canvas fallback", error);
-    return new CanvasRenderer(canvas, trailCanvas, cellCanvas);
+    return new CanvasRenderer(canvas, trailCanvas);
   }
 }
