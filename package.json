@@ -1,0 +1,26 @@
+{
+  "name": "geno-5",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Confluence: an energy-driven audiovisual swarm instrument",
+  "type": "module",
+  "scripts": {
+    "build:wasm": "wasm-pack build --target web --out-dir pkg --out-name geno5 --release",
+    "dev": "npm run build:wasm && vite",
+    "build": "npm run build:wasm && vite build",
+    "test:rust": "cargo test --all-targets",
+    "check:rust": "cargo fmt --all -- --check && cargo clippy --all-targets -- -D warnings && cargo test --all-targets",
+    "check": "npm run check:rust && npm run build"
+  },
+  "keywords": [
+    "generative-music",
+    "artificial-life",
+    "web-audio",
+    "webgpu",
+    "webassembly"
+  ],
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "vite": "^7.0.0"
+  }
+}

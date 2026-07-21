@@ -1,0 +1,19 @@
+[package]
+name = "geno-5"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Confluence: a deterministic energy-driven audiovisual swarm instrument"
+repository = "https://github.com/tre-systems/geno-5"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+console_error_panic_hook = "0.1"
+wasm-bindgen = "0.2"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"

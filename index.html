@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Confluence is a deterministic energy-driven audiovisual swarm instrument."
+    />
+    <meta name="theme-color" content="#090a0e" />
+    <title>Confluence // geno-5</title>
+    <link rel="stylesheet" href="/web/style.css" />
+  </head>
+  <body>
+    <main id="instrument" aria-label="Confluence audiovisual instrument">
+      <canvas id="field" aria-label="Interactive particle field"></canvas>
+
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">MULTIVIBRATOR / GENO-5</p>
+          <h1>CONFLUENCE</h1>
+        </div>
+        <button class="icon-button" id="help-button" type="button" aria-label="Show controls">?</button>
+      </header>
+
+      <section class="readout" aria-label="Swarm state">
+        <div>
+          <span class="readout-label">ENERGY</span>
+          <strong id="energy-value">0.00</strong>
+        </div>
+        <div>
+          <span class="readout-label">COHERENCE</span>
+          <strong id="coherence-value">0.00</strong>
+        </div>
+        <div>
+          <span class="readout-label">ACTIVITY</span>
+          <strong id="activity-value">0.00</strong>
+        </div>
+        <div>
+          <span class="readout-label">FORMS</span>
+          <strong id="forms-value">0</strong>
+        </div>
+      </section>
+
+      <div class="gesture-hint" id="gesture-hint" aria-hidden="true">
+        <span>PRESS + DRAG TO HERD</span>
+        <span>⌥ + DRAG TO OPEN SPACE</span>
+        <span>DOUBLE TAP TO SEED</span>
+      </div>
+
+      <section class="transport" aria-label="Performance controls">
+        <div class="seed-readout">
+          <span>SEED</span>
+          <output id="seed-value">—</output>
+        </div>
+        <button id="new-seed" type="button">NEW FIELD</button>
+        <button id="settle" class="hold-button" type="button">HOLD TO SETTLE</button>
+        <button id="pause" type="button">PAUSE</button>
+        <label class="volume-control">
+          <span>LEVEL</span>
+          <input id="volume" type="range" min="0" max="100" value="62" />
+        </label>
+      </section>
+
+      <p class="render-status"><span id="renderer-value">INITIALISING</span> · <span id="particle-value">0</span> PARTICLES</p>
+
+      <section class="welcome" id="welcome" aria-labelledby="welcome-title">
+        <p class="eyebrow">AN ENERGY-DRIVEN SWARM INSTRUMENT</p>
+        <h2 id="welcome-title">The field is already listening.</h2>
+        <p>
+          Local decisions become shared form. Herd the particles, make a cavity, or seed a new
+          population. Sound follows the same state you can see.
+        </p>
+        <button id="begin" class="begin-button" type="button">BEGIN WITH SOUND</button>
+        <small>Headphones recommended · no microphone required</small>
+      </section>
+
+      <section class="help-panel" id="help-panel" aria-labelledby="help-title" hidden>
+        <div class="help-card">
+          <button id="help-close" class="icon-button" type="button" aria-label="Close controls">×</button>
+          <p class="eyebrow">PERFORMANCE MAP</p>
+          <h2 id="help-title">Shape conditions, not notes.</h2>
+          <dl>
+            <div><dt>Press + drag</dt><dd>Herd particles toward the pointer</dd></div>
+            <div><dt>Option/Alt + drag</dt><dd>Repel particles and open a cavity</dd></div>
+            <div><dt>Double click/tap</dt><dd>Seed eighteen new particles</dd></div>
+            <div><dt>Hold S</dt><dd>Settle toward a quieter common state</dd></div>
+            <div><dt>Space</dt><dd>Pause or resume the system</dd></div>
+            <div><dt>R</dt><dd>Rebuild the current seed</dd></div>
+          </dl>
+          <p class="help-note">
+            Energy colours the resonators. Coherence opens the choir. Sudden transitions strike
+            the field.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/web/app.js"></script>
+  </body>
+</html>
