@@ -22,7 +22,10 @@ of one evolving state.
 - An audible WebAudio harmonic field with six sustained voices, sub foundation,
   filtered air, sparse scale-locked tones, delay, generated reverb, compression,
   and an output meter.
-- Direct gestures for herding, repelling, seeding, settling, pausing, and resetting.
+- Touch-friendly Gather, Orbit, and Divide gestures, plus seeding, settling, pausing,
+  and resetting.
+- Shareable performance settings for ecology, flow, touch strength, halo, visual
+  memory, tone, and level.
 - A discreet control panel that closes out of the image and fades completely after
   nine seconds of inactivity.
 - Native Rust tests for determinism, stability, bounded metrics, interaction, and
@@ -62,15 +65,20 @@ Actions page. Local deployment is available to an authenticated operator with
 
 ## Performance map
 
-- Press and drag: herd the swarm toward the pointer.
-- Option/Alt + drag: repel particles and open a cavity.
+- Choose **Gather**, **Orbit**, or **Divide**, then press and drag to sculpt the local
+  field. The modes work with mouse, pen, and touch.
+- Shift + drag: momentarily orbit without changing the selected mode.
+- Option/Alt + drag: momentarily divide and open a cavity.
 - Double click/tap: seed a compact 50-particle colony at the pointer.
 - Hold `S` or **Hold to settle**: move toward a quieter common state.
 - Release Settle: return to local negotiation, often provoking a transition.
 - `R`: rebuild the displayed seed.
 - `Space`: pause or resume.
+- `G`, `O`, `D`: select Gather, Orbit, or Divide.
 
 Append `?seed=12345` to the URL to start from a specific field.
+Changing a performance setting records the complete configuration in the URL, so a
+seed and its ecology, flow, look, tone, and selected gesture can be shared together.
 
 ## Design documents
 

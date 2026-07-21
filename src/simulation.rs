@@ -11,6 +11,7 @@ const SPECIES_COUNT: usize = 3;
 const COLONY_COUNT: usize = 24;
 const SENSE_RADIUS: f32 = 0.24;
 const CROSS_MOTION_BOOST: f32 = 2.5;
+const POINTER_REACH: f32 = 0.42;
 const GRID_SIDE: usize = 20;
 const GRID_CELL_SIZE: f32 = 2.0 / GRID_SIDE as f32;
 
@@ -133,6 +134,7 @@ pub(crate) struct Simulation {
     metrics: [f32; 7],
     previous_energy: f32,
     previous_activity: f32,
+    ecology: f32,
 }
 
 impl Simulation {
@@ -146,6 +148,7 @@ impl Simulation {
             metrics: [0.0; 7],
             previous_energy: 0.5,
             previous_activity: 0.0,
+            ecology: 1.0,
         };
         simulation.reset(seed);
         simulation
@@ -198,6 +201,7 @@ impl Simulation {
         pointer_x: f32,
         pointer_y: f32,
         pointer_strength: f32,
+        pointer_twist: f32,
         settle: bool,
     ) {
         let dt = dt.clamp(0.0, 0.04);
@@ -293,20 +297,23 @@ impl Simulation {
                 };
                 let energy_derivative = repulsion_derivative
                     + same_species_derivative
-                    + cross_derivative * CROSS_MOTION_BOOST;
+                    + cross_derivative * CROSS_MOTION_BOOST * self.ecology;
                 let force = -energy_derivative * MOTION_SCALE * species.motion;
                 forces[i].0 += force * dx / distance;
                 forces[i].1 += force * dy / distance;
             });
         }
 
-        if pointer_strength.abs() > f32::EPSILON {
+        if pointer_strength.abs() > f32::EPSILON || pointer_twist.abs() > f32::EPSILON {
             for (index, particle) in self.particles.iter().enumerate() {
                 let (dx, dy) = torus_delta(pointer_x, pointer_y, particle.x, particle.y);
-                let distance_sq = (dx * dx + dy * dy).max(0.004);
-                let magnitude = pointer_strength * 0.018 / distance_sq.sqrt();
-                forces[index].0 += dx * magnitude;
-                forces[index].1 += dy * magnitude;
+                let distance_sq = dx * dx + dy * dy;
+                let distance = distance_sq.sqrt().max(0.035);
+                let falloff = (-distance_sq / POINTER_REACH.powi(2)).exp();
+                let radial = pointer_strength * 0.030 * falloff / distance;
+                let tangential = pointer_twist * 0.025 * falloff / distance;
+                forces[index].0 += dx * radial - dy * tangential;
+                forces[index].1 += dy * radial + dx * tangential;
             }
         }
 
@@ -351,6 +358,10 @@ impl Simulation {
         }
         let (fields, encounters) = measure_fields(&self.particles);
         self.refresh_metrics(&fields, &encounters);
+    }
+
+    pub(crate) fn set_ecology(&mut self, ecology: f32) {
+        self.ecology = ecology.clamp(0.25, 1.8);
     }
 
     pub(crate) fn snapshot(&self) -> Vec<f32> {
@@ -590,8 +601,8 @@ mod tests {
         let mut left = Simulation::new(41, 96);
         let mut right = Simulation::new(41, 96);
         for _ in 0..40 {
-            left.step(1.0 / 90.0, 0.0, 0.0, 0.0, false);
-            right.step(1.0 / 90.0, 0.0, 0.0, 0.0, false);
+            left.step(1.0 / 90.0, 0.0, 0.0, 0.0, 0.0, false);
+            right.step(1.0 / 90.0, 0.0, 0.0, 0.0, 0.0, false);
         }
         assert_eq!(left.snapshot(), right.snapshot());
         assert_eq!(left.metrics(), right.metrics());
@@ -608,7 +619,7 @@ mod tests {
     fn long_runs_remain_finite_and_bounded() {
         let mut simulation = Simulation::new(7, 240);
         for _ in 0..600 {
-            simulation.step(1.0 / 90.0, 0.2, -0.4, 0.0, false);
+            simulation.step(1.0 / 90.0, 0.2, -0.4, 0.0, 0.0, false);
         }
         for record in simulation.snapshot().chunks_exact(4) {
             assert!(record.iter().all(|value| value.is_finite()));
@@ -626,7 +637,7 @@ mod tests {
 
         let mut simulation = Simulation::new(23, DEFAULT_PARTICLES);
         for _ in 0..180 {
-            simulation.step(1.0 / 60.0, 0.0, 0.0, 0.0, false);
+            simulation.step(1.0 / 60.0, 0.0, 0.0, 0.0, 0.0, false);
         }
         let snapshot = simulation.snapshot();
         let occupied: HashSet<_> = snapshot
@@ -647,7 +658,7 @@ mod tests {
     fn ordinary_motion_conserves_particle_count() {
         let mut simulation = Simulation::new(12, 80);
         for _ in 0..20 {
-            simulation.step(1.0 / 60.0, 0.0, 0.0, 1.0, false);
+            simulation.step(1.0 / 60.0, 0.0, 0.0, 1.0, 0.0, false);
         }
         assert_eq!(simulation.particle_count(), 80);
     }
@@ -676,16 +687,40 @@ mod tests {
         let mut idle = Simulation::new(99, 64);
         let mut herded = Simulation::new(99, 64);
         for _ in 0..10 {
-            idle.step(1.0 / 90.0, 0.6, -0.4, 0.0, false);
-            herded.step(1.0 / 90.0, 0.6, -0.4, 1.0, false);
+            idle.step(1.0 / 90.0, 0.6, -0.4, 0.0, 0.0, false);
+            herded.step(1.0 / 90.0, 0.6, -0.4, 1.0, 0.0, false);
         }
         assert_ne!(idle.snapshot(), herded.snapshot());
     }
 
     #[test]
+    fn pointer_twist_creates_a_distinct_orbit() {
+        let mut idle = Simulation::new(99, 64);
+        let mut twisted = Simulation::new(99, 64);
+        for _ in 0..10 {
+            idle.step(1.0 / 90.0, 0.2, 0.1, 0.0, 0.0, false);
+            twisted.step(1.0 / 90.0, 0.2, 0.1, 0.0, 1.0, false);
+        }
+        assert_ne!(idle.snapshot(), twisted.snapshot());
+    }
+
+    #[test]
+    fn ecology_setting_changes_cross_population_motion() {
+        let mut calm = Simulation::new(51, 144);
+        let mut volatile = Simulation::new(51, 144);
+        calm.set_ecology(0.25);
+        volatile.set_ecology(1.8);
+        for _ in 0..20 {
+            calm.step(1.0 / 60.0, 0.0, 0.0, 0.0, 0.0, false);
+            volatile.step(1.0 / 60.0, 0.0, 0.0, 0.0, 0.0, false);
+        }
+        assert_ne!(calm.snapshot(), volatile.snapshot());
+    }
+
+    #[test]
     fn metrics_have_documented_ranges() {
         let mut simulation = Simulation::new(5, 72);
-        simulation.step(1.0 / 90.0, 0.0, 0.0, 0.0, false);
+        simulation.step(1.0 / 90.0, 0.0, 0.0, 0.0, 0.0, false);
         let metrics = simulation.metrics();
         for metric in &metrics[..4] {
             assert!((0.0..=1.0).contains(metric));

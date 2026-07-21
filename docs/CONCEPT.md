@@ -38,9 +38,23 @@ The visual image and the audio mix read the same deterministic simulation snapsh
 ## Performance gestures
 
 - Press and drag: herd the swarm toward the pointer.
+- Orbit drag: apply a local tangential field that winds nearby cells around the
+  gesture without pulling the entire world into it.
 - Option/Alt + drag: repel and open a cavity.
 - Double click/tap: seed a new local population.
 - Hold `S` or the Settle button: constrain the system toward a quieter common state.
 - Release Settle: return to local negotiation, often causing a phase transition.
 - `R`: regenerate from the displayed seed.
 - `Space`: pause or resume.
+- `G`, `O`, `D`: select the touch-friendly Gather, Orbit, or Divide mode.
+
+## Performance settings
+
+- Ecology scales cross-population pursuit and avoidance.
+- Flow changes deterministic simulation time without changing display cadence.
+- Touch changes the strength of all direct gestures.
+- Halo and Memory shape the rendered field and motion history.
+- Tone tilts the shared WebAudio spectrum between dark and bright.
+
+The settings and selected gesture are encoded in the URL with the seed. They are
+therefore part of a reproducible performance state rather than hidden preferences.

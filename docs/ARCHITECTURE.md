@@ -24,7 +24,7 @@ renderer or audio layer.
 At a fixed timestep the browser calls:
 
 ```text
-Engine.step(dt, pointer_x, pointer_y, pointer_strength, settle)
+Engine.step(dt, pointer_x, pointer_y, pointer_strength, pointer_twist, settle)
 ```
 
 The engine exposes two flat arrays:
@@ -42,8 +42,13 @@ replaceable and makes offline reproduction practical.
 ## Determinism
 
 The Rust core uses a small internal integer PRNG. The same engine version, seed,
-particle count, fixed timestep, and gesture stream reproduce a take. Future export
-work should save those values as `instrument.json` alongside audio/video output.
+particle count, fixed timestep, performance settings, and gesture stream reproduce a
+take. Browser settings are encoded in the URL; future export work should save those
+values as `instrument.json` alongside audio/video output.
+
+Gather and Divide are opposite signed local radial forces. Orbit combines a small
+radial bias with a tangential force and Gaussian distance falloff. Ecology scales the
+existing cross-population energy derivative rather than adding a visual-only effect.
 
 ## Audio graph
 
@@ -61,7 +66,9 @@ master -> subsonic high-pass -> compressor -> analyser -> output
 Audio starts only after an explicit user gesture and is re-resumed after browser or
 device suspension. Parameter changes are smoothed with `AudioParam.setTargetAtTime`;
 transitions create bounded resonant voices, while a slow metric-derived scheduler adds
-space between longer tones. The analyser exposes RMS and peak output for smoke tests.
+space between longer tones. The Tone setting changes the resonator and noise spectral
+tilt while preserving the same metric mapping. The analyser exposes RMS and peak
+output for smoke tests.
 
 ## Performance constraints
 

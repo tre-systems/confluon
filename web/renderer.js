@@ -15,8 +15,8 @@ struct Uniforms {
   density: f32,
   encounter: f32,
   activity: f32,
-  padding0: f32,
-  padding1: f32,
+  visual_glow: f32,
+  visual_core: f32,
 }
 
 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
@@ -143,7 +143,7 @@ fn particle_fs(input: ParticleVertexOutput) -> @location(0) vec4<f32> {
   let base = species_colour(input.species);
   let pearl = vec3<f32>(0.91, 1.0, 0.95);
   let colour = mix(base * (0.9 + input.energy * 0.38), pearl * 1.24, core * 0.82);
-  let intensity = core * 1.62 + body * 0.48 + halo * (0.15 + input.speed * 0.1);
+  let intensity = (core * 1.62 + body * 0.48 + halo * (0.15 + input.speed * 0.1)) * uniforms.visual_core;
   return vec4<f32>(colour * intensity, intensity);
 }
 `;
@@ -156,8 +156,8 @@ struct Uniforms {
   density: f32,
   encounter: f32,
   activity: f32,
-  padding0: f32,
-  padding1: f32,
+  visual_glow: f32,
+  visual_core: f32,
 }
 
 @group(0) @binding(0) var field_texture: texture_2d<f32>;
@@ -223,7 +223,7 @@ fn composite_fs(input: VertexOutput) -> @location(0) vec4<f32> {
   let glow = soft.x * tide + soft.y * ember + soft.z * bloom;
   colour += glow * (0.11 + uniforms.encounter * 0.055);
   colour *= 0.98 + uniforms.density * 0.32;
-  colour = vec3<f32>(1.0) - exp(-colour * 1.95);
+  colour = vec3<f32>(1.0) - exp(-colour * 1.95 * uniforms.visual_glow);
   let vignette = 1.0 - 0.24 * smoothstep(0.48, 1.1, length(input.uv - 0.5) * 1.45);
   colour *= vignette;
   let alpha = clamp(max(max(colour.r, colour.g), colour.b) * 1.35, 0.0, 0.94);
@@ -237,6 +237,11 @@ class TrailRenderer {
     this.context = canvas.getContext("2d", { alpha: true });
     this.previous = null;
     this.ready = false;
+    this.memory = 0.42;
+  }
+
+  setMemory(memory) {
+    this.memory = clamp(memory, 0, 1);
   }
 
   reset() {
@@ -255,7 +260,8 @@ class TrailRenderer {
       this.ready = true;
     } else {
       context.globalCompositeOperation = "source-over";
-      context.fillStyle = `rgba(4, 6, 9, ${0.095 + metrics[2] * 0.035})`;
+      const fade = 0.24 - this.memory * 0.19 + metrics[2] * 0.025;
+      context.fillStyle = `rgba(4, 6, 9, ${fade})`;
       context.fillRect(0, 0, canvas.width, canvas.height);
     }
 
@@ -283,7 +289,8 @@ class TrailRenderer {
         const speed = snapshot[offset + 3];
         const packedEnergy = snapshot[offset + 2];
         const [red, green, blue] = speciesColour(speciesOf(packedEnergy), 0.7);
-        context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${0.028 + speed * 0.12})`;
+        const traceAlpha = (0.018 + speed * 0.11) * (0.42 + this.memory * 1.08);
+        context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${traceAlpha})`;
         context.lineWidth = deviceScale() * (0.34 + speed * 0.5);
         context.beginPath();
         context.moveTo(toX(this.previous[offset], canvas.width), toY(this.previous[offset + 1], canvas.height));
@@ -308,6 +315,8 @@ class WebGpuRenderer {
     this.fieldView = null;
     this.fieldWidth = 0;
     this.fieldHeight = 0;
+    this.visualGlow = 1;
+    this.visualCore = 1;
     device.addEventListener("uncapturederror", (event) => {
       console.error("WebGPU validation error:", event.error.message);
     });
@@ -405,6 +414,12 @@ class WebGpuRenderer {
     this.trails.reset();
   }
 
+  setStyle({ glow, memory, core }) {
+    this.visualGlow = clamp(glow, 0.45, 1.55);
+    this.visualCore = clamp(core, 0.65, 1.45);
+    this.trails.setMemory(memory);
+  }
+
   ensureFieldTexture() {
     const width = Math.max(1, Math.floor(this.canvas.width / 3));
     const height = Math.max(1, Math.floor(this.canvas.height / 3));
@@ -445,8 +460,8 @@ class WebGpuRenderer {
         metrics[3],
         metrics[6] ?? 0,
         metrics[2],
-        0,
-        0,
+        this.visualGlow,
+        this.visualCore,
       ]),
     );
 
@@ -510,10 +525,18 @@ class CanvasRenderer {
     this.trails = new TrailRenderer(trailCanvas);
     this.spriteScale = 0;
     this.sprites = [];
+    this.visualGlow = 1;
+    this.visualCore = 1;
   }
 
   resetTrails() {
     this.trails.reset();
+  }
+
+  setStyle({ glow, memory, core }) {
+    this.visualGlow = clamp(glow, 0.45, 1.55);
+    this.visualCore = clamp(core, 0.65, 1.45);
+    this.trails.setMemory(memory);
   }
 
   render(snapshot, metrics, time) {
@@ -527,7 +550,7 @@ class CanvasRenderer {
     context.filter = `blur(${Math.round(5 * deviceScale())}px)`;
     for (let species = 0; species < 3; species += 1) {
       const [red, green, blue] = speciesColour(species, 0.72);
-      context.fillStyle = `rgba(${red}, ${green}, ${blue}, 0.012)`;
+      context.fillStyle = `rgba(${red}, ${green}, ${blue}, ${0.012 * this.visualGlow})`;
       context.beginPath();
       for (let offset = 0; offset < snapshot.length; offset += 4) {
         if (speciesOf(snapshot[offset + 2]) !== species) continue;
@@ -552,7 +575,7 @@ class CanvasRenderer {
       const speed = snapshot[offset + 3];
       const breath = 0.5 + 0.5 * Math.sin(time * 0.57 + offset * 0.0925);
       const radius = (1.8 + speed * 1.2 + breath * metrics[1] * 0.45) * deviceScale();
-      const diameter = radius * (5.0 + energy * 0.45 + speed * 0.3);
+      const diameter = radius * (5.0 + energy * 0.45 + speed * 0.3) * this.visualCore;
       context.drawImage(this.sprites[species], x - diameter / 2, y - diameter / 2, diameter, diameter);
     }
     context.globalCompositeOperation = "source-over";
@@ -586,6 +609,10 @@ function speciesOf(packedEnergy) {
 
 function energyOf(packedEnergy) {
   return Math.max(0, Math.min(0.999, packedEnergy - speciesOf(packedEnergy)));
+}
+
+function clamp(value, minimum, maximum) {
+  return Math.max(minimum, Math.min(maximum, Number(value)));
 }
 
 function speciesColour(species, brightness = 1) {

@@ -32,7 +32,7 @@
       </section>
 
       <p class="gesture-hint" id="gesture-hint" aria-hidden="true">
-        Drag to gather · Option-drag to part · Double-tap to seed
+        Drag to gather · Shift-drag to orbit · Option-drag to part · Double-tap to seed
       </p>
 
       <aside id="controls" class="controls collapsed" aria-label="Instrument controls">
@@ -72,11 +72,47 @@
             <div><span>ENCOUNTER</span><output id="encounter-value">0.00</output></div>
           </div>
 
+          <div class="gesture-control">
+            <span>GESTURE</span>
+            <div class="gesture-modes" role="group" aria-label="Pointer gesture">
+              <button type="button" data-gesture="gather" aria-pressed="true">Gather</button>
+              <button type="button" data-gesture="orbit" aria-pressed="false">Orbit</button>
+              <button type="button" data-gesture="divide" aria-pressed="false">Divide</button>
+            </div>
+          </div>
+
           <div class="actions">
             <button id="new-seed" type="button">New field</button>
             <button id="settle" class="hold-button" type="button">Hold to gather</button>
             <button id="pause" type="button">Pause</button>
           </div>
+
+          <section class="settings-grid" aria-label="Performance settings">
+            <label class="setting-control">
+              <span>ECOLOGY <output id="ecology-label">BALANCED</output></span>
+              <input id="ecology" aria-label="Ecology" type="range" min="25" max="180" value="100" />
+            </label>
+            <label class="setting-control">
+              <span>FLOW <output id="flow-label">NATURAL</output></span>
+              <input id="flow" aria-label="Flow" type="range" min="50" max="180" value="100" />
+            </label>
+            <label class="setting-control">
+              <span>TOUCH <output id="gesture-label">FIRM</output></span>
+              <input id="gesture" aria-label="Touch strength" type="range" min="50" max="180" value="100" />
+            </label>
+            <label class="setting-control">
+              <span>HALO <output id="glow-label">SOFT</output></span>
+              <input id="glow" aria-label="Halo" type="range" min="45" max="155" value="100" />
+            </label>
+            <label class="setting-control">
+              <span>MEMORY <output id="memory-label">BRIEF</output></span>
+              <input id="memory" aria-label="Visual memory" type="range" min="0" max="100" value="42" />
+            </label>
+            <label class="setting-control">
+              <span>TONE <output id="tone-label">WARM</output></span>
+              <input id="tone" aria-label="Tone" type="range" min="0" max="100" value="55" />
+            </label>
+          </section>
 
           <label class="volume-control">
             <span>LEVEL</span>
@@ -89,10 +125,11 @@
           </div>
 
           <dl class="performance-map">
-            <div><dt>Drag</dt><dd>Gather the field</dd></div>
+            <div><dt>Drag / Shift</dt><dd>Use mode / momentary orbit</dd></div>
             <div><dt>Option + drag</dt><dd>Open a cavity</dd></div>
             <div><dt>Double-tap</dt><dd>Seed new matter</dd></div>
-            <div><dt>S / Space / R</dt><dd>Gather / pause / reset</dd></div>
+            <div><dt>G / O / D</dt><dd>Gather / orbit / divide</dd></div>
+            <div><dt>S / Space / R</dt><dd>Settle / pause / reset</dd></div>
           </dl>
         </div>
       </aside>

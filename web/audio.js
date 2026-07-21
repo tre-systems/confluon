@@ -10,6 +10,7 @@ export class ConfluenceAudio {
     this.context = null;
     this.voices = [];
     this.level = 0.74;
+    this.tone = 0.55;
     this.paused = false;
     this.lastStrike = -Infinity;
     this.nextNoteTime = Infinity;
@@ -174,10 +175,12 @@ export class ConfluenceAudio {
         0.8,
       );
       const hierarchy = 1 / Math.pow(index + 1, 0.62);
+      const spectralTilt = 0.78 + this.tone * (0.3 + index * 0.055);
       const voiceLevel =
         (0.012 + hierarchy * (0.04 + coherence * 0.038) * (0.72 + density * 0.38)) *
         breath *
-        (1 - activity * 0.12);
+        (1 - activity * 0.12) *
+        spectralTilt;
       voice.gain.gain.setTargetAtTime(voiceLevel, now, 0.34 + index * 0.05);
       const movingPan = Math.sin(now * (0.037 + index * 0.006) + index * 1.7) * (0.22 + activity * 0.42);
       voice.panner.pan.setTargetAtTime(movingPan, now, 0.75);
@@ -185,14 +188,19 @@ export class ConfluenceAudio {
 
     this.sub.frequency.setTargetAtTime(Math.max(32, this.currentRoot * 0.5), now, 0.8);
     this.subGain.gain.setTargetAtTime((0.026 + density * 0.032 + coherence * 0.018) * breath, now, 0.6);
+    const toneScale = 0.62 + this.tone * 0.86;
     this.padFilter.frequency.setTargetAtTime(
-      520 + density * 1650 + activity * 1100 + encounters * 620,
+      (520 + density * 1650 + activity * 1100 + encounters * 620) * toneScale,
       now,
       0.32,
     );
     this.padFilter.Q.setTargetAtTime(0.8 + energy * 2.4, now, 0.4);
     this.fieldPan.pan.setTargetAtTime(Math.sin(now * 0.043) * (0.14 + coherence * 0.24), now, 0.9);
-    this.noiseFilter.frequency.setTargetAtTime(260 + density * 1250 + energy * 760, now, 0.38);
+    this.noiseFilter.frequency.setTargetAtTime(
+      (260 + density * 1250 + energy * 760) * (0.58 + this.tone * 0.92),
+      now,
+      0.38,
+    );
     this.noiseGain.gain.setTargetAtTime(
       0.006 + activity * 0.026 * (1 - coherence * 0.42) + encounters * 0.012,
       now,
@@ -231,7 +239,7 @@ export class ConfluenceAudio {
     oscillator.detune.setValueAtTime((this.random() - 0.5) * 5, when);
     const filter = this.context.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.value = Math.min(3200, frequency * 4.5);
+    filter.frequency.value = Math.min(4200, frequency * (3.1 + this.tone * 3.0));
     filter.Q.value = 0.7;
     const gain = this.context.createGain();
     const panner = this.context.createStereoPanner();
@@ -280,6 +288,10 @@ export class ConfluenceAudio {
     if (this.context && !this.paused) {
       this.master.gain.setTargetAtTime(this.targetLevel(), this.context.currentTime, 0.1);
     }
+  }
+
+  setTone(tone) {
+    this.tone = Math.max(0, Math.min(1, Number(tone)));
   }
 
   setPaused(paused) {

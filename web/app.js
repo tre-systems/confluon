@@ -5,6 +5,8 @@ import { createRenderer } from "./renderer.js";
 const FIXED_STEP = 1 / 30;
 const INITIAL_PARTICLES = 1_200;
 const IDLE_CONTROLS_MS = 9000;
+const GESTURE_MODES = new Set(["gather", "orbit", "divide"]);
+const settings = readPerformanceSettings();
 
 const elements = {
   instrument: document.querySelector("#instrument"),
@@ -19,6 +21,19 @@ const elements = {
   settle: document.querySelector("#settle"),
   pause: document.querySelector("#pause"),
   volume: document.querySelector("#volume"),
+  ecology: document.querySelector("#ecology"),
+  flow: document.querySelector("#flow"),
+  gesture: document.querySelector("#gesture"),
+  glow: document.querySelector("#glow"),
+  memory: document.querySelector("#memory"),
+  tone: document.querySelector("#tone"),
+  ecologyLabel: document.querySelector("#ecology-label"),
+  flowLabel: document.querySelector("#flow-label"),
+  gestureLabel: document.querySelector("#gesture-label"),
+  glowLabel: document.querySelector("#glow-label"),
+  memoryLabel: document.querySelector("#memory-label"),
+  toneLabel: document.querySelector("#tone-label"),
+  gestureModes: Array.from(document.querySelectorAll("[data-gesture]")),
   seed: document.querySelector("#seed-value"),
   energy: document.querySelector("#energy-value"),
   coherence: document.querySelector("#coherence-value"),
@@ -34,8 +49,19 @@ const state = {
   started: false,
   starting: false,
   settle: false,
+  gestureMode: settings.mode,
   previousTransition: 0,
-  pointer: { active: false, x: 0, y: 0, strength: 0, downAt: 0, downX: 0, downY: 0 },
+  pointer: {
+    active: false,
+    x: 0,
+    y: 0,
+    strength: 0,
+    twist: 0,
+    mode: settings.mode,
+    downAt: 0,
+    downX: 0,
+    downY: 0,
+  },
   lastTapAt: -Infinity,
   lastTapX: 0,
   lastTapY: 0,
@@ -52,6 +78,7 @@ try {
   engine = new Engine(seed, INITIAL_PARTICLES);
   renderer = await createRenderer(elements.field, elements.traces);
   audio = new ConfluenceAudio(seed);
+  applyPerformanceSettings(false);
   elements.renderer.textContent = renderer.kind;
   elements.seed.textContent = formatSeed(seed);
   installControls();
@@ -86,6 +113,24 @@ function installControls() {
   });
   wakeControls();
 
+  elements.gestureModes.forEach((button) => {
+    button.addEventListener("click", () => setGestureMode(button.dataset.gesture));
+  });
+
+  [
+    elements.ecology,
+    elements.flow,
+    elements.gesture,
+    elements.glow,
+    elements.memory,
+    elements.tone,
+  ].forEach((control) => {
+    control.addEventListener("input", () => {
+      readSettingsFromControls();
+      applyPerformanceSettings(true);
+    });
+  });
+
   elements.field.addEventListener("pointerdown", (event) => {
     const point = eventPoint(event);
     state.pointer.active = true;
@@ -94,7 +139,7 @@ function installControls() {
     state.pointer.downX = point.x;
     state.pointer.downY = point.y;
     state.pointer.downAt = performance.now();
-    state.pointer.strength = event.altKey ? -1.35 : 1.0;
+    configurePointerGesture(event);
     elements.field.setPointerCapture(event.pointerId);
   });
 
@@ -103,7 +148,7 @@ function installControls() {
     const point = eventPoint(event);
     state.pointer.x = point.x;
     state.pointer.y = point.y;
-    state.pointer.strength = event.altKey ? -1.35 : 1.0;
+    configurePointerGesture(event);
   });
 
   elements.field.addEventListener("pointerup", (event) => {
@@ -111,6 +156,12 @@ function installControls() {
     const duration = performance.now() - state.pointer.downAt;
     const travel = Math.hypot(point.x - state.pointer.downX, point.y - state.pointer.downY);
     state.pointer.active = false;
+    elements.instrument.removeAttribute("data-active-gesture");
+    if (duration > 90 || travel > 0.025) {
+      const strikeStrength =
+        state.pointer.mode === "orbit" ? 0.72 : state.pointer.mode === "divide" ? 0.64 : 0.5;
+      audio.strike(strikeStrength, engine.metrics()[0]);
+    }
     if (event.pointerType !== "mouse" && duration < 230 && travel < 0.055) {
       const now = performance.now();
       const closeToLastTap = Math.hypot(point.x - state.lastTapX, point.y - state.lastTapY) < 0.16;
@@ -127,6 +178,7 @@ function installControls() {
 
   elements.field.addEventListener("pointercancel", () => {
     state.pointer.active = false;
+    elements.instrument.removeAttribute("data-active-gesture");
   });
   elements.field.addEventListener("dblclick", (event) => {
     const point = eventPoint(event);
@@ -152,7 +204,9 @@ function installControls() {
 
   elements.pause.addEventListener("click", togglePause);
   elements.volume.addEventListener("input", () => {
-    audio.setLevel(Number(elements.volume.value) / 100);
+    settings.level = Number(elements.volume.value) / 100;
+    audio.setLevel(settings.level);
+    syncSettingsUrl();
   });
 
   window.addEventListener("keydown", (event) => {
@@ -167,6 +221,12 @@ function installControls() {
     } else if (event.code === "KeyS") {
       state.settle = true;
       elements.settle.classList.add("active");
+    } else if (event.code === "KeyG") {
+      setGestureMode("gather");
+    } else if (event.code === "KeyO") {
+      setGestureMode("orbit");
+    } else if (event.code === "KeyD") {
+      setGestureMode("divide");
     } else if (event.code === "Escape") {
       setControlsOpen(false);
     }
@@ -184,6 +244,111 @@ function installControls() {
       resumeSound();
     }
   });
+}
+
+function configurePointerGesture(event) {
+  const mode = event.altKey ? "divide" : event.shiftKey ? "orbit" : state.gestureMode;
+  state.pointer.mode = mode;
+  const amount = settings.gesture;
+  if (mode === "divide") {
+    state.pointer.strength = -1.22 * amount;
+    state.pointer.twist = -0.08 * amount;
+  } else if (mode === "orbit") {
+    state.pointer.strength = 0.12 * amount;
+    state.pointer.twist = 1.18 * amount;
+  } else {
+    state.pointer.strength = 1.0 * amount;
+    state.pointer.twist = 0;
+  }
+  elements.instrument.dataset.activeGesture = mode;
+}
+
+function setGestureMode(mode, updateUrl = true) {
+  if (!GESTURE_MODES.has(mode)) return;
+  state.gestureMode = mode;
+  settings.mode = mode;
+  elements.instrument.dataset.gesture = mode;
+  elements.gestureModes.forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.gesture === mode));
+  });
+  if (updateUrl) syncSettingsUrl();
+}
+
+function readSettingsFromControls() {
+  settings.ecology = Number(elements.ecology.value) / 100;
+  settings.flow = Number(elements.flow.value) / 100;
+  settings.gesture = Number(elements.gesture.value) / 100;
+  settings.glow = Number(elements.glow.value) / 100;
+  settings.memory = Number(elements.memory.value) / 100;
+  settings.tone = Number(elements.tone.value) / 100;
+}
+
+function applyPerformanceSettings(updateUrl) {
+  elements.ecology.value = String(Math.round(settings.ecology * 100));
+  elements.flow.value = String(Math.round(settings.flow * 100));
+  elements.gesture.value = String(Math.round(settings.gesture * 100));
+  elements.glow.value = String(Math.round(settings.glow * 100));
+  elements.memory.value = String(Math.round(settings.memory * 100));
+  elements.tone.value = String(Math.round(settings.tone * 100));
+  elements.volume.value = String(Math.round(settings.level * 100));
+  updateSettingLabels();
+  engine.set_ecology(settings.ecology);
+  renderer.setStyle({
+    glow: settings.glow,
+    memory: settings.memory,
+    core: 0.86 + settings.glow * 0.14,
+  });
+  audio.setTone(settings.tone);
+  audio.setLevel(settings.level);
+  setGestureMode(settings.mode, false);
+  if (updateUrl) syncSettingsUrl();
+}
+
+function updateSettingLabels() {
+  elements.ecologyLabel.textContent = settingWord(
+    settings.ecology,
+    [0.72, 1.28],
+    ["CALM", "BALANCED", "VOLATILE"],
+  );
+  elements.flowLabel.textContent = settingWord(
+    settings.flow,
+    [0.78, 1.28],
+    ["GLACIAL", "NATURAL", "QUICK"],
+  );
+  elements.gestureLabel.textContent = settingWord(
+    settings.gesture,
+    [0.78, 1.3],
+    ["DELICATE", "FIRM", "FORCEFUL"],
+  );
+  elements.glowLabel.textContent = settingWord(
+    settings.glow,
+    [0.76, 1.28],
+    ["BARE", "SOFT", "LUMINOUS"],
+  );
+  elements.memoryLabel.textContent = settingWord(
+    settings.memory,
+    [0.3, 0.72],
+    ["CLEAR", "BRIEF", "LINGERING"],
+  );
+  elements.toneLabel.textContent = settingWord(
+    settings.tone,
+    [0.33, 0.72],
+    ["DARK", "WARM", "BRIGHT"],
+  );
+  [
+    [elements.ecology, elements.ecologyLabel],
+    [elements.flow, elements.flowLabel],
+    [elements.gesture, elements.gestureLabel],
+    [elements.glow, elements.glowLabel],
+    [elements.memory, elements.memoryLabel],
+    [elements.tone, elements.toneLabel],
+  ].forEach(([control, label]) => {
+    control.setAttribute("aria-valuetext", label.textContent.toLowerCase());
+  });
+}
+
+function settingWord(value, [low, high], [below, middle, above]) {
+  return value < low ? below : value > high ? above : middle;
 }
 
 async function startExperience() {
@@ -259,7 +424,7 @@ function frame(milliseconds) {
   const time = milliseconds / 1000;
   const elapsed = Math.min(0.05, Math.max(0, time - previousTime));
   previousTime = time;
-  accumulator += elapsed;
+  accumulator += elapsed * settings.flow;
 
   if (state.running) {
     let steps = 0;
@@ -269,6 +434,7 @@ function frame(milliseconds) {
         state.pointer.x,
         state.pointer.y,
         state.pointer.active ? state.pointer.strength : 0,
+        state.pointer.active ? state.pointer.twist : 0,
         state.settle,
       );
       accumulator -= FIXED_STEP;
@@ -292,6 +458,7 @@ function frame(milliseconds) {
     elements.coherence.textContent = metrics[1].toFixed(2);
     elements.activity.textContent = metrics[2].toFixed(2);
     elements.encounter.textContent = metrics[6].toFixed(2);
+    elements.instrument.dataset.particles = String(engine.particle_count());
     setAudioState();
     lastReadout = milliseconds;
   }
@@ -343,6 +510,8 @@ function exposeDiagnostics() {
     metrics: () => Array.from(engine.metrics()),
     particleCount: () => engine.particle_count(),
     fps: () => measuredFps,
+    gestureMode: () => state.gestureMode,
+    settings: () => ({ ...settings }),
   });
 }
 
@@ -368,4 +537,39 @@ function readSeed() {
   url.searchParams.set("seed", generated.toString());
   window.history.replaceState({}, "", url);
   return generated;
+}
+
+function readPerformanceSettings() {
+  const parameters = new URL(window.location.href).searchParams;
+  const mode = parameters.get("mode");
+  return {
+    ecology: readScaledParameter(parameters, "ecology", 1, 0.25, 1.8),
+    flow: readScaledParameter(parameters, "flow", 1, 0.5, 1.8),
+    gesture: readScaledParameter(parameters, "touch", 1, 0.5, 1.8),
+    glow: readScaledParameter(parameters, "halo", 1, 0.45, 1.55),
+    memory: readScaledParameter(parameters, "memory", 0.42, 0, 1),
+    tone: readScaledParameter(parameters, "tone", 0.55, 0, 1),
+    level: readScaledParameter(parameters, "level", 0.74, 0, 1),
+    mode: GESTURE_MODES.has(mode) ? mode : "gather",
+  };
+}
+
+function readScaledParameter(parameters, key, fallback, minimum, maximum) {
+  if (!parameters.has(key)) return fallback;
+  const value = Number(parameters.get(key)) / 100;
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(minimum, Math.min(maximum, value));
+}
+
+function syncSettingsUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.set("ecology", String(Math.round(settings.ecology * 100)));
+  url.searchParams.set("flow", String(Math.round(settings.flow * 100)));
+  url.searchParams.set("touch", String(Math.round(settings.gesture * 100)));
+  url.searchParams.set("halo", String(Math.round(settings.glow * 100)));
+  url.searchParams.set("memory", String(Math.round(settings.memory * 100)));
+  url.searchParams.set("tone", String(Math.round(settings.tone * 100)));
+  url.searchParams.set("level", String(Math.round(settings.level * 100)));
+  url.searchParams.set("mode", settings.mode);
+  window.history.replaceState({}, "", url);
 }
