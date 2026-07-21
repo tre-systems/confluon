@@ -9,7 +9,7 @@ parts:
    rule, performance forces, and collective metrics.
 2. `web/renderer.js` uploads the snapshot to WebGPU and renders the energy field. A
    Canvas 2D fallback keeps the instrument usable when WebGPU is unavailable.
-3. `web/audio.js` maps the same metrics onto a restrained WebAudio graph.
+3. `web/audio.js` maps the same metrics onto a slow, layered WebAudio graph.
 
 `web/app.js` is the thin frame coordinator. Simulation state does not live in the
 renderer or audio layer.
@@ -39,16 +39,20 @@ work should save those values as `instrument.json` alongside audio/video output.
 ## Audio graph
 
 ```text
-partial oscillators -> per-voice gains/panners -> resonant low-pass -> dry bus
-                                                   |                |
-filtered noise ------------------------------------+                +-> compressor -> master
-                                                                    |
-dry bus -> delay -> feedback filter -> delay -----------------------+
-dry bus -> generated impulse response ------------------------------+
+six partial oscillators -> voice gains/panners -> warm low-pass -> field pan -> dry
+sub oscillator -> low-pass -----------------------------------------------------> dry
+filtered noise ----------------------------------------------------------------> dry
+sparse scale tones ------------------------------------------------------------> dry
+dry -> delay -> filtered feedback -> wet -------------------------------------> master
+dry -> generated impulse response -> wet -------------------------------------> master
+dry --------------------------------------------------------------------------> master
+master -> subsonic high-pass -> compressor -> analyser -> output
 ```
 
-Audio starts only after an explicit user gesture. Parameter changes are smoothed with
-`AudioParam.setTargetAtTime`; transitions create bounded, short-lived resonant voices.
+Audio starts only after an explicit user gesture and is re-resumed after browser or
+device suspension. Parameter changes are smoothed with `AudioParam.setTargetAtTime`;
+transitions create bounded resonant voices, while a slow metric-derived scheduler adds
+space between longer tones. The analyser exposes RMS and peak output for smoke tests.
 
 ## Performance constraints
 

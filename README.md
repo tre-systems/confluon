@@ -14,9 +14,14 @@ of one evolving state.
 - An energy-inspired particle model with a shell field, preferred local density,
   close-range repulsion, and performance forces.
 - Deterministic reproduction from an integer seed and fixed simulation timestep.
-- A WebGPU particle-field renderer with a Canvas 2D fallback.
-- A conservative WebAudio resonator, noise, delay, and generated-reverb graph.
+- A canvas-first WebGPU particle field with luminous cores, persistent filaments,
+  motion traces, and a Canvas 2D fallback.
+- An audible WebAudio harmonic field with six sustained voices, sub foundation,
+  filtered air, sparse scale-locked tones, delay, generated reverb, compression,
+  and an output meter.
 - Direct gestures for herding, repelling, seeding, settling, pausing, and resetting.
+- A discreet control panel that closes out of the image and fades completely after
+  nine seconds of inactivity.
 - Native Rust tests for determinism, stability, bounded metrics, interaction, and
   particle-count conservation.
 
@@ -30,8 +35,9 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite and choose **Begin with sound**. Browsers require
-that explicit gesture before starting WebAudio.
+Open the local URL printed by Vite and choose **Enter — Sound on**. Browsers require
+that explicit gesture before starting WebAudio. The control icon in the top-left
+opens the performance controls and fades away when left alone.
 
 Run the complete verification gate with:
 

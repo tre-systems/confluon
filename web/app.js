@@ -4,14 +4,16 @@ import { createRenderer } from "./renderer.js";
 
 const FIXED_STEP = 1 / 60;
 const INITIAL_PARTICLES = 180;
+const IDLE_CONTROLS_MS = 9000;
 
 const elements = {
-  canvas: document.querySelector("#field"),
+  instrument: document.querySelector("#instrument"),
+  field: document.querySelector("#field"),
+  traces: document.querySelector("#traces"),
   welcome: document.querySelector("#welcome"),
   begin: document.querySelector("#begin"),
-  helpButton: document.querySelector("#help-button"),
-  helpPanel: document.querySelector("#help-panel"),
-  helpClose: document.querySelector("#help-close"),
+  controls: document.querySelector("#controls"),
+  controlsToggle: document.querySelector("#controls-toggle"),
   gestureHint: document.querySelector("#gesture-hint"),
   newSeed: document.querySelector("#new-seed"),
   settle: document.querySelector("#settle"),
@@ -21,15 +23,17 @@ const elements = {
   energy: document.querySelector("#energy-value"),
   coherence: document.querySelector("#coherence-value"),
   activity: document.querySelector("#activity-value"),
-  forms: document.querySelector("#forms-value"),
   renderer: document.querySelector("#renderer-value"),
-  particles: document.querySelector("#particle-value"),
+  audioState: document.querySelector("#audio-state"),
+  runtimeStatus: document.querySelector("#runtime-status"),
 };
 
 const state = {
   running: true,
   started: false,
+  starting: false,
   settle: false,
+  previousTransition: 0,
   pointer: { active: false, x: 0, y: 0, strength: 0, downAt: 0, downX: 0, downY: 0 },
   lastTapAt: -Infinity,
   lastTapX: 0,
@@ -40,44 +44,48 @@ let seed = readSeed();
 let engine;
 let renderer;
 let audio;
+let idleTimer;
 
 try {
   await init();
   engine = new Engine(seed, INITIAL_PARTICLES);
-  renderer = await createRenderer(elements.canvas);
+  renderer = await createRenderer(elements.field, elements.traces);
   audio = new ConfluenceAudio(seed);
   elements.renderer.textContent = renderer.kind;
-  elements.seed.textContent = seed.toString(16).toUpperCase().padStart(8, "0");
-  elements.particles.textContent = engine.particle_count();
+  elements.seed.textContent = formatSeed(seed);
   installControls();
+  exposeDiagnostics();
   requestAnimationFrame(frame);
 } catch (error) {
   console.error(error);
-  elements.begin.textContent = "INSTRUMENT COULD NOT START";
+  elements.begin.querySelector("span").textContent = "UNAVAILABLE";
   elements.begin.disabled = true;
-  elements.renderer.textContent = "STARTUP ERROR";
+  elements.runtimeStatus.textContent = "This browser could not start the instrument.";
+  elements.runtimeStatus.classList.add("error");
 }
 
 function installControls() {
-  elements.begin.addEventListener("click", async () => {
-    try {
-      await audio.start();
-      audio.setLevel(Number(elements.volume.value) / 100);
-      audio.strike(0.5, 0.5);
-      state.started = true;
-      elements.welcome.classList.add("dismissed");
-      window.setTimeout(() => {
-        elements.welcome.hidden = true;
-        elements.gestureHint.classList.add("visible");
-        window.setTimeout(() => elements.gestureHint.classList.remove("visible"), 5200);
-      }, 380);
-    } catch (error) {
-      console.error(error);
-      elements.begin.textContent = "AUDIO UNAVAILABLE";
+  elements.begin.addEventListener("click", startExperience);
+  elements.controlsToggle.addEventListener("click", () => {
+    setControlsOpen(elements.controls.classList.contains("collapsed"));
+  });
+
+  document.addEventListener("pointerdown", (event) => {
+    wakeControls();
+    if (!elements.controls.classList.contains("collapsed") && !elements.controls.contains(event.target)) {
+      setControlsOpen(false);
     }
   });
 
-  elements.canvas.addEventListener("pointerdown", (event) => {
+  ["pointermove", "keydown", "wheel"].forEach((eventName) => {
+    window.addEventListener(eventName, wakeControls, { passive: true });
+  });
+  ["pointerup", "touchend", "click", "keydown"].forEach((eventName) => {
+    window.addEventListener(eventName, resumeSound, { capture: true, passive: true });
+  });
+  wakeControls();
+
+  elements.field.addEventListener("pointerdown", (event) => {
     const point = eventPoint(event);
     state.pointer.active = true;
     state.pointer.x = point.x;
@@ -86,20 +94,18 @@ function installControls() {
     state.pointer.downY = point.y;
     state.pointer.downAt = performance.now();
     state.pointer.strength = event.altKey ? -1.35 : 1.0;
-    elements.canvas.setPointerCapture(event.pointerId);
+    elements.field.setPointerCapture(event.pointerId);
   });
 
-  elements.canvas.addEventListener("pointermove", (event) => {
-    if (!state.pointer.active) {
-      return;
-    }
+  elements.field.addEventListener("pointermove", (event) => {
+    if (!state.pointer.active) return;
     const point = eventPoint(event);
     state.pointer.x = point.x;
     state.pointer.y = point.y;
     state.pointer.strength = event.altKey ? -1.35 : 1.0;
   });
 
-  elements.canvas.addEventListener("pointerup", (event) => {
+  elements.field.addEventListener("pointerup", (event) => {
     const point = eventPoint(event);
     const duration = performance.now() - state.pointer.downAt;
     const travel = Math.hypot(point.x - state.pointer.downX, point.y - state.pointer.downY);
@@ -118,26 +124,15 @@ function installControls() {
     }
   });
 
-  elements.canvas.addEventListener("pointercancel", () => {
+  elements.field.addEventListener("pointercancel", () => {
     state.pointer.active = false;
   });
-
-  elements.canvas.addEventListener("dblclick", (event) => {
+  elements.field.addEventListener("dblclick", (event) => {
     const point = eventPoint(event);
     spawn(point.x, point.y);
   });
 
-  elements.newSeed.addEventListener("click", () => {
-    const values = new Uint32Array(1);
-    crypto.getRandomValues(values);
-    seed = values[0] || 1;
-    engine.reset(seed);
-    const url = new URL(window.location.href);
-    url.searchParams.set("seed", seed.toString());
-    window.history.replaceState({}, "", url);
-    elements.seed.textContent = seed.toString(16).toUpperCase().padStart(8, "0");
-    audio.strike(0.72, 0.42);
-  });
+  elements.newSeed.addEventListener("click", newField);
 
   const settleOn = (event) => {
     event.preventDefault();
@@ -145,12 +140,10 @@ function installControls() {
     elements.settle.classList.add("active");
   };
   const settleOff = () => {
-    if (!state.settle) {
-      return;
-    }
+    if (!state.settle) return;
     state.settle = false;
     elements.settle.classList.remove("active");
-    audio.strike(0.64, engine.metrics()[0]);
+    audio.strike(0.58, engine.metrics()[0]);
   };
   elements.settle.addEventListener("pointerdown", settleOn);
   window.addEventListener("pointerup", settleOff);
@@ -160,38 +153,26 @@ function installControls() {
   elements.volume.addEventListener("input", () => {
     audio.setLevel(Number(elements.volume.value) / 100);
   });
-  elements.helpButton.addEventListener("click", () => setHelpOpen(true));
-  elements.helpClose.addEventListener("click", () => setHelpOpen(false));
-  elements.helpPanel.addEventListener("click", (event) => {
-    if (event.target === elements.helpPanel) {
-      setHelpOpen(false);
-    }
-  });
 
   window.addEventListener("keydown", (event) => {
-    if (event.repeat && event.code !== "KeyS") {
-      return;
-    }
+    if (event.repeat && event.code !== "KeyS") return;
     if (event.code === "Space") {
       event.preventDefault();
       togglePause();
     } else if (event.code === "KeyR") {
       engine.reset(seed);
-      audio.strike(0.5, 0.5);
+      renderer.resetTrails();
+      audio.strike(0.62, 0.5);
     } else if (event.code === "KeyS") {
       state.settle = true;
       elements.settle.classList.add("active");
-    } else if (event.code === "KeyH") {
-      setHelpOpen(elements.helpPanel.hidden);
     } else if (event.code === "Escape") {
-      setHelpOpen(false);
+      setControlsOpen(false);
     }
   });
 
   window.addEventListener("keyup", (event) => {
-    if (event.code === "KeyS") {
-      settleOff();
-    }
+    if (event.code === "KeyS") settleOff();
   });
 
   document.addEventListener("visibilitychange", () => {
@@ -199,8 +180,64 @@ function installControls() {
       audio.setPaused(true);
     } else if (state.started) {
       audio.setPaused(!state.running);
+      resumeSound();
     }
   });
+}
+
+async function startExperience() {
+  if (state.starting) return;
+  state.starting = true;
+  elements.begin.querySelector("span").textContent = "WAKING";
+  try {
+    await audio.start();
+    audio.setLevel(Number(elements.volume.value) / 100);
+    audio.wake(engine.metrics());
+    state.started = true;
+    setAudioState();
+    elements.welcome.classList.add("dismissed");
+    window.setTimeout(() => {
+      elements.welcome.hidden = true;
+      elements.gestureHint.classList.add("visible");
+      window.setTimeout(() => elements.gestureHint.classList.remove("visible"), 5800);
+    }, 1100);
+  } catch (error) {
+    console.error(error);
+    elements.begin.querySelector("span").textContent = "TRY AGAIN";
+    elements.audioState.dataset.state = "error";
+    elements.audioState.textContent = "sound unavailable";
+    elements.runtimeStatus.textContent = "Sound did not start. Check this tab’s audio permission and try again.";
+    elements.runtimeStatus.classList.add("error");
+  } finally {
+    state.starting = false;
+  }
+}
+
+async function resumeSound() {
+  if (!state.started || audio.state() === "running") return;
+  try {
+    await audio.resume();
+    setAudioState();
+  } catch (error) {
+    console.warn("Could not resume audio", error);
+  }
+}
+
+function setControlsOpen(open) {
+  elements.controls.classList.toggle("collapsed", !open);
+  elements.controlsToggle.setAttribute("aria-expanded", String(open));
+  elements.controlsToggle.setAttribute("aria-label", open ? "Hide controls" : "Show controls");
+  wakeControls();
+}
+
+function wakeControls() {
+  elements.controls.classList.remove("idle-hidden");
+  window.clearTimeout(idleTimer);
+  idleTimer = window.setTimeout(() => {
+    if (elements.controls.classList.contains("collapsed")) {
+      elements.controls.classList.add("idle-hidden");
+    }
+  }, IDLE_CONTROLS_MS);
 }
 
 let previousTime = performance.now() / 1000;
@@ -234,16 +271,16 @@ function frame(milliseconds) {
   const metrics = engine.metrics();
   renderer.render(snapshot, metrics, time);
   audio.update(metrics);
-  if (metrics[5] > 0.24 && state.running) {
+  if (metrics[5] > 0.24 && state.previousTransition <= 0.24 && state.running) {
     audio.strike(metrics[5], metrics[0]);
   }
+  state.previousTransition = metrics[5];
 
-  if (milliseconds - lastReadout > 100) {
+  if (milliseconds - lastReadout > 160) {
     elements.energy.textContent = metrics[0].toFixed(2);
     elements.coherence.textContent = metrics[1].toFixed(2);
     elements.activity.textContent = metrics[2].toFixed(2);
-    elements.forms.textContent = Math.round(metrics[4]);
-    elements.particles.textContent = engine.particle_count();
+    setAudioState();
     lastReadout = milliseconds;
   }
   requestAnimationFrame(frame);
@@ -251,34 +288,66 @@ function frame(milliseconds) {
 
 function spawn(x, y) {
   engine.spawn_at(x, y, 18);
-  audio.strike(0.82, engine.metrics()[0]);
+  audio.strike(0.84, engine.metrics()[0]);
+}
+
+function newField() {
+  const values = new Uint32Array(1);
+  crypto.getRandomValues(values);
+  seed = values[0] || 1;
+  engine.reset(seed);
+  renderer.resetTrails();
+  audio.reseed(seed);
+  const url = new URL(window.location.href);
+  url.searchParams.set("seed", seed.toString());
+  window.history.replaceState({}, "", url);
+  elements.seed.textContent = formatSeed(seed);
+  audio.strike(0.72, 0.42);
 }
 
 function togglePause() {
   state.running = !state.running;
-  elements.pause.textContent = state.running ? "PAUSE" : "RESUME";
+  elements.pause.textContent = state.running ? "Pause" : "Resume";
   elements.pause.classList.toggle("active", !state.running);
   audio.setPaused(!state.running);
 }
 
-function setHelpOpen(open) {
-  elements.helpPanel.hidden = !open;
-  elements.helpButton.setAttribute("aria-expanded", String(open));
+function setAudioState() {
+  const current = audio?.state() ?? "waiting";
+  const meter = audio?.meter() ?? { rms: 0, peak: 0 };
+  elements.audioState.dataset.state = current;
+  elements.audioState.textContent =
+    current === "running" ? "sound running" : current === "waiting" ? "sound waiting" : `sound ${current}`;
+  elements.instrument.dataset.audioState = current;
+  elements.instrument.dataset.audioRms = meter.rms.toFixed(5);
+  elements.instrument.dataset.audioPeak = meter.peak.toFixed(5);
+}
+
+function exposeDiagnostics() {
+  window.geno5 = Object.freeze({
+    audioState: () => audio.state(),
+    audioMeter: () => audio.meter(),
+    renderer: () => renderer.kind,
+    metrics: () => Array.from(engine.metrics()),
+    particleCount: () => engine.particle_count(),
+  });
 }
 
 function eventPoint(event) {
-  const rect = elements.canvas.getBoundingClientRect();
+  const rect = elements.field.getBoundingClientRect();
   return {
     x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
     y: 1 - ((event.clientY - rect.top) / rect.height) * 2,
   };
 }
 
+function formatSeed(value) {
+  return value.toString(16).toUpperCase().padStart(8, "0");
+}
+
 function readSeed() {
   const value = Number(new URL(window.location.href).searchParams.get("seed"));
-  if (Number.isInteger(value) && value > 0 && value <= 0xffffffff) {
-    return value >>> 0;
-  }
+  if (Number.isInteger(value) && value > 0 && value <= 0xffffffff) return value >>> 0;
   const values = new Uint32Array(1);
   crypto.getRandomValues(values);
   const generated = values[0] || 1;
