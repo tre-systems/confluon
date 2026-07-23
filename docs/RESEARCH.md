@@ -1,11 +1,11 @@
 # Research basis
 
-Confluence is an original musical instrument informed by the published Particle
-Lenia model and its energy-based interpretation. The reference describes particles
-that induce a radial shell field, seek a preferred field density through a Gaussian
-growth function, repel at close range, and move down their own local energy gradient.
-It also shows why local greedy descent produces richer dynamic attractors than global
-energy minimisation.
+Confluence, the first work made with Confluon, is an original musical instrument
+informed by the published Particle Lenia model and its energy-based interpretation.
+The reference describes particles that induce a radial shell field, seek a preferred
+field density through a Gaussian growth function, repel at close range, and move down
+their own local energy gradient. It also shows why local greedy descent produces
+richer dynamic attractors than global energy minimisation.
 
 The most relevant findings for this instrument are:
 

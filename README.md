@@ -1,14 +1,18 @@
-# Geno-5 // Confluence
+# Confluon
 
-Confluence is an original interactive audiovisual instrument in which three
-deterministic particle populations compose long-form electronic music. Each forms
-its own structures while cyclic attraction and avoidance pull the populations into
-encounters. Local crowding excites resonant voices, coherent movement opens a shared
-drone, and changes in collective energy produce strikes and transitions.
+Confluon is an original generative audiovisual instrument project. Its first work,
+**Confluence**, brings three deterministic particle populations together to compose
+long-form electronic music. Each forms its own structures while cyclic attraction and
+avoidance pull the populations into encounters. Local crowding excites resonant
+voices, coherent movement opens a shared drone, and changes in collective energy
+produce strikes and transitions.
 
-The same Rust/WASM simulation drives WebGPU visuals and WebAudio sound. There is no
-sequencer and no separate audio-reactive animation: the image and music are two views
-of one evolving state.
+The internal engine designation is **Geno-5**. Its Rust/WASM simulation drives both
+WebGPU visuals and WebAudio sound. There is no sequencer and no separate
+audio-reactive animation: the image and music are two views of one evolving state.
+
+> **Confluon** is the instrument project. **Confluence** is its first ecology and
+> performance work. **Geno-5** is the engine that makes it reproducible.
 
 ## What is here
 

@@ -3,7 +3,7 @@ name = "geno-5"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "Confluence: a deterministic energy-driven audiovisual swarm instrument"
+description = "Geno-5, the deterministic swarm engine behind Confluon's Confluence"
 repository = "https://github.com/tre-systems/geno-5"
 
 [lib]

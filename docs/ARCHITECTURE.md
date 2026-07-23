@@ -2,7 +2,8 @@
 
 ## System boundary
 
-Confluence is a static web app with no server-side runtime. It has three cooperating
+Confluon is a static web app with no server-side runtime. Its first work, Confluence,
+is powered by the internally designated Geno-5 engine and has three cooperating
 parts:
 
 1. `src/simulation.rs` owns deterministic particle state, the energy-inspired motion

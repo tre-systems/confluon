@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Confluence — how it is built in Rust, WebGPU, and WebAudio</title>
+    <title>Confluence engineering: Rust, WebGPU, and WebAudio — Confluon</title>
     <meta
       name="description"
-      content="A technical walkthrough of Confluence: a deterministic Rust/WASM particle engine, allocation-free neighbour grid, WebGPU HDR renderer, WebAudio instrument, and synchronized video pipeline."
+      content="A technical walkthrough of Confluon's Confluence: its deterministic Geno-5 Rust/WASM engine, neighbour grid, WebGPU renderer, WebAudio instrument, and video pipeline."
     />
     <link rel="canonical" href="https://geno-5.tre.systems/engineering" />
     <meta property="og:type" content="article" />
-    <meta property="og:site_name" content="Geno-5" />
+    <meta property="og:site_name" content="Confluon" />
     <meta
       property="og:title"
       content="Confluence — how it is built in Rust, WebGPU, and WebAudio"
@@ -56,7 +56,7 @@
   </head>
   <body>
     <nav class="top" aria-label="Article navigation">
-      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>GENO-5 / CONFLUENCE</span>
+      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>CONFLUON / CONFLUENCE</span>
       <span class="spacer"></span>
       <a href="/">Open the instrument</a>
       <a href="/field">The field</a>
@@ -68,10 +68,10 @@
       <p class="eyebrow">The engineering</p>
       <h1>One engine, three readings</h1>
       <p class="lede">
-        Confluence keeps its simulation in a small Rust/WebAssembly core, then hands one compact
-        state to a WebGPU renderer and a WebAudio instrument. The architecture is built around
-        separation without disconnection: image, sound, and export are independent systems, but
-        none may invent a second reality.
+        Confluon keeps the Confluence simulation in a small Rust/WebAssembly core, then hands
+        one compact state to a WebGPU renderer and a WebAudio instrument. The architecture is
+        built around separation without disconnection: image, sound, and export are independent
+        systems, but none may invent a second reality.
       </p>
     </header>
 
@@ -397,7 +397,7 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
             <a href="https://www.w3.org/TR/webaudio-1.1/">Web Audio API 1.1.</a>
           </li>
           <li>
-            <cite>Confluence source.</cite>
+            <cite>Confluon source.</cite>
             <a href="https://github.com/tre-systems/geno-5">github.com/tre-systems/geno-5</a>
             — simulation, renderer, audio graph, tests, and production tooling.
           </li>
@@ -415,7 +415,7 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
         <a href="/">Open Confluence</a> · <a href="/field">The field</a> ·
         <a href="/sound">The sound</a>
       </p>
-      <p>Geno-5 / Confluence — a deterministic audiovisual swarm instrument.</p>
+      <p>Confluon / Confluence · powered by the Geno-5 deterministic engine.</p>
     </footer>
   </body>
 </html>

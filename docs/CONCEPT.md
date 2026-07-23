@@ -1,4 +1,7 @@
-# Confluence
+# Confluon — Confluence
+
+Confluon is the audiovisual instrument project; Confluence is its first ecology and
+performance work, powered by the Geno-5 deterministic engine.
 
 ## One-sentence concept
 
