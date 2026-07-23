@@ -286,6 +286,12 @@ struct ParticleVertexOutput {
   @location(2) speed: f32,
   @location(3) breath: f32,
   @location(4) @interpolate(flat) species: u32,
+  @location(5) @interpolate(flat) tint: vec3<f32>,
+  @location(6) @interpolate(flat) luminosity: f32,
+}
+
+fn particle_variation(index: u32, salt: f32) -> f32 {
+  return fract(sin((f32(index) + salt) * 12.9898) * 43758.5453);
 }
 
 @vertex
@@ -294,18 +300,25 @@ fn particle_vs(
   @builtin(instance_index) instance_index: u32,
 ) -> ParticleVertexOutput {
   let particle = particles[instance_index];
+  let species = u32(floor(particle.energy));
   let local = corner(vertex_index);
   let breath = 0.5 + 0.5 * sin(uniforms.time * 0.57 + f32(instance_index) * 0.37);
-  let radius = 0.009 + particle.speed * 0.003 + breath * uniforms.coherence * 0.0015;
+  let radius_variation = mix(0.92, 1.08, particle_variation(instance_index, 3.7));
+  let radius = (0.0102 + particle.speed * 0.0032 + breath * uniforms.coherence * 0.0017) * radius_variation;
   let offset = vec2<f32>(local.x / max(uniforms.aspect, 0.01), local.y) * radius;
+  let hue = particle_variation(instance_index, 11.3);
+  let cool = vec3<f32>(0.82, 1.04, 1.15);
+  let warm = vec3<f32>(1.14, 1.01, 0.82);
 
   var output: ParticleVertexOutput;
   output.position = vec4<f32>(particle.position + offset, 0.0, 1.0);
   output.local = local;
-  output.species = u32(floor(particle.energy));
+  output.species = species;
   output.energy = fract(particle.energy);
   output.speed = particle.speed;
   output.breath = breath;
+  output.tint = species_colour(species) * mix(cool, warm, hue);
+  output.luminosity = mix(0.52, 1.22, particle_variation(instance_index, 29.1));
   return output;
 }
 
@@ -313,13 +326,14 @@ fn particle_vs(
 fn particle_fs(input: ParticleVertexOutput) -> @location(0) vec4<f32> {
   let distance = length(input.local);
   if (distance > 1.0) { discard; }
-  let core = exp(-distance * distance * 10.0);
-  let body = exp(-distance * distance * 4.2);
-  let halo = pow(max(0.0, 1.0 - distance), 3.4);
-  let base = species_colour(input.species);
+  let core = exp(-distance * distance * 7.5);
+  let body = exp(-distance * distance * 2.9);
+  let halo = pow(max(0.0, 1.0 - distance), 2.35);
   let pearl = vec3<f32>(0.91, 1.0, 0.95);
-  let colour = mix(base * (0.9 + input.energy * 0.38), pearl * 1.24, core * 0.82);
-  let intensity = (core * 1.62 + body * 0.48 + halo * (0.15 + input.speed * 0.1)) * uniforms.visual_core;
+  let colour = mix(input.tint * (0.9 + input.energy * 0.34), pearl * 1.12, core * 0.46);
+  let pulse = 0.91 + input.breath * 0.14;
+  let intensity = (core * 1.18 + body * 0.56 + halo * (0.2 + input.speed * 0.1))
+    * input.luminosity * pulse * uniforms.visual_core;
   return vec4<f32>(colour * intensity, intensity);
 }
 `;
@@ -945,10 +959,22 @@ class CanvasRenderer {
       const energy = energyOf(packedEnergy);
       const speed = snapshot[offset + 3];
       const breath = 0.5 + 0.5 * Math.sin(time * 0.57 + offset * 0.0925);
-      const radius = (1.8 + speed * 1.2 + breath * metrics[1] * 0.45) * deviceScale();
-      const diameter = radius * (5.0 + energy * 0.45 + speed * 0.3) * this.visualCore;
-      context.drawImage(this.sprites[species], x - diameter / 2, y - diameter / 2, diameter, diameter);
+      const particleIndex = offset / 4;
+      const variant = particleIndex % PARTICLE_SPRITE_VARIANTS;
+      const radiusVariation = 0.92 + particleVariation(particleIndex, 3) * 0.16;
+      const pulse = 0.91 + breath * 0.14;
+      const radius = (2.0 + speed * 1.25 + breath * metrics[1] * 0.48) * deviceScale() * radiusVariation;
+      const diameter = radius * (5.2 + energy * 0.45 + speed * 0.3) * this.visualCore;
+      context.globalAlpha = pulse;
+      context.drawImage(
+        this.sprites[species][variant],
+        x - diameter / 2,
+        y - diameter / 2,
+        diameter,
+        diameter,
+      );
     }
+    context.globalAlpha = 1;
     context.globalCompositeOperation = "source-over";
   }
 
@@ -956,23 +982,38 @@ class CanvasRenderer {
     const scale = deviceScale();
     if (scale === this.spriteScale) return;
     this.spriteScale = scale;
-    this.sprites = [0, 1, 2].map((species) => {
-      const sprite = document.createElement("canvas");
-      sprite.width = Math.ceil(20 * scale);
-      sprite.height = sprite.width;
-      const spriteContext = sprite.getContext("2d");
-      const centre = sprite.width / 2;
-      const [red, green, blue] = speciesColour(species, 0.92);
-      const gradient = spriteContext.createRadialGradient(centre, centre, 0, centre, centre, centre);
-      gradient.addColorStop(0, "rgba(239, 255, 247, 0.98)");
-      gradient.addColorStop(0.28, `rgba(${red}, ${green}, ${blue}, 0.82)`);
-      gradient.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`);
-      spriteContext.fillStyle = gradient;
-      spriteContext.fillRect(0, 0, sprite.width, sprite.height);
-      return sprite;
-    });
+    this.sprites = [0, 1, 2].map((species) =>
+      Array.from({ length: PARTICLE_SPRITE_VARIANTS }, (_, variant) => {
+        const sprite = document.createElement("canvas");
+        sprite.width = Math.ceil(22 * scale);
+        sprite.height = sprite.width;
+        const spriteContext = sprite.getContext("2d");
+        const centre = sprite.width / 2;
+        const hue = particleVariation(variant, 11);
+        const luminosity = 0.68 + particleVariation(variant, 29) * 0.6;
+        const [baseRed, baseGreen, baseBlue] = speciesColour(species);
+        const colourScale = [
+          0.82 + hue * 0.32,
+          1.04 - hue * 0.03,
+          1.15 - hue * 0.33,
+        ];
+        const [red, green, blue] = [baseRed, baseGreen, baseBlue].map((channel, index) =>
+          Math.round(Math.min(255, channel * colourScale[index])),
+        );
+        const gradient = spriteContext.createRadialGradient(centre, centre, 0, centre, centre, centre);
+        gradient.addColorStop(0, `rgba(239, 255, 247, ${0.72 + luminosity * 0.2})`);
+        gradient.addColorStop(0.18, `rgba(${red}, ${green}, ${blue}, ${0.5 + luminosity * 0.27})`);
+        gradient.addColorStop(0.54, `rgba(${red}, ${green}, ${blue}, ${0.1 + luminosity * 0.15})`);
+        gradient.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`);
+        spriteContext.fillStyle = gradient;
+        spriteContext.fillRect(0, 0, sprite.width, sprite.height);
+        return sprite;
+      }),
+    );
   }
 }
+
+const PARTICLE_SPRITE_VARIANTS = 12;
 
 function speciesOf(packedEnergy) {
   return Math.max(0, Math.min(2, Math.floor(packedEnergy)));
@@ -993,6 +1034,16 @@ function speciesColour(species, brightness = 1) {
     [177, 116, 221],
   ];
   return colours[species].map((channel) => Math.round(Math.min(255, channel * brightness)));
+}
+
+function particleVariation(index, salt = 0) {
+  let value = Math.imul(index + 1, 0x9e3779b1) ^ Math.imul(salt + 1, 0x85ebca6b);
+  value ^= value >>> 16;
+  value = Math.imul(value, 0x7feb352d);
+  value ^= value >>> 15;
+  value = Math.imul(value, 0x846ca68b);
+  value ^= value >>> 16;
+  return (value >>> 0) / 0xffffffff;
 }
 
 function toX(value, width) {
