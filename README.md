@@ -111,6 +111,7 @@ Actions page. Local deployment is available to an authenticated operator with
 Append `?seed=12345` to the URL to start from a specific field.
 Changing a performance setting records the complete configuration in the URL, so a
 seed and its ecology, flow, look, tone, and selected gesture can be shared together.
+Use **Copy link** at the foot of the controls to copy that complete performance URL.
 
 ## Design documents
 

@@ -22,6 +22,7 @@ const elements = {
   volume: document.querySelector("#volume"),
   record: document.querySelector("#record"),
   recordTime: document.querySelector("#record-time"),
+  shareLink: document.querySelector("#share-link"),
   population: document.querySelector("#population"),
   populationLabel: document.querySelector("#population-label"),
   ecology: document.querySelector("#ecology"),
@@ -75,6 +76,7 @@ let engine;
 let renderer;
 let audio;
 let idleTimer;
+let shareFeedbackTimer;
 
 try {
   await init();
@@ -100,6 +102,7 @@ function installControls() {
   elements.controlsToggle.addEventListener("click", () => {
     setControlsOpen(elements.controls.classList.contains("collapsed"));
   });
+  elements.shareLink.addEventListener("click", copyShareLink);
 
   document.addEventListener("pointerdown", (event) => {
     wakeControls();
@@ -365,6 +368,7 @@ function updateSettingLabels() {
     [elements.glow, elements.glowLabel],
     [elements.memory, elements.memoryLabel],
     [elements.tone, elements.toneLabel],
+    [elements.population, elements.populationLabel],
   ].forEach(([control, label]) => {
     control.setAttribute("aria-valuetext", label.textContent.toLowerCase());
   });
@@ -690,4 +694,39 @@ function syncSettingsUrl() {
   url.searchParams.set("life", String(settings.population));
   url.searchParams.set("mode", settings.mode);
   window.history.replaceState({}, "", url);
+}
+
+async function copyShareLink() {
+  syncSettingsUrl();
+  const shareUrl = window.location.href;
+  let copied = false;
+
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    copied = true;
+  } catch {
+    const temporaryInput = document.createElement("textarea");
+    try {
+      temporaryInput.value = shareUrl;
+      temporaryInput.setAttribute("readonly", "");
+      temporaryInput.style.position = "fixed";
+      temporaryInput.style.opacity = "0";
+      document.body.append(temporaryInput);
+      temporaryInput.select();
+      copied = document.execCommand("copy");
+    } catch {
+      copied = false;
+    } finally {
+      temporaryInput.remove();
+    }
+  }
+
+  window.clearTimeout(shareFeedbackTimer);
+  elements.shareLink.textContent = copied ? "Copied" : "Copy failed";
+  elements.runtimeStatus.textContent = copied
+    ? "Copied this seeded performance link."
+    : "The link could not be copied. Copy it from the address bar instead.";
+  shareFeedbackTimer = window.setTimeout(() => {
+    elements.shareLink.textContent = "Copy link";
+  }, 2400);
 }

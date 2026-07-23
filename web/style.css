@@ -190,6 +190,10 @@ button {
   opacity: 1;
 }
 
+.gesture-hint-touch {
+  display: none;
+}
+
 .controls {
   position: fixed;
   z-index: 10;
@@ -477,10 +481,35 @@ input[type="range"] {
 }
 
 .panel-foot {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
   padding-top: 11px;
   border-top: 1px solid var(--line);
+}
+
+.share-link {
+  justify-self: center;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(174, 177, 174, 0.72);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.share-link:hover,
+.share-link:focus-visible {
+  background: rgba(226, 232, 224, 0.08);
+  color: var(--paper);
+  outline: none;
 }
 
 .performance-map {
@@ -543,6 +572,74 @@ input[type="range"] {
 
   .controls-body {
     width: min(360px, calc(100vw - 20px));
+  }
+}
+
+@media (pointer: coarse) {
+  .gesture-hint-pointer {
+    display: none;
+  }
+
+  .gesture-hint-touch {
+    display: inline;
+  }
+
+  .controls-toggle {
+    width: 44px;
+    height: 44px;
+  }
+
+  .metrics span,
+  .volume-control span,
+  .gesture-control > span,
+  .setting-control span,
+  .panel-foot {
+    font-size: 8px;
+  }
+
+  .gesture-modes button {
+    min-height: 40px;
+    font-size: 9px;
+  }
+
+  .actions button {
+    min-height: 44px;
+    font-size: 10px;
+  }
+
+  input[type="range"] {
+    height: 24px;
+    margin: -9px 0;
+  }
+
+  .share-link {
+    min-height: 40px;
+    padding-inline: 12px;
+    font-size: 8px;
+  }
+
+  .performance-map {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) and (max-height: 720px) {
+  .controls-body {
+    padding: 15px;
+  }
+
+  .panel-intro {
+    display: none;
+  }
+
+  .metrics > div {
+    padding: 9px 0;
+  }
+
+  .settings-grid {
+    gap: 10px 16px;
+    margin-bottom: 12px;
+    padding: 12px 0;
   }
 }
 

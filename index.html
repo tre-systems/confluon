@@ -8,6 +8,33 @@
       content="Confluence is a deterministic energy-driven audiovisual swarm instrument."
     />
     <meta name="theme-color" content="#05070a" />
+    <link rel="canonical" href="https://geno-5.tre.systems/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Geno-5" />
+    <meta property="og:title" content="Confluence // Geno-5" />
+    <meta
+      property="og:description"
+      content="A deterministic audiovisual swarm instrument. Shape the field, hear it respond, and share the take."
+    />
+    <meta property="og:url" content="https://geno-5.tre.systems/" />
+    <meta property="og:image" content="https://geno-5.tre.systems/og-card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Confluence particle populations meeting in a dark luminous field."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Confluence // Geno-5" />
+    <meta
+      name="twitter:description"
+      content="A deterministic audiovisual swarm instrument. Shape the field, hear it respond, and share the take."
+    />
+    <meta name="twitter:image" content="https://geno-5.tre.systems/og-card.png" />
+    <meta
+      name="twitter:image:alt"
+      content="Confluence particle populations meeting in a dark luminous field."
+    />
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='23' fill='%2305070a' stroke='%237ad9da' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23dff'/%3E%3C/svg%3E"
@@ -32,7 +59,12 @@
       </section>
 
       <p class="gesture-hint" id="gesture-hint" aria-hidden="true">
-        Drag to gather · Shift-drag to orbit · Option-drag to part · Double-tap to seed
+        <span class="gesture-hint-pointer">
+          Drag to gather · Shift-drag to orbit · Option-drag to part · Double-click to seed
+        </span>
+        <span class="gesture-hint-touch">
+          Drag to gather · Choose Orbit or Divide in controls · Double-tap to seed
+        </span>
       </p>
 
       <aside id="controls" class="controls collapsed" aria-label="Instrument controls">
@@ -65,11 +97,15 @@
             draw them into encounters. Their shared state shapes the music.
           </p>
 
-          <div class="metrics" aria-label="Swarm state">
-            <div><span>ENERGY</span><output id="energy-value">0.00</output></div>
-            <div><span>COHERENCE</span><output id="coherence-value">0.00</output></div>
-            <div><span>ACTIVITY</span><output id="activity-value">0.00</output></div>
-            <div><span>ENCOUNTER</span><output id="encounter-value">0.00</output></div>
+          <div class="metrics" aria-label="Swarm state" aria-live="off">
+            <div><span>ENERGY</span><output id="energy-value" aria-live="off">0.00</output></div>
+            <div>
+              <span>COHERENCE</span><output id="coherence-value" aria-live="off">0.00</output>
+            </div>
+            <div><span>ACTIVITY</span><output id="activity-value" aria-live="off">0.00</output></div>
+            <div>
+              <span>ENCOUNTER</span><output id="encounter-value" aria-live="off">0.00</output>
+            </div>
           </div>
 
           <div class="gesture-control">
@@ -86,37 +122,37 @@
             <button id="settle" class="hold-button" type="button">Hold to gather</button>
             <button id="pause" type="button">Pause</button>
             <button id="record" class="record-button" type="button">
-              Record <output id="record-time" hidden>0:00</output>
+              Record <output id="record-time" aria-live="off" hidden>0:00</output>
             </button>
           </div>
 
           <section class="settings-grid" aria-label="Performance settings">
             <label class="setting-control">
-              <span>ECOLOGY <output id="ecology-label">BALANCED</output></span>
+              <span>ECOLOGY <output id="ecology-label" aria-live="off">BALANCED</output></span>
               <input id="ecology" aria-label="Ecology" type="range" min="25" max="180" value="100" />
             </label>
             <label class="setting-control">
-              <span>FLOW <output id="flow-label">NATURAL</output></span>
+              <span>FLOW <output id="flow-label" aria-live="off">NATURAL</output></span>
               <input id="flow" aria-label="Flow" type="range" min="50" max="180" value="100" />
             </label>
             <label class="setting-control">
-              <span>TOUCH <output id="gesture-label">FIRM</output></span>
+              <span>TOUCH <output id="gesture-label" aria-live="off">FIRM</output></span>
               <input id="gesture" aria-label="Touch strength" type="range" min="50" max="180" value="100" />
             </label>
             <label class="setting-control">
-              <span>HALO <output id="glow-label">SOFT</output></span>
+              <span>HALO <output id="glow-label" aria-live="off">SOFT</output></span>
               <input id="glow" aria-label="Halo" type="range" min="45" max="155" value="100" />
             </label>
             <label class="setting-control">
-              <span>MEMORY <output id="memory-label">BRIEF</output></span>
+              <span>MEMORY <output id="memory-label" aria-live="off">BRIEF</output></span>
               <input id="memory" aria-label="Visual memory" type="range" min="0" max="100" value="42" />
             </label>
             <label class="setting-control">
-              <span>TONE <output id="tone-label">WARM</output></span>
+              <span>TONE <output id="tone-label" aria-live="off">WARM</output></span>
               <input id="tone" aria-label="Tone" type="range" min="0" max="100" value="55" />
             </label>
             <label class="setting-control">
-              <span>LIFE <output id="population-label">FULL</output></span>
+              <span>LIFE <output id="population-label" aria-live="off">FULL</output></span>
               <input
                 id="population"
                 aria-label="Particle population"
@@ -136,6 +172,7 @@
 
           <div class="panel-foot">
             <span>SEED <output id="seed-value">—</output></span>
+            <button id="share-link" class="share-link" type="button">Copy link</button>
             <span id="renderer-value">INITIALISING</span>
           </div>
 

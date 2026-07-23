@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="ground" cx="68%" cy="48%" r="72%">
+      <stop offset="0" stop-color="#17272a"/>
+      <stop offset=".5" stop-color="#091014"/>
+      <stop offset="1" stop-color="#05070a"/>
+    </radialGradient>
+    <radialGradient id="cyan" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#bcead5" stop-opacity=".8"/>
+      <stop offset=".26" stop-color="#63cfd0" stop-opacity=".4"/>
+      <stop offset="1" stop-color="#63cfd0" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="amber" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#f2d3a6" stop-opacity=".72"/>
+      <stop offset=".28" stop-color="#d3865f" stop-opacity=".32"/>
+      <stop offset="1" stop-color="#d3865f" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="violet" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#d8c7ee" stop-opacity=".64"/>
+      <stop offset=".3" stop-color="#8d78bd" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#8d78bd" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+    <pattern id="cyan-points" width="41" height="37" patternUnits="userSpaceOnUse">
+      <circle cx="8" cy="11" r="1.7" fill="#a9e7dd" opacity=".82"/>
+      <circle cx="29" cy="28" r="1.1" fill="#6dcbd0" opacity=".58"/>
+    </pattern>
+    <pattern id="amber-points" width="47" height="43" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="31" r="1.55" fill="#f1c49b" opacity=".76"/>
+      <circle cx="36" cy="10" r=".95" fill="#dc8c68" opacity=".54"/>
+    </pattern>
+    <pattern id="violet-points" width="43" height="39" patternUnits="userSpaceOnUse">
+      <circle cx="10" cy="9" r="1.45" fill="#d2c4e7" opacity=".7"/>
+      <circle cx="32" cy="28" r="1" fill="#927fc0" opacity=".5"/>
+    </pattern>
+    <clipPath id="cyan-field">
+      <path d="M640 78c112-35 237 5 268 99 29 89-50 135-8 219 34 69 4 148-83 163-105 18-161-83-256-74-86 8-143-62-111-133 30-68 100-77 100-151 0-61 31-105 90-123z"/>
+    </clipPath>
+    <clipPath id="amber-field">
+      <path d="M935 101c78 9 147 67 154 143 7 73-65 103-47 171 18 67-49 119-116 88-66-30-63-104-129-128-72-26-78-105-20-145 54-38 84-137 158-129z"/>
+    </clipPath>
+    <clipPath id="violet-field">
+      <path d="M722 247c67-55 158-53 207 5 47 55 8 111 55 153 47 43 13 112-51 117-72 6-103-62-167-48-68 15-120-37-100-94 18-52-2-91 56-133z"/>
+    </clipPath>
+  </defs>
+  <rect width="1200" height="630" fill="url(#ground)"/>
+  <circle cx="760" cy="293" r="270" fill="url(#cyan)" filter="url(#soft)"/>
+  <circle cx="948" cy="292" r="190" fill="url(#amber)" filter="url(#soft)"/>
+  <circle cx="812" cy="409" r="170" fill="url(#violet)" filter="url(#soft)"/>
+  <g opacity=".92">
+    <rect x="420" y="44" width="560" height="540" fill="url(#cyan-points)" clip-path="url(#cyan-field)"/>
+    <rect x="748" y="66" width="380" height="470" fill="url(#amber-points)" clip-path="url(#amber-field)"/>
+    <rect x="640" y="216" width="390" height="350" fill="url(#violet-points)" clip-path="url(#violet-field)"/>
+  </g>
+  <g fill="none" stroke-width="1">
+    <path d="M563 201c91-89 247-98 337-2 77 83 57 198 133 248" stroke="#86d8cf" opacity=".22"/>
+    <path d="M533 366c119-72 233-32 317 76 48 61 119 69 193 34" stroke="#d9a27d" opacity=".2"/>
+    <path d="M652 466c74-100 194-113 271-25" stroke="#aa95cf" opacity=".23"/>
+  </g>
+  <g font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" fill="#eee9df">
+    <text x="72" y="102" font-family="SFMono-Regular, Menlo, monospace" font-size="16" font-weight="600" letter-spacing="5" fill="#8e918e">GENO-5 / CONFLUENCE</text>
+    <text x="70" y="249" font-size="61" font-weight="300" letter-spacing="-2.2">A field finding</text>
+    <text x="70" y="314" font-size="61" font-weight="300" letter-spacing="-2.2">its voice.</text>
+    <text x="73" y="383" font-size="20" font-weight="400" fill="#b2b8b3">A deterministic audiovisual swarm instrument.</text>
+    <text x="73" y="545" font-family="SFMono-Regular, Menlo, monospace" font-size="13" letter-spacing="2.4" fill="#8e918e">SHAPE THE FIELD · HEAR IT RESPOND · SHARE THE TAKE</text>
+  </g>
+</svg>
