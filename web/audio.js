@@ -5,14 +5,14 @@ const MASTER_LEVEL = 0.52;
 const FORMATION_VOICES = 8;
 
 /**
- * The Confluence audio engine. Everything is synthesized from native Web Audio
+ * The Confluon audio engine. Everything is synthesized from native Web Audio
  * nodes — no samples, no worklets in the signal path — so the whole graph stays
  * deterministic and portable. The mix reads the same simulation state as the
  * image: sustained formation voices sit at the screen positions of the visible
  * cell clusters, continuous metrics steer the texture, and discrete events
  * (formations appearing, transitions, gestures) strike sparse tones.
  */
-export class ConfluenceAudio {
+export class ConfluonAudio {
   constructor(seed) {
     this.seed = seed;
     this.random = seededRandom(seed ^ 0x91e1_0da5);
@@ -486,7 +486,7 @@ export class ConfluenceAudio {
   async startRecording() {
     if (!this.context || this.recorder) return false;
     await this.context.audioWorklet.addModule("/recorder.js");
-    const node = new AudioWorkletNode(this.context, "confluence-recorder", {
+    const node = new AudioWorkletNode(this.context, "confluon-recorder", {
       numberOfInputs: 1,
       numberOfOutputs: 1,
       outputChannelCount: [2],

@@ -39,7 +39,7 @@ const MIME_TYPES = new Map([
 ]);
 
 function usage() {
-  console.log(`Create synchronized, share-ready Confluence videos.
+  console.log(`Create synchronized, share-ready Confluon videos.
 
 Usage:
   npm run video -- --seed 12345 --duration 30 --formats landscape,square,story
@@ -709,7 +709,7 @@ const quality = boundedNumber("--quality", 18, 0, 51, true);
 const formats = parseFormats(value("--formats", "landscape"));
 const containers = parseContainers(value("--containers", "mp4"));
 const outDir = resolve(value("--out-dir", "renders/videos"));
-const defaultLabel = `confluence-${seed.toString(16).toUpperCase().padStart(8, "0")}`;
+const defaultLabel = `confluon-${seed.toString(16).toUpperCase().padStart(8, "0")}`;
 const label = value("--label", defaultLabel);
 if (!/^[a-z0-9_.-]+$/i.test(label)) {
   throw new Error("--label may contain only letters, numbers, dots, dashes, and underscores");

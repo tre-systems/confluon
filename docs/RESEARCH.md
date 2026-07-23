@@ -1,7 +1,7 @@
 # Research basis
 
-Confluence, the first work made with Confluon, is an original musical instrument
-informed by the published Particle Lenia model and its energy-based interpretation.
+Confluon is an original musical instrument informed by the published Particle Lenia
+model and its energy-based interpretation.
 The reference describes particles that induce a radial shell field, seek a preferred
 field density through a Gaussian growth function, repel at close range, and move down
 their own local energy gradient. It also shows why local greedy descent produces
@@ -28,14 +28,14 @@ Galacto instrument. The useful architectural findings were consistent:
 - fabricated hulls and nucleus overlays make a picture more immediately cell-like,
   but conceal whether the simulation itself has organised.
 
-Confluence therefore starts with 2,000 particles in 24 compact single-population
+Confluon therefore starts with 2,000 particles in 24 compact single-population
 colonies, uses a wrapped spatial grid for neighbourhood visits, and draws no hulls.
 Its coloured matter and membrane contours are direct responses to the accumulated
 particle field. Cross-population sensing is deliberately weaker than the internal
 formation rule: enough to create pursuit, collision, and deformation, but not enough
 to dissolve every colony at once.
 
-Confluence keeps the field, repulsion, and local-energy ideas, but develops an
+Confluon keeps the field, repulsion, and local-energy ideas, but develops an
 independent browser implementation and a different musical mapping. It sonifies
 collective metrics with a small resonator ensemble rather than assigning one audible
 oscillator to every particle. No upstream code, saved creatures, images, names, or

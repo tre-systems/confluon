@@ -3,17 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Confluence engineering: Rust, WebGPU, and WebAudio — Confluon</title>
+    <title>Confluon engineering: Rust, WebGPU, and WebAudio</title>
     <meta
       name="description"
-      content="A technical walkthrough of Confluon's Confluence: its deterministic Geno-5 Rust/WASM engine, neighbour grid, WebGPU renderer, WebAudio instrument, and video pipeline."
+      content="A technical walkthrough of Confluon: its deterministic Geno-5 Rust/WASM engine, neighbour grid, WebGPU renderer, WebAudio instrument, and video pipeline."
     />
     <link rel="canonical" href="https://confluon.tre.systems/engineering" />
     <meta property="og:type" content="article" />
     <meta property="og:site_name" content="Confluon" />
     <meta
       property="og:title"
-      content="Confluence — how it is built in Rust, WebGPU, and WebAudio"
+      content="Confluon — how it is built in Rust, WebGPU, and WebAudio"
     />
     <meta
       property="og:description"
@@ -25,12 +25,12 @@
     <meta property="og:image:height" content="630" />
     <meta
       property="og:image:alt"
-      content="Confluence particle populations meeting in a dark luminous field."
+      content="Confluon particle populations meeting in a dark luminous field."
     />
     <meta name="twitter:card" content="summary_large_image" />
     <meta
       name="twitter:title"
-      content="Confluence — how it is built in Rust, WebGPU, and WebAudio"
+      content="Confluon — how it is built in Rust, WebGPU, and WebAudio"
     />
     <meta
       name="twitter:description"
@@ -39,7 +39,7 @@
     <meta name="twitter:image" content="https://confluon.tre.systems/og-card.png" />
     <meta
       name="twitter:image:alt"
-      content="Confluence particle populations meeting in a dark luminous field."
+      content="Confluon particle populations meeting in a dark luminous field."
     />
     <meta name="theme-color" content="#05070a" />
     <link
@@ -56,7 +56,7 @@
   </head>
   <body>
     <nav class="top" aria-label="Article navigation">
-      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>CONFLUON / CONFLUENCE</span>
+      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>CONFLUON</span>
       <span class="spacer"></span>
       <a href="/">Open the instrument</a>
       <a href="/field">The field</a>
@@ -68,7 +68,7 @@
       <p class="eyebrow">The engineering</p>
       <h1>One engine, three readings</h1>
       <p class="lede">
-        Confluon keeps the Confluence simulation in a small Rust/WebAssembly core, then hands
+        Confluon keeps its simulation in a small Rust/WebAssembly core, then hands
         one compact state to a WebGPU renderer and a WebAudio instrument. The architecture is
         built around separation without disconnection: image, sound, and export are independent
         systems, but none may invent a second reality.
@@ -197,7 +197,7 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
           cap—only to reject almost all of them.
         </p>
         <p>
-          Confluence divides its wrapped world into an <strong>8 × 8 counting-sort grid</strong>.
+          Confluon divides its wrapped world into an <strong>8 × 8 counting-sort grid</strong>.
           Cell boundaries are recorded in a flat prefix-sum array, and particle indices are
           written into one contiguous entry buffer. Because the cell width matches the largest
           support radius, a cell needs only itself and its adjacent cells.
@@ -413,10 +413,10 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
 
     <footer>
       <p>
-        <a href="/">Open Confluence</a> · <a href="/field">The field</a> ·
+        <a href="/">Open Confluon</a> · <a href="/field">The field</a> ·
         <a href="/sound">The sound</a>
       </p>
-      <p>Confluon / Confluence · powered by the Geno-5 deterministic engine.</p>
+      <p>Confluon · powered by the Geno-5 deterministic engine.</p>
     </footer>
     <script type="module" src="/article.js"></script>
   </body>

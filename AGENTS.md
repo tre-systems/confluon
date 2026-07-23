@@ -2,9 +2,9 @@
 
 ## Project
 
-Confluon is a local-first generative audiovisual instrument project. Its first work,
-Confluence, is powered by the deterministic Geno-5 Rust/WASM swarm, which drives
-both WebGPU visuals and WebAudio music.
+Confluon is a local-first generative audiovisual instrument powered by the
+deterministic Geno-5 Rust/WASM swarm, which drives both WebGPU visuals and WebAudio
+music.
 
 Read `README.md`, `docs/CONCEPT.md`, `docs/ARCHITECTURE.md`, and
 `docs/RESEARCH.md` before substantial work.

@@ -2,7 +2,7 @@
   "name": "geno-5",
   "version": "0.1.0",
   "private": true,
-  "description": "Confluon: an energy-driven audiovisual instrument, beginning with Confluence",
+  "description": "Confluon: an energy-driven audiovisual instrument",
   "type": "module",
   "scripts": {
     "build:wasm": "wasm-pack build --target web --out-dir pkg --out-name geno5 --release",

@@ -1,6 +1,6 @@
 # Confluon Video Production
 
-The local video pipeline turns a deterministic Confluence seed and its performance
+The local video pipeline turns a deterministic Confluon seed and its performance
 settings into synchronized, share-ready video. It records the WebGPU canvas and the
 post-limiter Web Audio master on one browser clock, then verifies every output with
 `ffprobe`.
@@ -107,7 +107,7 @@ masters.
 
 ```text
 --fps 60
---label confluence-release-01
+--label confluon-release-01
 --out-dir renders/videos
 --bitrate 36000000
 --quality 18

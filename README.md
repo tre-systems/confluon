@@ -1,8 +1,8 @@
 # Confluon
 
-Confluon is an original generative audiovisual instrument project. Its first work,
-**Confluence**, brings three deterministic particle populations together to compose
-long-form electronic music. Each forms its own structures while cyclic attraction and
+Confluon is an original generative audiovisual instrument. It brings three
+deterministic particle populations together to compose long-form electronic music.
+Each forms its own structures while cyclic attraction and
 avoidance pull the populations into encounters. Local crowding excites resonant
 voices, coherent movement opens a shared drone, and changes in collective energy
 produce strikes and transitions.
@@ -11,8 +11,8 @@ The internal engine designation is **Geno-5**. Its Rust/WASM simulation drives b
 WebGPU visuals and WebAudio sound. There is no sequencer and no separate
 audio-reactive animation: the image and music are two views of one evolving state.
 
-> **Confluon** is the instrument project. **Confluence** is its first ecology and
-> performance work. **Geno-5** is the engine that makes it reproducible.
+> **Confluon** is the instrument. **Geno-5** is the internal engine that makes it
+> reproducible.
 
 ## What is here
 
@@ -143,7 +143,7 @@ through the device share sheet or copy it when native sharing is unavailable.
 The model is informed by *Particle Lenia and the energy-based formulation* by
 Alexander Mordvintsev, Eyvind Niklasson, and Ettore Randazzo. Their article describes
 the radial field, growth, repulsion, local-energy dynamics, and an initial per-particle
-sonification experiment. Confluence is an independent implementation and uses a
+sonification experiment. Confluon is an independent implementation and uses a
 collective musical mapping; it includes no upstream code or creative assets.
 
 - [Research article](https://google-research.github.io/self-organising-systems/particle-lenia/)

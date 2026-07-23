@@ -2,7 +2,7 @@
  * Lossless recording tap. Buffers the stereo master feed in ~0.34 s blocks and
  * posts them to the main thread, where they are assembled into a WAV file.
  */
-class ConfluenceRecorder extends AudioWorkletProcessor {
+class ConfluonRecorder extends AudioWorkletProcessor {
   constructor() {
     super();
     this.recording = false;
@@ -45,4 +45,4 @@ class ConfluenceRecorder extends AudioWorkletProcessor {
   }
 }
 
-registerProcessor("confluence-recorder", ConfluenceRecorder);
+registerProcessor("confluon-recorder", ConfluonRecorder);

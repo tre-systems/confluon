@@ -1,5 +1,5 @@
 import init, { Engine } from "/pkg/geno5.js";
-import { ConfluenceAudio } from "./audio.js";
+import { ConfluonAudio } from "./audio.js";
 import { createRenderer } from "./renderer.js";
 
 const FIXED_STEP = 1 / 30;
@@ -83,7 +83,7 @@ try {
   await init();
   engine = new Engine(seed, settings.population);
   renderer = await createRenderer(elements.field, elements.traces);
-  audio = new ConfluenceAudio(seed);
+  audio = new ConfluonAudio(seed);
   applyPerformanceSettings(false);
   elements.renderer.textContent = renderer.kind;
   elements.seed.textContent = formatSeed(seed);
@@ -581,7 +581,7 @@ async function toggleRecording() {
 
 function downloadTake(blob, duration) {
   const seconds = Math.round(duration);
-  const name = `confluence-${formatSeed(seed)}-${seconds}s.wav`;
+  const name = `confluon-${formatSeed(seed)}-${seconds}s.wav`;
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = name;
@@ -744,8 +744,8 @@ async function sharePerformance() {
   syncSettingsUrl();
   const shareUrl = window.location.href;
   const shareData = {
-    title: "Confluence — Confluon",
-    text: `Enter Confluence at seed ${formatSeed(seed)}.`,
+    title: "Confluon",
+    text: `Enter Confluon at seed ${formatSeed(seed)}.`,
     url: shareUrl,
   };
 
