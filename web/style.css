@@ -489,8 +489,17 @@ input[type="range"] {
   border-top: 1px solid var(--line);
 }
 
-.share-link {
+.panel-links {
+  display: flex;
   justify-self: center;
+  align-items: center;
+  gap: 2px;
+}
+
+.article-link,
+.share-link {
+  display: inline-grid;
+  place-items: center;
   min-height: 28px;
   padding: 4px 9px;
   border: 0;
@@ -500,11 +509,15 @@ input[type="range"] {
   font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
   font-size: 7px;
   letter-spacing: 0.12em;
+  line-height: 1;
+  text-decoration: none;
   text-transform: uppercase;
   cursor: pointer;
   transition: color 150ms ease, background 150ms ease;
 }
 
+.article-link:hover,
+.article-link:focus-visible,
 .share-link:hover,
 .share-link:focus-visible {
   background: rgba(226, 232, 224, 0.08);
@@ -612,6 +625,7 @@ input[type="range"] {
     margin: -9px 0;
   }
 
+  .article-link,
   .share-link {
     min-height: 40px;
     padding-inline: 12px;

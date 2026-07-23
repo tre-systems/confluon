@@ -115,6 +115,12 @@ Use **Copy link** at the foot of the controls to copy that complete performance 
 
 ## Design documents
 
+- [The field](https://geno-5.tre.systems/field) — how the three-population
+  energy system forms, senses, and responds.
+- [The sound](https://geno-5.tre.systems/sound) — how collective state becomes
+  harmony, texture, space, and gesture.
+- [How it is built](https://geno-5.tre.systems/engineering) — the Rust/WASM,
+  WebGPU, WebAudio, reproducibility, and production architecture.
 - [Concept](docs/CONCEPT.md) — creative axes and musical mapping.
 - [Architecture](docs/ARCHITECTURE.md) — simulation, render, and audio contracts.
 - [Research basis](docs/RESEARCH.md) — what was learned from the Particle Lenia

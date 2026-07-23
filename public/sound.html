@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Confluence — how a swarm becomes music</title>
+    <meta
+      name="description"
+      content="How Confluence turns one deterministic particle field into a live WebAudio composition: collective metrics, spatial formation voices, resonant events, procedural space, and synchronized recording."
+    />
+    <link rel="canonical" href="https://geno-5.tre.systems/sound" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Geno-5" />
+    <meta property="og:title" content="Confluence — how a swarm becomes music" />
+    <meta
+      property="og:description"
+      content="Collective state becomes harmony, texture, spatial voices, resonant events, and one slowly breathing WebAudio field."
+    />
+    <meta property="og:url" content="https://geno-5.tre.systems/sound" />
+    <meta property="og:image" content="https://geno-5.tre.systems/og-card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Confluence particle populations meeting in a dark luminous field."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Confluence — how a swarm becomes music" />
+    <meta
+      name="twitter:description"
+      content="How one particle field becomes harmony, texture, space, and musical events."
+    />
+    <meta name="twitter:image" content="https://geno-5.tre.systems/og-card.png" />
+    <meta
+      name="twitter:image:alt"
+      content="Confluence particle populations meeting in a dark luminous field."
+    />
+    <meta name="theme-color" content="#05070a" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='23' fill='%2305070a' stroke='%237ad9da' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23dff'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/article.css" />
+    <style>
+      :root {
+        --accent: var(--violet);
+        --accent-rgb: 168, 139, 208;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="top" aria-label="Article navigation">
+      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>GENO-5 / CONFLUENCE</span>
+      <span class="spacer"></span>
+      <a href="/">Open the instrument</a>
+      <a href="/field">The field</a>
+      <a href="/sound" aria-current="page">The sound</a>
+      <a href="/engineering">How it is built</a>
+    </nav>
+
+    <header class="hero">
+      <p class="eyebrow">The sound</p>
+      <h1>How a swarm becomes music</h1>
+      <p class="lede">
+        Confluence has no backing track and no animation reacting to a separate song. The Rust
+        engine produces one evolving state. WebGPU reads it as light; WebAudio reads it as
+        harmony, texture, position, and event. What you see and what you hear are two
+        interpretations of the same field.
+      </p>
+    </header>
+
+    <main>
+      <section>
+        <h2><span class="num" aria-hidden="true">01</span>One state, two senses</h2>
+        <p>
+          A tempting sonification strategy is to give every particle an oscillator. It is
+          direct, but with two thousand particles it becomes more diagram than composition:
+          thousands of tiny voices obscure the larger changes that make the field interesting.
+        </p>
+        <p>
+          Confluence instead reduces the swarm into a compact musical state. Seven collective
+          metrics describe its energy, coherence, activity, density, formation count,
+          transitions, and cross-population encounters. Up to eight formation summaries add
+          position, size, and species. The same values reach the renderer and the sound engine
+          on every display frame.
+        </p>
+        <figure class="diagram">
+          <svg viewBox="0 0 760 210" role="img" aria-label="The Rust swarm state feeds both WebGPU image and WebAudio sound.">
+            <defs>
+              <marker id="sound-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+                <path d="M0 0L7 3L0 6Z" fill="rgba(188,234,213,.55)" />
+              </marker>
+            </defs>
+            <rect class="d-box d-field" x="36" y="70" width="190" height="72" rx="14" />
+            <text class="d-title" x="131" y="99">Rust swarm</text>
+            <text class="d-copy" x="131" y="121">particles · metrics · formations</text>
+            <path class="d-line" d="M226 106H313" marker-end="url(#sound-arrow)" />
+            <rect class="d-box" x="315" y="70" width="130" height="72" rx="14" />
+            <text class="d-title" x="380" y="99">One state</text>
+            <text class="d-copy" x="380" y="121">one frame</text>
+            <path class="d-line" d="M445 94H528" marker-end="url(#sound-arrow)" />
+            <path class="d-line" d="M445 119H528" marker-end="url(#sound-arrow)" />
+            <rect class="d-box d-render" x="530" y="38" width="190" height="60" rx="14" />
+            <text class="d-title" x="625" y="66">WebGPU</text>
+            <text class="d-copy" x="625" y="84">field becomes light</text>
+            <rect class="d-box d-sound" x="530" y="114" width="190" height="60" rx="14" />
+            <text class="d-title" x="625" y="142">WebAudio</text>
+            <text class="d-copy" x="625" y="160">field becomes music</text>
+          </svg>
+          <figcaption>
+            There is no audio-reactive visual layer. Both outputs consume the same simulation snapshot.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">02</span>The sustained harmonic field</h2>
+        <p>
+          The continuous bed begins with six oscillators at the frequency ratios
+          <strong>1, 1.25, 1.5, 2, 2.5, and 3</strong>. They form a bright overtone lattice:
+          root, major third, fifth, octave, upper third, and upper fifth. Lower voices are
+          stronger; upper voices contribute colour. Tiny independent detune oscillators stop the
+          chord freezing into a static organ tone.
+        </p>
+        <div class="eq">
+          f<sub>i</sub> = f<sub>root</sub> × [1, 5/4, 3/2, 2, 5/2, 3]
+          <small>
+            Formation count chooses a root step; mean energy bends it slightly within that centre.
+          </small>
+        </div>
+        <p>
+          More coherent movement raises the sustained partials and the sub foundation. Density
+          opens their low-pass filter. Activity spreads them wider in stereo while taking a
+          little weight out of the bed. Encounter pressure increases detuning, so populations
+          pressing into one another can be heard as a gentle widening of the tuning.
+        </p>
+        <p>
+          Every change is smoothed on the audio clock with
+          <code>AudioParam.setTargetAtTime</code>. The frame rate can wobble without turning a
+          control signal into zipper noise.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">03</span>Formations have places and voices</h2>
+        <p>
+          The most literal bridge between picture and sound is the
+          <strong>formation choir</strong>. The simulation reports up to eight large connected
+          structures. The audio layer tracks them from frame to frame by species and toroidal
+          distance, then gives each a paired oscillator voice.
+        </p>
+        <dl class="mapping">
+          <dt>Horizontal position</dt>
+          <dd>Becomes stereo pan, so the voice sits where its formation appears.</dd>
+          <dt>Vertical position</dt>
+          <dd>Colours the voice filter: formations higher in the field sound slightly more open.</dd>
+          <dt>Population</dt>
+          <dd>Selects a register offset, separating cyan, ember, and violet in pitch.</dd>
+          <dt>Size share</dt>
+          <dd>Controls level; larger formations occupy more of the choir.</dd>
+          <dt>Birth</dt>
+          <dd>A newly visible formation rings a soft, spatially placed emergence bell.</dd>
+          <dt>Dissolution</dt>
+          <dd>The tracked voice releases slowly instead of stopping at the detection boundary.</dd>
+        </dl>
+        <p>
+          Sparse field tones also borrow the position of a currently visible formation. The ear
+          is repeatedly drawn toward the same places the eye finds organised matter.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">04</span>What each collective reading does</h2>
+        <p>
+          The mappings overlap deliberately. A metric does not own one obvious knob; it leaves a
+          fingerprint across the whole sound.
+        </p>
+        <dl class="mapping">
+          <dt>Energy</dt>
+          <dd>Slightly bends the root, raises pad resonance, colours the noise, and tunes resonant strikes.</dd>
+          <dt>Coherence</dt>
+          <dd>Focuses the pad, strengthens the sub and formation choir, adds shimmer, shortens delay, and opens the reverb return.</dd>
+          <dt>Activity</dt>
+          <dd>Widens the field, brightens the master, raises noise and feedback, and reduces the space between tones.</dd>
+          <dt>Density</dt>
+          <dd>Adds sub weight, opens pad and noise filters, and gives the sparse-note walk more possible degrees.</dd>
+          <dt>Formations</dt>
+          <dd>Move the harmonic root through a six-step cycle and provide the spatial choir itself.</dd>
+          <dt>Transition</dt>
+          <dd>Crossing a change threshold excites one bounded resonant strike.</dd>
+          <dt>Encounter</dt>
+          <dd>Widens tuning, brightens the field, adds air and delay feedback, and shortens the note interval.</dd>
+        </dl>
+        <div class="note">
+          <span class="tag">The compositional rule</span>
+          <p>
+            A value should be audible without becoming a meter demonstration. The mappings are
+            intentionally slow, overlapping, and bounded: collective change alters the
+            character of the music rather than announcing a number.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">05</span>Events give the field punctuation</h2>
+        <p>
+          Continuous mappings provide atmosphere; discrete events provide form. A rapid change
+          in energy or activity raises the transition measure. When it crosses a threshold, the
+          app excites a short filtered resonator whose brightness follows current energy.
+        </p>
+        <p>
+          The performer produces related events. A strong drag, a released settle, a new seed,
+          or a rebuilt field can strike the same musical material. Pointer gestures carry their
+          horizontal position into stereo. The sound therefore distinguishes “the system
+          changed” from “the system changed <em>here</em>.”
+        </p>
+        <p>
+          Longer tones arrive on a seeded, metric-driven scheduler. Activity, density, and
+          encounter pressure make the interval shorter, but it never becomes a metronomic grid.
+          Each tone has a soft attack and a long release, leaving room for the field to be heard.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">06</span>One slow breath across the mix</h2>
+        <p>
+          A 0.1 Hz oscillator—a ten-second cycle, or roughly six cycles a minute—moves three
+          parts of the graph together: pad brightness, sub level, and master brightness. It is
+          deliberately subtle. Rather than adding an audible low-frequency wobble, it makes the
+          whole instrument inhale and exhale as one body.
+        </p>
+        <p>
+          This is a compositional pacing device, not a therapeutic claim. Its job is to prevent
+          the continuous bed becoming mechanically fixed and to give very slow change a shared
+          contour beneath the faster life of the swarm.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">07</span>Space is synthesized too</h2>
+        <p>
+          There are no samples anywhere in the signal path. The air bed is four seconds of
+          seeded, gently correlated noise. The hall impulse is generated in code from twelve
+          early reflections and a diffuse noise tail whose low-pass closes as it decays.
+        </p>
+        <p>
+          The shared pad also feeds an octave waveshaper. The curve
+          <var>y</var> = 2<var>x</var>² − 1 turns a sine into its octave; a band-pass extracts the
+          upper glow and sends it only into the reverb. Coherence raises this shimmer, letting
+          organised motion appear as light above the main sound without simply making everything
+          louder.
+        </p>
+        <figure class="diagram">
+          <svg viewBox="0 0 820 300" role="img" aria-label="Confluence audio signal flow from synth sources through spatial effects and the master chain.">
+            <defs>
+              <marker id="flow-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+                <path d="M0 0L7 3L0 6Z" fill="rgba(188,234,213,.55)" />
+              </marker>
+            </defs>
+            <rect class="d-box d-sound" x="20" y="42" width="154" height="48" rx="12" />
+            <text class="d-title" x="97" y="63">Six-part pad</text>
+            <text class="d-copy" x="97" y="80">partial lattice</text>
+            <rect class="d-box d-sound" x="20" y="106" width="154" height="48" rx="12" />
+            <text class="d-title" x="97" y="127">Formation choir</text>
+            <text class="d-copy" x="97" y="144">up to eight voices</text>
+            <rect class="d-box d-sound" x="20" y="170" width="154" height="48" rx="12" />
+            <text class="d-title" x="97" y="191">Sub · air · tones</text>
+            <text class="d-copy" x="97" y="208">events + texture</text>
+            <path class="d-line" d="M174 66H240M174 130H240M174 194H240" marker-end="url(#flow-arrow)" />
+            <rect class="d-box" x="242" y="94" width="120" height="72" rx="12" />
+            <text class="d-title" x="302" y="124">Dry field</text>
+            <text class="d-copy" x="302" y="145">shared bus</text>
+            <path class="d-line" d="M362 115H430" marker-end="url(#flow-arrow)" />
+            <path class="d-line" d="M302 166V238H430" marker-end="url(#flow-arrow)" />
+            <rect class="d-box d-field" x="432" y="80" width="154" height="70" rx="12" />
+            <text class="d-title" x="509" y="108">Delay · reverb</text>
+            <text class="d-copy" x="509" y="129">filtered wet returns</text>
+            <rect class="d-box d-field" x="432" y="212" width="154" height="52" rx="12" />
+            <text class="d-title" x="509" y="235">Shimmer</text>
+            <text class="d-copy" x="509" y="253">octave into hall</text>
+            <path class="d-line" d="M586 115H626M586 238H610V145H626" marker-end="url(#flow-arrow)" />
+            <rect class="d-box d-render" x="628" y="82" width="170" height="66" rx="12" />
+            <text class="d-title" x="713" y="107">Master</text>
+            <text class="d-copy" x="713" y="126">HP · warmth · tone</text>
+            <path class="d-line" d="M713 148V190" marker-end="url(#flow-arrow)" />
+            <rect class="d-box d-render" x="628" y="192" width="170" height="66" rx="12" />
+            <text class="d-title" x="713" y="217">Dynamics · output</text>
+            <text class="d-copy" x="713" y="237">compress · limit · meter</text>
+          </svg>
+          <figcaption>
+            Synth sources share dry, delay, and procedural hall paths before a conservative mastered output.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">08</span>Seeded sound, living timing</h2>
+        <p>
+          The simulation seed also seeds the musical random walk. Rebuilding the same field
+          recreates note choices, detune offsets, and spatial decisions in the same order when
+          the same inputs are replayed. The noise bed and hall use fixed seeds, so their texture
+          is stable rather than changing with every page load.
+        </p>
+        <p>
+          WebAudio itself runs on its own high-resolution clock. Long tones are scheduled on
+          that clock, not with frame timers, and continuously mapped parameters are smoothed
+          toward new targets. This preserves musical continuity when rendering work is briefly
+          expensive.
+        </p>
+        <div class="note honesty">
+          <span class="tag">What reproduction requires</span>
+          <p>
+            An untouched take needs the same engine revision, seed, fixed timestep, and settings.
+            A performed take also needs the gesture stream and timing. A shared URL records the
+            starting score; a finished render manifest records the production conditions.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">09</span>Recording the same master you hear</h2>
+        <p>
+          The live <strong>Record</strong> control taps the graph after the safety limiter with
+          an <code>AudioWorklet</code>. It collects stereo 32-bit floating-point blocks and
+          writes a lossless WAV named with the seed and duration. The recorder is a silent tap:
+          it does not sit in series with playback and cannot colour the live mix.
+        </p>
+        <p>
+          Video production uses another post-limiter tap as a
+          <code>MediaStreamAudioDestinationNode</code>. That mastered stream and the WebGPU
+          canvas stream enter one <code>MediaRecorder</code>, so picture and sound share the
+          browser clock. The local production tool can then deliver H.264/AAC MP4, VP9/Opus
+          WebM, landscape, square, portrait, story, or custom formats from the same seed.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">10</span>What comes from data, and what comes from taste</h2>
+        <p>
+          The state-to-sound coupling is literal: formation position really is pan, size really
+          is voice level, and encounter pressure really does enter the detune and spectral
+          mappings. But a mapping is still a compositional decision. The simulation does not
+          contain a natural major third, a seven-and-a-half-second hall, or a preferred amount of
+          shimmer.
+        </p>
+        <p>
+          Those choices are taste, tuned by listening. The discipline is to keep that taste
+          downstream of real state: the sound may interpret the field, but it should not invent
+          a dramatic arc that the field did not produce.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">11</span>Sources and further reading</h2>
+        <ol class="refs">
+          <li>
+            <cite>W3C Web Audio Working Group.</cite>
+            <a href="https://www.w3.org/TR/webaudio-1.1/">Web Audio API 1.1.</a>
+            The audio-routing graph, synthesis nodes, parameter automation, convolution, and
+            worklet model used by the instrument.
+          </li>
+          <li>
+            <cite>Mordvintsev, A., Niklasson, E. &amp; Randazzo, E.</cite> (2022).
+            <a href="https://google-research.github.io/self-organising-systems/particle-lenia/#giving-particles-voice">
+              “Particle Lenia — Giving particles voice.”
+            </a>
+            The reference experiment maps per-particle energy to frequency and speed to volume;
+            Confluence instead maps collective state and formations.
+          </li>
+          <li>
+            <cite>Confluence source documentation.</cite>
+            <a href="https://github.com/tre-systems/geno-5/blob/main/docs/ARCHITECTURE.md">
+              Architecture and audio graph.
+            </a>
+          </li>
+        </ol>
+      </section>
+
+      <nav class="crosslinks" aria-label="Continue reading">
+        <a class="crosslink" href="/field">The field behind it →</a>
+        <a class="crosslink" href="/engineering">How it is built →</a>
+      </nav>
+    </main>
+
+    <footer>
+      <p>
+        <a href="/">Open Confluence</a> · <a href="/field">The field</a> ·
+        <a href="/engineering">How it is built</a>
+      </p>
+      <p>Geno-5 / Confluence — a deterministic audiovisual swarm instrument.</p>
+    </footer>
+  </body>
+</html>

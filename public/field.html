@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Confluence — a field finding its own form</title>
+    <meta
+      name="description"
+      content="How Confluence's three particle populations build membranes, pursue and avoid one another, descend local energy, and become a playable artificial-life field."
+    />
+    <link rel="canonical" href="https://geno-5.tre.systems/field" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Geno-5" />
+    <meta property="og:title" content="Confluence — a field finding its own form" />
+    <meta
+      property="og:description"
+      content="Shell fields, preferred density, close-range repulsion, cyclic ecology, and the performer inside a three-population artificial-life instrument."
+    />
+    <meta property="og:url" content="https://geno-5.tre.systems/field" />
+    <meta property="og:image" content="https://geno-5.tre.systems/og-card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Confluence particle populations meeting in a dark luminous field."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Confluence — a field finding its own form" />
+    <meta
+      name="twitter:description"
+      content="How three particle populations form, sense one another, and respond to performance."
+    />
+    <meta name="twitter:image" content="https://geno-5.tre.systems/og-card.png" />
+    <meta
+      name="twitter:image:alt"
+      content="Confluence particle populations meeting in a dark luminous field."
+    />
+    <meta name="theme-color" content="#05070a" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='23' fill='%2305070a' stroke='%237ad9da' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23dff'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/article.css" />
+  </head>
+  <body>
+    <nav class="top" aria-label="Article navigation">
+      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>GENO-5 / CONFLUENCE</span>
+      <span class="spacer"></span>
+      <a href="/">Open the instrument</a>
+      <a href="/field" aria-current="page">The field</a>
+      <a href="/sound">The sound</a>
+      <a href="/engineering">How it is built</a>
+    </nav>
+
+    <header class="hero">
+      <p class="eyebrow">The field</p>
+      <h1>A field finding its own form</h1>
+      <p class="lede">
+        Confluence begins with two thousand points and no picture of what they should become.
+        Each point feels a local field, looks for a preferred kind of neighbourhood, and senses
+        two other populations differently. The membranes, cells, ruptures, and encounters are
+        consequences of that negotiation.
+      </p>
+    </header>
+
+    <main>
+      <section>
+        <h2><span class="num" aria-hidden="true">01</span>Not an animation of organisms</h2>
+        <p>
+          The image is not a collection of sprites following paths. It is one deterministic
+          particle system on a wrapped two-dimensional world. The default seed places
+          <strong>2,000 particles</strong> into 24 loose colonies, divided evenly among three
+          populations. From the first step onward, no outline tells a colony where its edge is.
+        </p>
+        <p>
+          What looks like a membrane is made by the particles themselves. Neighbours prefer to
+          sit at a shell-like distance, very close particles repel, and each population has a
+          slightly different shell radius and preferred crowding. A cell can stretch, split,
+          absorb newly seeded matter, or lose its coherence because there is no hidden body
+          underneath keeping it intact.
+        </p>
+        <div class="note">
+          <span class="tag">Look closely</span>
+          <p>
+            Even at maximum glow, the points remain visible. Confluence deliberately draws no
+            fabricated hulls or nuclei: if the simulation has not organised, the renderer does
+            not pretend that it has.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">02</span>The shell every particle casts</h2>
+        <p>
+          A particle does not simply attract its nearest neighbours. It contributes a soft
+          circular <strong>shell field</strong>. For population <var>s</var>, the contribution at
+          distance <var>r</var> is a Gaussian ring:
+        </p>
+        <div class="eq">
+          K<sub>s</sub>(r) =
+          w<sub>s</sub> exp(−(r − μ<sub>s</sub>)² / σ<sub>s</sub>²)
+          <small>
+            μ sets the preferred shell radius · σ sets its width · w sets its contribution
+          </small>
+        </div>
+        <p>
+          At each particle, Confluence sums the rings cast by nearby particles of the
+          <em>same</em> population. The result <var>U</var> is local crowding with structure:
+          neighbours on the useful shell count strongly; particles much nearer or farther away
+          count less. This is why the matter can arrange into perforated skins instead of
+          collapsing into solid dots.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">03</span>A preferred neighbourhood</h2>
+        <p>
+          Each population has a preferred field value. A second Gaussian, the growth response,
+          gives the highest score when the current neighbourhood is near that target:
+        </p>
+        <div class="eq">
+          G<sub>s</sub>(U) =
+          exp(−(U − μ<sub>G,s</sub>)² / σ<sub>G,s</sub>²)
+          <small>
+            Too empty and too crowded are both worse than the population's preferred local field.
+          </small>
+        </div>
+        <p>
+          Close-range repulsion contributes an opposing energy <var>R</var>. Ignoring the other
+          populations for a moment, a particle follows the downhill direction of
+          <var>E</var> = <var>R</var> − <var>G</var>. It is trying to reduce overlap while moving
+          toward a neighbourhood where the shell field has the right density.
+        </p>
+        <p>
+          There is no momentum in this model. Velocity is the current energy-gradient direction,
+          speed-limited and integrated over a fixed step. It behaves less like a ball in empty
+          space and more like microscopic matter in a medium where inertia dissipates quickly.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">04</span>Three populations, one asymmetric ecology</h2>
+        <p>
+          Same-population interactions make formations; cross-population sensing makes drama.
+          The ecology is deliberately cyclic and non-reciprocal. A negative value attracts, a
+          positive value avoids:
+        </p>
+        <dl class="mapping">
+          <dt>Cyan senses ember</dt>
+          <dd>Attraction (−0.18), while ember avoids cyan (+0.27).</dd>
+          <dt>Ember senses violet</dt>
+          <dd>Attraction (−0.16), while violet avoids ember (+0.23).</dd>
+          <dt>Violet senses cyan</dt>
+          <dd>Attraction (−0.17), while cyan avoids violet (+0.25).</dd>
+        </dl>
+        <p>
+          That lack of symmetry matters. If every attraction were returned equally, the groups
+          would mostly merge or orbit in balanced pairs. Here one population can pursue another
+          that is actively trying to leave, while a third interrupts both. The cross forces are
+          weaker and longer-range than the internal formation rule, so encounters deform cells
+          without automatically dissolving them.
+        </p>
+        <p>
+          The <strong>Ecology</strong> control scales this existing cross-population derivative.
+          It does not add a visual effect after the fact: changing it changes the motion rule
+          itself.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">05</span>Why local descent stays alive</h2>
+        <p>
+          The energy language can sound as if the field should simply relax to one final minimum.
+          The subtlety inherited from the Particle Lenia formulation is that each particle
+          greedily improves <em>its own</em> local energy. It does not calculate the move that
+          would minimise one global energy for the whole population.
+        </p>
+        <p>
+          When one particle moves, it changes the field perceived by its neighbours. Their next
+          locally useful move changes the first particle's situation in return. This moving
+          landscape allows spinning, crawling, reorganising attractors and sudden transitions
+          instead of only static packing.
+        </p>
+        <div class="note honesty">
+          <span class="tag">What is original here</span>
+          <p>
+            Confluence is informed by the published Particle Lenia field, growth, repulsion, and
+            local-energy interpretation. Its three-species ecology, browser implementation,
+            performance forces, formation analysis, visual design, and collective musical
+            mapping were developed independently. It includes no upstream creatures, code, or
+            visual assets.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">06</span>The performer enters the equation</h2>
+        <p>
+          Performance gestures are temporary forces applied inside the same world:
+        </p>
+        <dl class="mapping">
+          <dt>Gather</dt>
+          <dd>A radial pull with a soft Gaussian reach. Nearby matter is herded toward the pointer.</dd>
+          <dt>Orbit</dt>
+          <dd>A tangential force plus a small radial bias. Local formations wind around the gesture.</dd>
+          <dt>Divide</dt>
+          <dd>The radial force reverses, opening a cavity and pushing membranes apart.</dd>
+          <dt>Seed</dt>
+          <dd>A double click or tap introduces 50 particles of one population at that position.</dd>
+          <dt>Settle</dt>
+          <dd>Internal forces are softened while the whole population is encouraged toward a common centre.</dd>
+        </dl>
+        <p>
+          Releasing a gesture matters as much as applying it. Matter returns immediately to its
+          own rules, carrying the altered arrangement into the next negotiation. The player does
+          not pose a frozen shape; they change the conditions from which the field continues.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">07</span>Seven readings of one state</h2>
+        <p>
+          Neither the renderer nor the sound engine needs all particle-to-particle detail. The
+          Rust core reduces each frame to seven collective readings:
+        </p>
+        <dl class="mapping">
+          <dt>Energy</dt>
+          <dd>The normalised mean of each particle's local energy.</dd>
+          <dt>Coherence</dt>
+          <dd>The stronger of shared travel direction or collective rotation.</dd>
+          <dt>Activity</dt>
+          <dd>Mean particle speed, scaled into a bounded performance signal.</dd>
+          <dt>Density</dt>
+          <dd>The average same-population shell field.</dd>
+          <dt>Formations</dt>
+          <dd>Connected same-population groups containing at least four particles.</dd>
+          <dt>Transition</dt>
+          <dd>A short-lived measure of change in energy and activity.</dd>
+          <dt>Encounter</dt>
+          <dd>The pressure of nearby cross-population sensing.</dd>
+        </dl>
+        <p>
+          The engine also reports the position, size, and species of up to eight large visible
+          formations. These are not labels added by image recognition; they come from a
+          same-species union-find pass over the neighbour pairs already used by the simulation.
+          They let the sound occupy the same places as the structures on screen.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">08</span>Deterministic, but not predetermined</h2>
+        <p>
+          An integer seed fixes the initial colonies and every seeded decision after that. The
+          simulation advances at 30 fixed steps per second, independent of the display refresh.
+          The seed, population, ecology, flow, gesture strength, selected mode, and aesthetic
+          settings live in the URL.
+        </p>
+        <p>
+          Determinism does not mean there is a prewritten sequence. It means the same engine
+          version and the same inputs can retrace the same consequences. A performed take also
+          needs its gesture stream; an untouched field needs only its seed and settings. This is
+          why a Confluence URL is closer to a score than a screenshot.
+        </p>
+        <div class="note">
+          <span class="tag">Try it</span>
+          <p>
+            Open the instrument, change Ecology or Life, then use <strong>Copy link</strong>.
+            The copied URL records that complete starting state so another browser can enter the
+            same field.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">09</span>What kind of model is this?</h2>
+        <p>
+          Confluence is an <strong>artificial-life instrument</strong>, not a biological
+          simulation. Its populations do not represent cells, species, chemistry, or evolution
+          in the scientific sense. The model borrows a useful idea from artificial life: simple,
+          local, repeatable rules can produce organisation that was never explicitly drawn.
+        </p>
+        <p>
+          Its test is therefore not “does this predict nature?” but “does this rule remain
+          legible, surprising, playable, and musically consequential?” The implementation keeps
+          conservation of particle count, bounded motion, and direct state-to-sound coupling
+          because those constraints make the instrument honest about what is happening inside it.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">10</span>Sources and further reading</h2>
+        <ol class="refs">
+          <li>
+            <cite>Mordvintsev, A., Niklasson, E. &amp; Randazzo, E.</cite> (2022).
+            <a href="https://google-research.github.io/self-organising-systems/particle-lenia/">
+              “Particle Lenia and the energy-based formulation.”
+            </a>
+            The field, growth, repulsion, local-energy analysis, and original per-particle
+            sonification experiment.
+          </li>
+          <li>
+            <cite>Google Research.</cite>
+            <a href="https://github.com/google-research/self-organising-systems/blob/master/notebooks/particle_lenia.ipynb">
+              Reproducible Particle Lenia notebook.
+            </a>
+          </li>
+          <li>
+            <cite>Confluence source documentation.</cite>
+            <a href="https://github.com/tre-systems/geno-5/blob/main/docs/RESEARCH.md">
+              Research basis and implementation differences.
+            </a>
+          </li>
+        </ol>
+      </section>
+
+      <nav class="crosslinks" aria-label="Continue reading">
+        <a class="crosslink" href="/sound">How the field becomes sound →</a>
+        <a class="crosslink" href="/engineering">How it is built →</a>
+      </nav>
+    </main>
+
+    <footer>
+      <p>
+        <a href="/">Open Confluence</a> · <a href="/sound">The sound</a> ·
+        <a href="/engineering">How it is built</a>
+      </p>
+      <p>Geno-5 / Confluence — a deterministic audiovisual swarm instrument.</p>
+    </footer>
+  </body>
+</html>

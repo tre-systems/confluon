@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Confluence — how it is built in Rust, WebGPU, and WebAudio</title>
+    <meta
+      name="description"
+      content="A technical walkthrough of Confluence: a deterministic Rust/WASM particle engine, allocation-free neighbour grid, WebGPU HDR renderer, WebAudio instrument, and synchronized video pipeline."
+    />
+    <link rel="canonical" href="https://geno-5.tre.systems/engineering" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Geno-5" />
+    <meta
+      property="og:title"
+      content="Confluence — how it is built in Rust, WebGPU, and WebAudio"
+    />
+    <meta
+      property="og:description"
+      content="The deterministic engine, neighbour grid, narrow state boundary, HDR render graph, WebAudio instrument, and reproducible capture pipeline."
+    />
+    <meta property="og:url" content="https://geno-5.tre.systems/engineering" />
+    <meta property="og:image" content="https://geno-5.tre.systems/og-card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Confluence particle populations meeting in a dark luminous field."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Confluence — how it is built in Rust, WebGPU, and WebAudio"
+    />
+    <meta
+      name="twitter:description"
+      content="A deterministic Rust/WASM swarm, WebGPU image, WebAudio score, and synchronized production pipeline."
+    />
+    <meta name="twitter:image" content="https://geno-5.tre.systems/og-card.png" />
+    <meta
+      name="twitter:image:alt"
+      content="Confluence particle populations meeting in a dark luminous field."
+    />
+    <meta name="theme-color" content="#05070a" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='23' fill='%2305070a' stroke='%237ad9da' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23dff'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/article.css" />
+    <style>
+      :root {
+        --accent: var(--ember);
+        --accent-rgb: 223, 139, 97;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="top" aria-label="Article navigation">
+      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>GENO-5 / CONFLUENCE</span>
+      <span class="spacer"></span>
+      <a href="/">Open the instrument</a>
+      <a href="/field">The field</a>
+      <a href="/sound">The sound</a>
+      <a href="/engineering" aria-current="page">How it is built</a>
+    </nav>
+
+    <header class="hero">
+      <p class="eyebrow">The engineering</p>
+      <h1>One engine, three readings</h1>
+      <p class="lede">
+        Confluence keeps its simulation in a small Rust/WebAssembly core, then hands one compact
+        state to a WebGPU renderer and a WebAudio instrument. The architecture is built around
+        separation without disconnection: image, sound, and export are independent systems, but
+        none may invent a second reality.
+      </p>
+    </header>
+
+    <main>
+      <section>
+        <h2><span class="num" aria-hidden="true">01</span>The whole system at a glance</h2>
+        <p>
+          The production site is a static application. There is no server-side simulation,
+          streaming service, or account state. A browser downloads HTML, JavaScript, a small
+          WebAssembly module, and an AudioWorklet used only when recording.
+        </p>
+        <figure class="diagram">
+          <svg viewBox="0 0 860 330" role="img" aria-label="Architecture diagram showing app input driving a Rust WASM engine whose state feeds WebGPU, WebAudio, and recording.">
+            <defs>
+              <marker id="eng-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+                <path d="M0 0L7 3L0 6Z" fill="rgba(188,234,213,.55)" />
+              </marker>
+            </defs>
+            <rect class="d-box" x="32" y="52" width="160" height="62" rx="13" />
+            <text class="d-title" x="112" y="78">Input + URL</text>
+            <text class="d-copy" x="112" y="98">seed · settings · gestures</text>
+            <path class="d-line" d="M192 83H284" marker-end="url(#eng-arrow)" />
+            <rect class="d-box d-field" x="286" y="38" width="250" height="92" rx="15" />
+            <text class="d-title" x="411" y="72">Rust / WebAssembly engine</text>
+            <text class="d-copy" x="411" y="94">particles · metrics · formations</text>
+            <path class="d-line" d="M411 130V179" marker-end="url(#eng-arrow)" />
+            <rect class="d-box" x="286" y="181" width="250" height="62" rx="13" />
+            <text class="d-title" x="411" y="207">Thin JS coordinator</text>
+            <text class="d-copy" x="411" y="227">fixed step · frame · lifecycle</text>
+            <path class="d-line" d="M536 199H640" marker-end="url(#eng-arrow)" />
+            <path class="d-line" d="M536 225H640" marker-end="url(#eng-arrow)" />
+            <rect class="d-box d-render" x="642" y="157" width="184" height="62" rx="13" />
+            <text class="d-title" x="734" y="183">WebGPU / Canvas</text>
+            <text class="d-copy" x="734" y="203">the image</text>
+            <rect class="d-box d-sound" x="642" y="235" width="184" height="62" rx="13" />
+            <text class="d-title" x="734" y="261">WebAudio</text>
+            <text class="d-copy" x="734" y="281">sound · WAV · video tap</text>
+            <path class="d-line" d="M411 243V289H556" marker-end="url(#eng-arrow)" />
+            <rect class="d-box" x="558" y="271" width="68" height="38" rx="10" />
+            <text class="d-title" x="592" y="295">API</text>
+          </svg>
+          <figcaption>
+            Simulation state has one owner. Rendering, audio, and capture consume it through a narrow boundary.
+          </figcaption>
+        </figure>
+        <p>
+          This split is a practical creative constraint. The renderer can be replaced without
+          changing motion; the sound graph can be retuned without changing formation; and tests
+          can run the core without a browser. At the same time, both outputs must read the same
+          state rather than maintaining their own simulations.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">02</span>A deliberately small Rust core</h2>
+        <p>
+          The Rust crate has only two runtime dependencies:
+          <code>wasm-bindgen</code> for the JavaScript boundary and
+          <code>console_error_panic_hook</code> for useful browser failures. Release builds use
+          link-time optimisation and one code-generation unit. There is no graphics or audio
+          dependency in Rust.
+        </p>
+        <figure class="code">
+          <figcaption><span class="lang">rust</span><span>src/lib.rs — the public engine boundary</span></figcaption>
+          <pre><code><span>#[wasm_bindgen]</span>
+pub struct Engine {
+    simulation: Simulation,
+}
+
+impl Engine {
+    pub fn step(&amp;mut self, dt: f32, x: f32, y: f32,
+                strength: f32, twist: f32, settle: bool);
+    pub fn snapshot(&amp;self) -&gt; Vec&lt;f32&gt;;
+    pub fn metrics(&amp;self) -&gt; Vec&lt;f32&gt;;
+    pub fn formations(&amp;self) -&gt; Vec&lt;f32&gt;;
+}</code></pre>
+        </figure>
+        <p>
+          Keeping the core ordinary Rust makes its important properties ordinary to test:
+          identical seeds produce identical motion, particle count is conserved except when
+          explicitly seeding, outputs stay finite and bounded, the neighbour grid agrees with a
+          brute-force implementation, and gestures measurably alter the trajectory.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">03</span>Fixed simulation time, fluid display time</h2>
+        <p>
+          A display may refresh at 60, 90, or 120 Hz; a backgrounded tab may miss frames
+          entirely. None of those conditions should silently change the dynamics. The browser
+          therefore accumulates elapsed wall time and advances the Rust engine in fixed
+          <strong>1/30-second</strong> steps:
+        </p>
+        <figure class="code">
+          <figcaption><span class="lang">js</span><span>web/app.js — fixed-step frame coordination, abridged</span></figcaption>
+          <pre><code>accumulator += elapsed * settings.flow;
+
+let steps = 0;
+while (accumulator &gt;= FIXED_STEP &amp;&amp; steps &lt; 2) {
+  engine.step(FIXED_STEP, pointer.x, pointer.y,
+              pointer.strength, pointer.twist, settle);
+  accumulator -= FIXED_STEP;
+  steps += 1;
+}
+
+renderer.render(engine.snapshot(), engine.metrics(), time);
+audio.update(engine.metrics(), engine.formations());</code></pre>
+        </figure>
+        <p>
+          Catch-up is capped at two steps per display frame. Under sustained overload the
+          instrument slows rather than entering a spiral of ever more catch-up work. The
+          <strong>Flow</strong> setting scales deterministic simulation time before it enters
+          this accumulator; it never changes display cadence.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">04</span>Finding neighbours without testing everyone</h2>
+        <p>
+          The expensive work is local: field, repulsion, ecology, and formation all depend on
+          particles inside a finite sensing radius. A naïve implementation would still inspect
+          every possible pair—more than eight million candidate pairs at the 4,096-particle
+          cap—only to reject almost all of them.
+        </p>
+        <p>
+          Confluence divides its wrapped world into an <strong>8 × 8 counting-sort grid</strong>.
+          Cell boundaries are recorded in a flat prefix-sum array, and particle indices are
+          written into one contiguous entry buffer. Because the cell width matches the largest
+          support radius, a cell needs only itself and its adjacent cells.
+        </p>
+        <p>
+          A four-offset half stencil visits each neighbouring cell pair once. Pairs inside one
+          cell use a triangular loop. Every accepted unordered particle pair is stored with its
+          wrapped delta and distance, then reused by the field, energy derivative, force, and
+          union-find passes.
+        </p>
+        <div class="note">
+          <span class="tag">Why one pair list matters</span>
+          <p>
+            The hot loop does not allocate: vectors keep their capacity between steps. More
+            importantly, the simulation cannot accidentally use one neighbourhood definition
+            for motion and another for formation analysis. Both read the same collected pairs.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">05</span>A compact state boundary</h2>
+        <p>
+          JavaScript does not receive Rust structs. It receives three flat arrays with stable,
+          documented records:
+        </p>
+        <dl class="mapping">
+          <dt>Snapshot</dt>
+          <dd>Four floats per particle: x, y, packed species + energy, and normalised speed.</dd>
+          <dt>Metrics</dt>
+          <dd>Seven floats: energy, coherence, activity, density, formations, transition, encounters.</dd>
+          <dt>Formations</dt>
+          <dd>Four floats per reported cluster: toroidal x, y, population share, and species.</dd>
+        </dl>
+        <p>
+          At the default population, the visual snapshot is only 8,000 floats. The renderer
+          uploads it once per display frame; audio consumes the seven metrics and at most 32
+          formation floats. The boundary is small enough to be obvious and rich enough that
+          neither output needs to inspect particle neighbourhoods itself.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">06</span>The WebGPU image is a render graph</h2>
+        <p>
+          WebGPU does not run the simulation. It receives the current particle snapshot and
+          builds the image in a sequence of render passes:
+        </p>
+        <ol>
+          <li>
+            <strong>Kernel field.</strong> One instanced quad per particle splats its exact
+            species shell into a one-third-resolution <code>rgba16float</code> texture using
+            additive blending.
+          </li>
+          <li>
+            <strong>Motion memory.</strong> Two half-resolution HDR textures ping-pong. One
+            frame's history fades with a frame-rate-independent exponential before current
+            particles are deposited.
+          </li>
+          <li>
+            <strong>Scene composition.</strong> A full-screen pass combines background, field,
+            growth-response contours, and trails into a full-resolution HDR target.
+          </li>
+          <li>
+            <strong>Particle cores.</strong> Instanced luminous points are added over the field,
+            preserving the actual material that made the membranes.
+          </li>
+          <li>
+            <strong>Bloom.</strong> Bright matter is soft-knee extracted at quarter resolution,
+            then blurred horizontally and vertically.
+          </li>
+          <li>
+            <strong>Final grade.</strong> Scene and bloom are combined, ACES tone-mapped, gently
+            lifted, vignetted, and given fine animated grain before reaching the canvas.
+          </li>
+        </ol>
+        <p>
+          Halo and Memory alter this render graph but never feed back into Rust. Ecology and
+          gestures alter the engine. That separation keeps aesthetic controls from becoming
+          hidden physics.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">07</span>A fallback that preserves the idea</h2>
+        <p>
+          WebGPU is preferred, but it is not assumed. If no adapter is available—or if
+          <code>?renderer=canvas</code> is present—the app uses Canvas 2D. Cached radial sprites
+          avoid rebuilding thousands of gradients every frame, a second canvas accumulates
+          trails, and additive compositing keeps the field luminous.
+        </p>
+        <p>
+          The fallback is simpler and visually different, but it keeps the important contract:
+          particle-built matter, three populations, energy and speed encoded in appearance, and
+          no replacement simulation.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">08</span>WebAudio is a sibling, not a post-process</h2>
+        <p>
+          The sound graph is built from standard WebAudio nodes after an explicit user gesture.
+          It contains sustained oscillators, filtered procedural noise, panners, delay,
+          convolution reverb, waveshaping, compression, limiting, and an analyser. JavaScript
+          decides the musical targets; the browser's audio thread renders them.
+        </p>
+        <p>
+          Audio starts only after <strong>Enter — Sound on</strong> because browsers require a
+          user gesture. Visibility and pointer/keyboard events attempt to resume suspended audio,
+          which is especially important on mobile devices that interrupt a context when the app
+          loses focus.
+        </p>
+        <p>
+          The limiter feeds both the speakers and a
+          <code>MediaStreamAudioDestinationNode</code>. Recording therefore receives the same
+          mastered signal as playback, rather than an approximate second mix.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">09</span>A URL is part of the instrument state</h2>
+        <p>
+          The initial seed comes from the query string or is generated once and written there.
+          Ecology, flow, touch strength, halo, memory, tone, level, population, and selected
+          gesture mode use the same mechanism. <strong>Copy link</strong> simply ensures the
+          current complete settings are present before writing the URL to the clipboard.
+        </p>
+        <p>
+          Reproduction has an explicit contract: engine revision, seed, particle count, fixed
+          timestep, performance settings, and gesture stream. The current share URL covers an
+          untouched field and the starting state of a performance. A future performed-take
+          bundle can add timestamped gestures without changing the engine boundary.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">10</span>Producing synchronized video</h2>
+        <p>
+          The local production command builds the release artifact, opens a clean Chrome profile
+          at the requested dimensions, and calls a narrow capture API exposed by the app.
+          Preparation starts the audio graph silently, resets the seeded engine, and clears
+          visual history. Capture releases simulation and master gain together on the first
+          recorded frame.
+        </p>
+        <p>
+          The canvas stream and post-limiter audio stream enter one
+          <code>MediaRecorder</code>. Chunks are sent back to a local Node process as they arrive
+          so a long recording does not live entirely in browser memory. FFmpeg can retain a
+          VP9/Opus WebM or transcode H.264/HEVC with AAC and fast-start metadata.
+        </p>
+        <p>
+          Each landscape, square, portrait, story, 4K, or custom aspect ratio is a fresh run
+          from the same seed. Beside the video, the tool writes a PNG preview and JSON manifest
+          containing source revision, encoded URL, settings, resolution, measured cadence,
+          duration, and probed codecs.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">11</span>What the checks defend</h2>
+        <p>
+          <code>npm run check</code> is the release gate. It verifies formatting, compiles Rust
+          with Clippy warnings treated as errors, runs the native test suite, builds optimised
+          WebAssembly, and creates the production Vite bundle. A passing push to <code>main</code>
+          deploys that exact artifact through GitHub Actions and Cloudflare Workers Static Assets.
+        </p>
+        <p>
+          The native tests concentrate on invariants that matter creatively: same-seed
+          reproduction, different-seed divergence, stable dense fields, bounded metrics,
+          finite long runs, pair-grid agreement, gesture effect, species presence, formation
+          records, and particle conservation.
+        </p>
+        <div class="note honesty">
+          <span class="tag">A useful division of labour</span>
+          <p>
+            Rust owns the rules that must reproduce. WebGPU owns a replaceable interpretation of
+            those rules as light. WebAudio owns a replaceable interpretation as music. The
+            browser app owns timing and consent. The production tool owns delivery formats.
+            Keeping those responsibilities narrow is what lets them remain one instrument.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">12</span>Standards and source</h2>
+        <ol class="refs">
+          <li>
+            <cite>W3C GPU for the Web Working Group.</cite>
+            <a href="https://www.w3.org/TR/webgpu/">WebGPU specification.</a>
+          </li>
+          <li>
+            <cite>WebAssembly Community Group.</cite>
+            <a href="https://webassembly.github.io/spec/core/">WebAssembly core specification.</a>
+          </li>
+          <li>
+            <cite>W3C Web Audio Working Group.</cite>
+            <a href="https://www.w3.org/TR/webaudio-1.1/">Web Audio API 1.1.</a>
+          </li>
+          <li>
+            <cite>Confluence source.</cite>
+            <a href="https://github.com/tre-systems/geno-5">github.com/tre-systems/geno-5</a>
+            — simulation, renderer, audio graph, tests, and production tooling.
+          </li>
+        </ol>
+      </section>
+
+      <nav class="crosslinks" aria-label="Continue reading">
+        <a class="crosslink" href="/field">The field behind it →</a>
+        <a class="crosslink" href="/sound">How the field becomes sound →</a>
+      </nav>
+    </main>
+
+    <footer>
+      <p>
+        <a href="/">Open Confluence</a> · <a href="/field">The field</a> ·
+        <a href="/sound">The sound</a>
+      </p>
+      <p>Geno-5 / Confluence — a deterministic audiovisual swarm instrument.</p>
+    </footer>
+  </body>
+</html>

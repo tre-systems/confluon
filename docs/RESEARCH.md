@@ -28,7 +28,7 @@ Galacto instrument. The useful architectural findings were consistent:
 - fabricated hulls and nucleus overlays make a picture more immediately cell-like,
   but conceal whether the simulation itself has organised.
 
-Confluence therefore starts with 1,200 particles in 24 compact single-population
+Confluence therefore starts with 2,000 particles in 24 compact single-population
 colonies, uses a wrapped spatial grid for neighbourhood visits, and draws no hulls.
 Its coloured matter and membrane contours are direct responses to the accumulated
 particle field. Cross-population sensing is deliberately weaker than the internal
