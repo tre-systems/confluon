@@ -23,6 +23,7 @@ const elements = {
   record: document.querySelector("#record"),
   recordTime: document.querySelector("#record-time"),
   shareLink: document.querySelector("#share-link"),
+  featuredFields: Array.from(document.querySelectorAll("[data-featured-field]")),
   population: document.querySelector("#population"),
   populationLabel: document.querySelector("#population-label"),
   ecology: document.querySelector("#ecology"),
@@ -102,7 +103,23 @@ function installControls() {
   elements.controlsToggle.addEventListener("click", () => {
     setControlsOpen(elements.controls.classList.contains("collapsed"));
   });
-  elements.shareLink.addEventListener("click", copyShareLink);
+  elements.shareLink.textContent = shareButtonLabel();
+  elements.shareLink.addEventListener("click", sharePerformance);
+  elements.featuredFields.forEach((link) => {
+    link.addEventListener("click", (event) => {
+      if (
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      event.preventDefault();
+      loadFeaturedField(link);
+    });
+  });
 
   document.addEventListener("pointerdown", (event) => {
     wakeControls();
@@ -514,6 +531,25 @@ function newField() {
   audio.strike(0.72, 0.42);
 }
 
+function loadFeaturedField(link) {
+  const featuredUrl = new URL(link.href, window.location.href);
+  const featuredSeed = Number(featuredUrl.searchParams.get("seed"));
+  if (!Number.isInteger(featuredSeed) || featuredSeed <= 0 || featuredSeed > 0xffffffff) return;
+
+  seed = featuredSeed >>> 0;
+  Object.assign(settings, readPerformanceSettings(featuredUrl));
+  engine = new Engine(seed, settings.population);
+  renderer.resetTrails();
+  audio.reseed(seed);
+  applyPerformanceSettings(false);
+  window.history.replaceState({}, "", `${featuredUrl.pathname}${featuredUrl.search}`);
+  elements.seed.textContent = formatSeed(seed);
+  elements.runtimeStatus.textContent = `Entered ${link.dataset.featuredField}, seed ${formatSeed(seed)}.`;
+  link.closest("details")?.removeAttribute("open");
+  setControlsOpen(false);
+  if (state.started) audio.strike(0.7, engine.metrics()[0]);
+}
+
 async function toggleRecording() {
   if (!state.started) {
     elements.runtimeStatus.textContent = "Enter with sound on before recording.";
@@ -659,8 +695,8 @@ function readSeed() {
   return generated;
 }
 
-function readPerformanceSettings() {
-  const parameters = new URL(window.location.href).searchParams;
+function readPerformanceSettings(source = window.location.href) {
+  const parameters = new URL(source, window.location.href).searchParams;
   const mode = parameters.get("mode");
   return {
     ecology: readScaledParameter(parameters, "ecology", 1, 0.25, 1.8),
@@ -696,9 +732,42 @@ function syncSettingsUrl() {
   window.history.replaceState({}, "", url);
 }
 
-async function copyShareLink() {
+function shareButtonLabel() {
+  return supportsNativeShare() ? "Share" : "Copy link";
+}
+
+function supportsNativeShare() {
+  return window.matchMedia("(pointer: coarse)").matches && typeof navigator.share === "function";
+}
+
+async function sharePerformance() {
   syncSettingsUrl();
   const shareUrl = window.location.href;
+  const shareData = {
+    title: "Confluence — Confluon",
+    text: `Enter Confluence at seed ${formatSeed(seed)}.`,
+    url: shareUrl,
+  };
+
+  if (supportsNativeShare()) {
+    try {
+      if (typeof navigator.canShare !== "function" || navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+        showShareFeedback("Shared", "Shared this seeded performance.");
+        return;
+      }
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        elements.runtimeStatus.textContent = "Sharing cancelled.";
+        return;
+      }
+    }
+  }
+
+  await copyPerformanceLink(shareUrl);
+}
+
+async function copyPerformanceLink(shareUrl) {
   let copied = false;
 
   try {
@@ -721,12 +790,19 @@ async function copyShareLink() {
     }
   }
 
+  showShareFeedback(
+    copied ? "Copied" : "Copy failed",
+    copied
+      ? "Copied this seeded performance link."
+      : "The link could not be copied. Copy it from the address bar instead.",
+  );
+}
+
+function showShareFeedback(label, status) {
   window.clearTimeout(shareFeedbackTimer);
-  elements.shareLink.textContent = copied ? "Copied" : "Copy failed";
-  elements.runtimeStatus.textContent = copied
-    ? "Copied this seeded performance link."
-    : "The link could not be copied. Copy it from the address bar instead.";
+  elements.shareLink.textContent = label;
+  elements.runtimeStatus.textContent = status;
   shareFeedbackTimer = window.setTimeout(() => {
-    elements.shareLink.textContent = "Copy link";
+    elements.shareLink.textContent = shareButtonLabel();
   }, 2400);
 }

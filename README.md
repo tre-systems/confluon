@@ -36,7 +36,11 @@ audio-reactive animation: the image and music are two views of one evolving stat
 - Touch-friendly Gather, Orbit, and Divide gestures, plus seeding, settling, pausing,
   and resetting. Gesture strikes sound from where they happen in the image.
 - Shareable performance settings for ecology, flow, touch strength, halo, visual
-  memory, tone, population, and level.
+  memory, tone, population, and level. Share opens the native device sheet when
+  available and otherwise copies the complete URL.
+- Three featured starting scores—Still Choir, Tidal Assembly, and Ember Rift—offer
+  deliberately contrasting seeds and settings without changing the deterministic
+  state contract.
 - A discreet control panel that closes out of the image and fades completely after
   nine seconds of inactivity.
 - Native Rust tests for determinism, stability, bounded metrics, interaction, and
@@ -92,12 +96,13 @@ requirements.
 Every passing push to `main` deploys the production build to Cloudflare Workers
 through GitHub Actions:
 
-<https://geno-5.tre.systems>
+<https://confluon.tre.systems>
 
 The workflow builds and tests before deploying. Pull requests run the same checks but
 never deploy. A manual production deployment can also be started from the repository's
 Actions page. Local deployment is available to an authenticated operator with
-`npm run deploy`.
+`npm run deploy`. The former `geno-5.tre.systems` hostname permanently redirects to
+the branded domain while preserving paths, query parameters, and shared seeds.
 
 ## Performance map
 
@@ -115,15 +120,16 @@ Actions page. Local deployment is available to an authenticated operator with
 Append `?seed=12345` to the URL to start from a specific field.
 Changing a performance setting records the complete configuration in the URL, so a
 seed and its ecology, flow, look, tone, and selected gesture can be shared together.
-Use **Copy link** at the foot of the controls to copy that complete performance URL.
+Use **Share** at the foot of the controls to send that complete performance URL
+through the device share sheet or copy it when native sharing is unavailable.
 
 ## Design documents
 
-- [The field](https://geno-5.tre.systems/field) — how the three-population
+- [The field](https://confluon.tre.systems/field) — how the three-population
   energy system forms, senses, and responds.
-- [The sound](https://geno-5.tre.systems/sound) — how collective state becomes
+- [The sound](https://confluon.tre.systems/sound) — how collective state becomes
   harmony, texture, space, and gesture.
-- [How it is built](https://geno-5.tre.systems/engineering) — the Rust/WASM,
+- [How it is built](https://confluon.tre.systems/engineering) — the Rust/WASM,
   WebGPU, WebAudio, reproducibility, and production architecture.
 - [Concept](docs/CONCEPT.md) — creative axes and musical mapping.
 - [Architecture](docs/ARCHITECTURE.md) — simulation, render, and audio contracts.

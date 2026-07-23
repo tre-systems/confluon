@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://geno-5.tre.systems/sitemap.xml
+Sitemap: https://confluon.tre.systems/sitemap.xml

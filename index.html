@@ -8,7 +8,7 @@
       content="Confluon presents Confluence, a deterministic energy-driven audiovisual swarm instrument."
     />
     <meta name="theme-color" content="#05070a" />
-    <link rel="canonical" href="https://geno-5.tre.systems/" />
+    <link rel="canonical" href="https://confluon.tre.systems/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Confluon" />
     <meta property="og:title" content="Confluence — Confluon" />
@@ -16,8 +16,8 @@
       property="og:description"
       content="A deterministic audiovisual swarm instrument. Shape the field, hear it respond, and share the take."
     />
-    <meta property="og:url" content="https://geno-5.tre.systems/" />
-    <meta property="og:image" content="https://geno-5.tre.systems/og-card.png" />
+    <meta property="og:url" content="https://confluon.tre.systems/" />
+    <meta property="og:image" content="https://confluon.tre.systems/og-card.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta
@@ -30,7 +30,7 @@
       name="twitter:description"
       content="A deterministic audiovisual swarm instrument. Shape the field, hear it respond, and share the take."
     />
-    <meta name="twitter:image" content="https://geno-5.tre.systems/og-card.png" />
+    <meta name="twitter:image" content="https://confluon.tre.systems/og-card.png" />
     <meta
       name="twitter:image:alt"
       content="Confluence particle populations meeting in a dark luminous field."
@@ -174,17 +174,55 @@
             <span>SEED <output id="seed-value">—</output></span>
             <nav class="panel-links" aria-label="About and sharing">
               <a class="article-link" href="/field">About</a>
-              <button id="share-link" class="share-link" type="button">Copy link</button>
+              <button id="share-link" class="share-link" type="button">Share</button>
             </nav>
             <span id="renderer-value">INITIALISING</span>
           </div>
 
-          <dl class="performance-map">
+          <details class="featured-fields">
+            <summary>
+              <span>Featured fields</span>
+              <small>three starting scores</small>
+              <span class="disclosure" aria-hidden="true"></span>
+            </summary>
+            <div class="featured-field-list">
+              <a
+                data-featured-field="Still Choir"
+                href="/?seed=424242&ecology=72&flow=70&touch=88&halo=110&memory=64&tone=38&level=74&life=1600&mode=gather"
+              >
+                <span>Still Choir</span>
+                <small>spacious · slow · dark</small>
+              </a>
+              <a
+                data-featured-field="Tidal Assembly"
+                href="/?seed=3950471578&ecology=104&flow=90&touch=100&halo=118&memory=56&tone=55&level=74&life=2000&mode=orbit"
+              >
+                <span>Tidal Assembly</span>
+                <small>balanced · lucid · tidal</small>
+              </a>
+              <a
+                data-featured-field="Ember Rift"
+                href="/?seed=153812312&ecology=145&flow=118&touch=118&halo=95&memory=36&tone=72&level=72&life=2600&mode=divide"
+              >
+                <span>Ember Rift</span>
+                <small>dense · quick · bright</small>
+              </a>
+            </div>
+          </details>
+
+          <dl class="performance-map performance-map-pointer">
             <div><dt>Drag / Shift</dt><dd>Use mode / momentary orbit</dd></div>
             <div><dt>Option + drag</dt><dd>Open a cavity</dd></div>
             <div><dt>Double-tap</dt><dd>Seed new matter</dd></div>
             <div><dt>G / O / D</dt><dd>Gather / orbit / divide</dd></div>
             <div><dt>S / Space / R</dt><dd>Settle / pause / reset</dd></div>
+          </dl>
+
+          <dl class="performance-map performance-map-touch">
+            <div><dt>Drag</dt><dd>Use the selected gesture</dd></div>
+            <div><dt>Orbit / Divide</dt><dd>Choose a mode above, then drag</dd></div>
+            <div><dt>Double-tap</dt><dd>Seed new matter</dd></div>
+            <div><dt>Hold to gather</dt><dd>Press and hold the control</dd></div>
           </dl>
         </div>
       </aside>

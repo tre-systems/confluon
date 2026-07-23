@@ -66,3 +66,5 @@ The visual image and the audio mix read the same deterministic simulation snapsh
 
 The settings and selected gesture are encoded in the URL with the seed. They are
 therefore part of a reproducible performance state rather than hidden preferences.
+Featured fields are named starting scores built only from those public parameters;
+selecting one replaces the live seed and settings without introducing hidden state.

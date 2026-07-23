@@ -113,6 +113,11 @@ The Record control taps the limiter output through an `AudioWorklet`
 take as a WAV named after the seed and duration. With the seed and URL-encoded
 settings, a take is reproducible.
 
+The Share control first synchronises the full seed and settings into the URL. It then
+uses the browser's native Web Share API when available and falls back to clipboard
+copying. Featured fields use the same URL contract: selecting one reconstructs the
+engine, audio seed, renderer history, and controls from explicit query parameters.
+
 ## Performance constraints
 
 - The normal field contains 2,000 particles in 24 compact colonies; the Life setting
@@ -135,7 +140,9 @@ settings, a take is reproducible.
 ## Hosting and delivery
 
 The production build is served as Cloudflare Workers Static Assets at
-`geno-5.tre.systems`. `wrangler.toml` owns the custom-domain route and SPA fallback.
-GitHub Actions runs the complete verification gate before deploying a push to `main`;
-pull requests never deploy. Cloudflare credentials remain encrypted GitHub Actions
-secrets and are not available to the browser build.
+`confluon.tre.systems`. The same Worker returns a path- and query-preserving 308
+redirect from the former `geno-5.tre.systems` hostname before serving assets through
+its binding. `wrangler.toml` owns both custom domains, the asset binding, clean HTML
+handling, and SPA fallback. GitHub Actions runs the complete verification gate before
+deploying a push to `main`; pull requests never deploy. Cloudflare credentials remain
+encrypted GitHub Actions secrets and are not available to the browser build.
