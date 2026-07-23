@@ -384,7 +384,7 @@ button {
 
 .actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 6px;
   margin: 12px 0 14px;
 }
@@ -437,6 +437,29 @@ button {
   color: #d9f8ea;
   border-color: rgba(134, 216, 181, 0.55);
   background: rgba(134, 216, 181, 0.12);
+}
+
+.record-button.active {
+  color: #ffd9d4;
+  border-color: rgba(235, 106, 92, 0.65);
+  background: rgba(235, 106, 92, 0.14);
+  animation: record-pulse 2.2s ease-in-out infinite;
+}
+
+.record-button output {
+  margin-left: 5px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 217, 212, 0.85);
+}
+
+@keyframes record-pulse {
+  0%,
+  100% {
+    border-color: rgba(235, 106, 92, 0.65);
+  }
+  50% {
+    border-color: rgba(235, 106, 92, 0.25);
+  }
 }
 
 .volume-control {

@@ -3,7 +3,6 @@ import { ConfluenceAudio } from "./audio.js";
 import { createRenderer } from "./renderer.js";
 
 const FIXED_STEP = 1 / 30;
-const INITIAL_PARTICLES = 1_200;
 const IDLE_CONTROLS_MS = 9000;
 const GESTURE_MODES = new Set(["gather", "orbit", "divide"]);
 const settings = readPerformanceSettings();
@@ -21,6 +20,10 @@ const elements = {
   settle: document.querySelector("#settle"),
   pause: document.querySelector("#pause"),
   volume: document.querySelector("#volume"),
+  record: document.querySelector("#record"),
+  recordTime: document.querySelector("#record-time"),
+  population: document.querySelector("#population"),
+  populationLabel: document.querySelector("#population-label"),
   ecology: document.querySelector("#ecology"),
   flow: document.querySelector("#flow"),
   gesture: document.querySelector("#gesture"),
@@ -75,7 +78,7 @@ let idleTimer;
 
 try {
   await init();
-  engine = new Engine(seed, INITIAL_PARTICLES);
+  engine = new Engine(seed, settings.population);
   renderer = await createRenderer(elements.field, elements.traces);
   audio = new ConfluenceAudio(seed);
   applyPerformanceSettings(false);
@@ -160,7 +163,7 @@ function installControls() {
     if (duration > 90 || travel > 0.025) {
       const strikeStrength =
         state.pointer.mode === "orbit" ? 0.72 : state.pointer.mode === "divide" ? 0.64 : 0.5;
-      audio.strike(strikeStrength, engine.metrics()[0]);
+      audio.strike(strikeStrength, engine.metrics()[0], point.x);
     }
     if (event.pointerType !== "mouse" && duration < 230 && travel < 0.055) {
       const now = performance.now();
@@ -203,6 +206,15 @@ function installControls() {
   elements.settle.addEventListener("pointercancel", settleOff);
 
   elements.pause.addEventListener("click", togglePause);
+  elements.record.addEventListener("click", toggleRecording);
+  elements.population.addEventListener("change", () => {
+    settings.population = clampPopulation(Number(elements.population.value));
+    engine = new Engine(seed, settings.population);
+    engine.set_ecology(settings.ecology);
+    renderer.resetTrails();
+    updateSettingLabels();
+    syncSettingsUrl();
+  });
   elements.volume.addEventListener("input", () => {
     settings.level = Number(elements.volume.value) / 100;
     audio.setLevel(settings.level);
@@ -274,6 +286,11 @@ function setGestureMode(mode, updateUrl = true) {
   if (updateUrl) syncSettingsUrl();
 }
 
+function clampPopulation(value) {
+  if (!Number.isFinite(value)) return 2000;
+  return Math.max(600, Math.min(4096, Math.round(value)));
+}
+
 function readSettingsFromControls() {
   settings.ecology = Number(elements.ecology.value) / 100;
   settings.flow = Number(elements.flow.value) / 100;
@@ -291,6 +308,7 @@ function applyPerformanceSettings(updateUrl) {
   elements.memory.value = String(Math.round(settings.memory * 100));
   elements.tone.value = String(Math.round(settings.tone * 100));
   elements.volume.value = String(Math.round(settings.level * 100));
+  elements.population.value = String(settings.population);
   updateSettingLabels();
   engine.set_ecology(settings.ecology);
   renderer.setStyle({
@@ -334,6 +352,11 @@ function updateSettingLabels() {
     settings.tone,
     [0.33, 0.72],
     ["DARK", "WARM", "BRIGHT"],
+  );
+  elements.populationLabel.textContent = settingWord(
+    settings.population,
+    [1400, 3000],
+    ["SPARSE", "FULL", "TEEMING"],
   );
   [
     [elements.ecology, elements.ecologyLabel],
@@ -447,13 +470,16 @@ function frame(milliseconds) {
   const snapshot = engine.snapshot();
   const metrics = engine.metrics();
   renderer.render(snapshot, metrics, time);
-  audio.update(metrics);
+  audio.update(metrics, engine.formations());
   if (metrics[5] > 0.24 && state.previousTransition <= 0.24 && state.running) {
     audio.strike(metrics[5], metrics[0]);
   }
   state.previousTransition = metrics[5];
 
   if (milliseconds - lastReadout > 160) {
+    if (audio.isRecording()) {
+      elements.recordTime.textContent = formatRecordTime(audio.recordingSeconds());
+    }
     elements.energy.textContent = metrics[0].toFixed(2);
     elements.coherence.textContent = metrics[1].toFixed(2);
     elements.activity.textContent = metrics[2].toFixed(2);
@@ -467,7 +493,7 @@ function frame(milliseconds) {
 
 function spawn(x, y) {
   engine.spawn_at(x, y, 50);
-  audio.strike(0.84, engine.metrics()[0]);
+  audio.strike(0.84, engine.metrics()[0], x);
 }
 
 function newField() {
@@ -482,6 +508,54 @@ function newField() {
   window.history.replaceState({}, "", url);
   elements.seed.textContent = formatSeed(seed);
   audio.strike(0.72, 0.42);
+}
+
+async function toggleRecording() {
+  if (!state.started) {
+    elements.runtimeStatus.textContent = "Enter with sound on before recording.";
+    return;
+  }
+  if (audio.isRecording()) {
+    elements.record.disabled = true;
+    try {
+      const take = await audio.stopRecording();
+      if (take) downloadTake(take.blob, take.duration);
+    } finally {
+      elements.record.disabled = false;
+      elements.record.classList.remove("active");
+      elements.recordTime.hidden = true;
+    }
+    return;
+  }
+  try {
+    const started = await audio.startRecording();
+    if (started) {
+      elements.record.classList.add("active");
+      elements.recordTime.hidden = false;
+    }
+  } catch (error) {
+    console.error("Could not start recording", error);
+    elements.runtimeStatus.textContent = "Recording is unavailable in this browser.";
+  }
+}
+
+function downloadTake(blob, duration) {
+  const seconds = Math.round(duration);
+  const name = `confluence-${formatSeed(seed)}-${seconds}s.wav`;
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+  elements.runtimeStatus.textContent = `Saved ${name} (32-bit float WAV).`;
+}
+
+function formatRecordTime(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function togglePause() {
@@ -550,6 +624,7 @@ function readPerformanceSettings() {
     memory: readScaledParameter(parameters, "memory", 0.42, 0, 1),
     tone: readScaledParameter(parameters, "tone", 0.55, 0, 1),
     level: readScaledParameter(parameters, "level", 0.74, 0, 1),
+    population: clampPopulation(Number(parameters.get("life") ?? 2000)),
     mode: GESTURE_MODES.has(mode) ? mode : "gather",
   };
 }
@@ -570,6 +645,7 @@ function syncSettingsUrl() {
   url.searchParams.set("memory", String(Math.round(settings.memory * 100)));
   url.searchParams.set("tone", String(Math.round(settings.tone * 100)));
   url.searchParams.set("level", String(Math.round(settings.level * 100)));
+  url.searchParams.set("life", String(settings.population));
   url.searchParams.set("mode", settings.mode);
   window.history.replaceState({}, "", url);
 }

@@ -1,40 +1,27 @@
-const MAX_PARTICLES = 2048;
+const MAX_PARTICLES = 4096;
 const FIELD_FORMAT = "rgba16float";
+const HDR_FORMAT = "rgba16float";
 
-const fieldShader = /* wgsl */ `
-struct Particle {
-  position: vec2<f32>,
-  energy: f32,
-  speed: f32,
-}
-
+const sharedWgsl = /* wgsl */ `
 struct Uniforms {
   aspect: f32,
   time: f32,
+  dt: f32,
   coherence: f32,
   density: f32,
   encounter: f32,
   activity: f32,
+  energy: f32,
   visual_glow: f32,
   visual_core: f32,
+  memory: f32,
+  transition: f32,
 }
 
-@group(0) @binding(0) var<storage, read> particles: array<Particle>;
-@group(0) @binding(1) var<uniform> uniforms: Uniforms;
-
-struct FieldVertexOutput {
-  @builtin(position) position: vec4<f32>,
-  @location(0) local: vec2<f32>,
-  @location(1) @interpolate(flat) species: u32,
-}
-
-struct ParticleVertexOutput {
-  @builtin(position) position: vec4<f32>,
-  @location(0) local: vec2<f32>,
-  @location(1) energy: f32,
-  @location(2) speed: f32,
-  @location(3) breath: f32,
-  @location(4) @interpolate(flat) species: u32,
+struct Particle {
+  position: vec2<f32>,
+  energy: f32,
+  speed: f32,
 }
 
 fn corner(vertex_index: u32) -> vec2<f32> {
@@ -47,6 +34,34 @@ fn corner(vertex_index: u32) -> vec2<f32> {
     vec2<f32>( 1.0,  1.0),
   );
   return corners[vertex_index];
+}
+
+fn species_colour(species: u32) -> vec3<f32> {
+  if (species == 1u) { return vec3<f32>(1.12, 0.24, 0.10); }
+  if (species == 2u) { return vec3<f32>(0.76, 0.39, 1.08); }
+  return vec3<f32>(0.12, 0.82, 0.87);
+}
+
+fn fullscreen_position(vertex_index: u32) -> vec2<f32> {
+  let positions = array<vec2<f32>, 3>(
+    vec2<f32>(-1.0, -1.0),
+    vec2<f32>( 3.0, -1.0),
+    vec2<f32>(-1.0,  3.0),
+  );
+  return positions[vertex_index];
+}
+`;
+
+const fieldShader = /* wgsl */ `
+${sharedWgsl}
+
+@group(0) @binding(0) var<storage, read> particles: array<Particle>;
+@group(0) @binding(1) var<uniform> uniforms: Uniforms;
+
+struct FieldVertexOutput {
+  @builtin(position) position: vec4<f32>,
+  @location(0) local: vec2<f32>,
+  @location(1) @interpolate(flat) species: u32,
 }
 
 fn kernel_radius(species: u32) -> f32 {
@@ -105,63 +120,13 @@ fn field_fs(input: FieldVertexOutput) -> @location(0) vec4<f32> {
   }
   return channels;
 }
-
-@vertex
-fn particle_vs(
-  @builtin(vertex_index) vertex_index: u32,
-  @builtin(instance_index) instance_index: u32,
-) -> ParticleVertexOutput {
-  let particle = particles[instance_index];
-  let local = corner(vertex_index);
-  let breath = 0.5 + 0.5 * sin(uniforms.time * 0.57 + f32(instance_index) * 0.37);
-  let radius = 0.010 + particle.speed * 0.003 + breath * uniforms.coherence * 0.0015;
-  let offset = vec2<f32>(local.x / max(uniforms.aspect, 0.01), local.y) * radius;
-
-  var output: ParticleVertexOutput;
-  output.position = vec4<f32>(particle.position + offset, 0.0, 1.0);
-  output.local = local;
-  output.species = u32(floor(particle.energy));
-  output.energy = fract(particle.energy);
-  output.speed = particle.speed;
-  output.breath = breath;
-  return output;
-}
-
-fn species_colour(species: u32) -> vec3<f32> {
-  if (species == 1u) { return vec3<f32>(1.12, 0.24, 0.10); }
-  if (species == 2u) { return vec3<f32>(0.76, 0.39, 1.08); }
-  return vec3<f32>(0.12, 0.82, 0.87);
-}
-
-@fragment
-fn particle_fs(input: ParticleVertexOutput) -> @location(0) vec4<f32> {
-  let distance = length(input.local);
-  if (distance > 1.0) { discard; }
-  let core = exp(-distance * distance * 10.0);
-  let body = exp(-distance * distance * 4.2);
-  let halo = pow(max(0.0, 1.0 - distance), 3.4);
-  let base = species_colour(input.species);
-  let pearl = vec3<f32>(0.91, 1.0, 0.95);
-  let colour = mix(base * (0.9 + input.energy * 0.38), pearl * 1.24, core * 0.82);
-  let intensity = (core * 1.62 + body * 0.48 + halo * (0.15 + input.speed * 0.1)) * uniforms.visual_core;
-  return vec4<f32>(colour * intensity, intensity);
-}
 `;
 
-const compositeShader = /* wgsl */ `
-struct Uniforms {
-  aspect: f32,
-  time: f32,
-  coherence: f32,
-  density: f32,
-  encounter: f32,
-  activity: f32,
-  visual_glow: f32,
-  visual_core: f32,
-}
+const trailShader = /* wgsl */ `
+${sharedWgsl}
 
-@group(0) @binding(0) var field_texture: texture_2d<f32>;
-@group(0) @binding(1) var field_sampler: sampler;
+@group(0) @binding(0) var previous_trail: texture_2d<f32>;
+@group(0) @binding(1) var trail_sampler: sampler;
 @group(0) @binding(2) var<uniform> uniforms: Uniforms;
 
 struct VertexOutput {
@@ -170,13 +135,80 @@ struct VertexOutput {
 }
 
 @vertex
-fn composite_vs(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
-  let positions = array<vec2<f32>, 3>(
-    vec2<f32>(-1.0, -1.0),
-    vec2<f32>( 3.0, -1.0),
-    vec2<f32>(-1.0,  3.0),
-  );
-  let position = positions[vertex_index];
+fn decay_vs(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
+  let position = fullscreen_position(vertex_index);
+  var output: VertexOutput;
+  output.position = vec4<f32>(position, 0.0, 1.0);
+  output.uv = vec2<f32>(position.x * 0.5 + 0.5, 1.0 - (position.y * 0.5 + 0.5));
+  return output;
+}
+
+@fragment
+fn decay_fs(input: VertexOutput) -> @location(0) vec4<f32> {
+  // Frame-rate independent exponential fade. Memory stretches the half-life
+  // from a fraction of a second to many seconds.
+  let rate = mix(4.2, 0.28, clamp(uniforms.memory, 0.0, 1.0));
+  let keep = exp(-rate * clamp(uniforms.dt, 0.0, 0.1));
+  let previous = textureSample(previous_trail, trail_sampler, input.uv).rgb;
+  return vec4<f32>(previous * keep, 1.0);
+}
+`;
+
+const depositShader = /* wgsl */ `
+${sharedWgsl}
+
+@group(0) @binding(0) var<storage, read> particles: array<Particle>;
+@group(0) @binding(1) var<uniform> uniforms: Uniforms;
+
+struct DepositOutput {
+  @builtin(position) position: vec4<f32>,
+  @location(0) local: vec2<f32>,
+  @location(1) tint: vec3<f32>,
+  @location(2) strength: f32,
+}
+
+@vertex
+fn deposit_vs(
+  @builtin(vertex_index) vertex_index: u32,
+  @builtin(instance_index) instance_index: u32,
+) -> DepositOutput {
+  let particle = particles[instance_index];
+  let species = u32(floor(particle.energy));
+  let local = corner(vertex_index);
+  let radius = 0.0045 + particle.speed * 0.0035;
+  let offset = vec2<f32>(local.x / max(uniforms.aspect, 0.01), local.y) * radius;
+
+  var output: DepositOutput;
+  output.position = vec4<f32>(particle.position + offset, 0.0, 1.0);
+  output.local = local;
+  output.tint = species_colour(species);
+  output.strength = 0.010 + particle.speed * 0.075;
+  return output;
+}
+
+@fragment
+fn deposit_fs(input: DepositOutput) -> @location(0) vec4<f32> {
+  let falloff = exp(-dot(input.local, input.local) * 4.5);
+  return vec4<f32>(input.tint * input.strength * falloff, 0.0);
+}
+`;
+
+const sceneShader = /* wgsl */ `
+${sharedWgsl}
+
+@group(0) @binding(0) var field_texture: texture_2d<f32>;
+@group(0) @binding(1) var trail_texture: texture_2d<f32>;
+@group(0) @binding(2) var scene_sampler: sampler;
+@group(0) @binding(3) var<uniform> uniforms: Uniforms;
+
+struct VertexOutput {
+  @builtin(position) position: vec4<f32>,
+  @location(0) uv: vec2<f32>,
+}
+
+@vertex
+fn scene_vs(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
+  let position = fullscreen_position(vertex_index);
   var output: VertexOutput;
   output.position = vec4<f32>(position, 0.0, 1.0);
   output.uv = vec2<f32>(position.x * 0.5 + 0.5, 1.0 - (position.y * 0.5 + 0.5));
@@ -198,24 +230,37 @@ fn layer(value: f32, soft: f32, centre: f32, width: f32, colour: vec3<f32>) -> v
 }
 
 @fragment
-fn composite_fs(input: VertexOutput) -> @location(0) vec4<f32> {
+fn scene_fs(input: VertexOutput) -> @location(0) vec4<f32> {
   let dimensions = vec2<f32>(textureDimensions(field_texture));
   let texel = 1.0 / dimensions;
-  let field = textureSample(field_texture, field_sampler, input.uv);
+  let field = textureSample(field_texture, scene_sampler, input.uv);
   var soft = field * 0.28;
-  soft += textureSample(field_texture, field_sampler, input.uv + vec2<f32>(texel.x * 2.0, 0.0)) * 0.12;
-  soft += textureSample(field_texture, field_sampler, input.uv - vec2<f32>(texel.x * 2.0, 0.0)) * 0.12;
-  soft += textureSample(field_texture, field_sampler, input.uv + vec2<f32>(0.0, texel.y * 2.0)) * 0.12;
-  soft += textureSample(field_texture, field_sampler, input.uv - vec2<f32>(0.0, texel.y * 2.0)) * 0.12;
-  soft += textureSample(field_texture, field_sampler, input.uv + texel * vec2<f32>(4.0, 4.0)) * 0.06;
-  soft += textureSample(field_texture, field_sampler, input.uv + texel * vec2<f32>(-4.0, 4.0)) * 0.06;
-  soft += textureSample(field_texture, field_sampler, input.uv + texel * vec2<f32>(4.0, -4.0)) * 0.06;
-  soft += textureSample(field_texture, field_sampler, input.uv - texel * vec2<f32>(4.0, 4.0)) * 0.06;
+  soft += textureSample(field_texture, scene_sampler, input.uv + vec2<f32>(texel.x * 2.0, 0.0)) * 0.12;
+  soft += textureSample(field_texture, scene_sampler, input.uv - vec2<f32>(texel.x * 2.0, 0.0)) * 0.12;
+  soft += textureSample(field_texture, scene_sampler, input.uv + vec2<f32>(0.0, texel.y * 2.0)) * 0.12;
+  soft += textureSample(field_texture, scene_sampler, input.uv - vec2<f32>(0.0, texel.y * 2.0)) * 0.12;
+  soft += textureSample(field_texture, scene_sampler, input.uv + texel * vec2<f32>(4.0, 4.0)) * 0.06;
+  soft += textureSample(field_texture, scene_sampler, input.uv + texel * vec2<f32>(-4.0, 4.0)) * 0.06;
+  soft += textureSample(field_texture, scene_sampler, input.uv + texel * vec2<f32>(4.0, -4.0)) * 0.06;
+  soft += textureSample(field_texture, scene_sampler, input.uv - texel * vec2<f32>(4.0, 4.0)) * 0.06;
 
   let tide = vec3<f32>(0.10, 0.73, 0.78);
   let ember = vec3<f32>(1.0, 0.22, 0.09);
   let bloom = vec3<f32>(0.67, 0.34, 0.96);
-  var colour = vec3<f32>(0.0);
+
+  // Deep-water background with a slow travelling tint so stillness never
+  // reads as a dead screen.
+  let centred = input.uv - vec2<f32>(0.5 + sin(uniforms.time * 0.031) * 0.05,
+                                     0.5 + cos(uniforms.time * 0.027) * 0.04);
+  let base_fall = exp(-dot(centred, centred) * 2.4);
+  var colour = vec3<f32>(0.004, 0.006, 0.010);
+  colour += vec3<f32>(0.010, 0.022, 0.024) * base_fall * (0.6 + uniforms.coherence * 0.8);
+  colour += vec3<f32>(0.020, 0.011, 0.008) * base_fall * uniforms.energy * 0.5;
+
+  // Motion history painted by the particles themselves.
+  let trail = textureSample(trail_texture, scene_sampler, input.uv).rgb;
+  colour += trail * (0.30 + uniforms.memory * 0.55);
+
   colour += layer(field.x, soft.x, 0.46, 0.12, tide);
   colour += layer(field.y, soft.y, 0.50, 0.11, ember);
   colour += layer(field.z, soft.z, 0.42, 0.13, bloom);
@@ -223,11 +268,173 @@ fn composite_fs(input: VertexOutput) -> @location(0) vec4<f32> {
   let glow = soft.x * tide + soft.y * ember + soft.z * bloom;
   colour += glow * (0.11 + uniforms.encounter * 0.055);
   colour *= 0.98 + uniforms.density * 0.32;
-  colour = vec3<f32>(1.0) - exp(-colour * 1.95 * uniforms.visual_glow);
-  let vignette = 1.0 - 0.24 * smoothstep(0.48, 1.1, length(input.uv - 0.5) * 1.45);
+  colour *= uniforms.visual_glow;
+  return vec4<f32>(colour, 1.0);
+}
+`;
+
+const particleShader = /* wgsl */ `
+${sharedWgsl}
+
+@group(0) @binding(0) var<storage, read> particles: array<Particle>;
+@group(0) @binding(1) var<uniform> uniforms: Uniforms;
+
+struct ParticleVertexOutput {
+  @builtin(position) position: vec4<f32>,
+  @location(0) local: vec2<f32>,
+  @location(1) energy: f32,
+  @location(2) speed: f32,
+  @location(3) breath: f32,
+  @location(4) @interpolate(flat) species: u32,
+}
+
+@vertex
+fn particle_vs(
+  @builtin(vertex_index) vertex_index: u32,
+  @builtin(instance_index) instance_index: u32,
+) -> ParticleVertexOutput {
+  let particle = particles[instance_index];
+  let local = corner(vertex_index);
+  let breath = 0.5 + 0.5 * sin(uniforms.time * 0.57 + f32(instance_index) * 0.37);
+  let radius = 0.009 + particle.speed * 0.003 + breath * uniforms.coherence * 0.0015;
+  let offset = vec2<f32>(local.x / max(uniforms.aspect, 0.01), local.y) * radius;
+
+  var output: ParticleVertexOutput;
+  output.position = vec4<f32>(particle.position + offset, 0.0, 1.0);
+  output.local = local;
+  output.species = u32(floor(particle.energy));
+  output.energy = fract(particle.energy);
+  output.speed = particle.speed;
+  output.breath = breath;
+  return output;
+}
+
+@fragment
+fn particle_fs(input: ParticleVertexOutput) -> @location(0) vec4<f32> {
+  let distance = length(input.local);
+  if (distance > 1.0) { discard; }
+  let core = exp(-distance * distance * 10.0);
+  let body = exp(-distance * distance * 4.2);
+  let halo = pow(max(0.0, 1.0 - distance), 3.4);
+  let base = species_colour(input.species);
+  let pearl = vec3<f32>(0.91, 1.0, 0.95);
+  let colour = mix(base * (0.9 + input.energy * 0.38), pearl * 1.24, core * 0.82);
+  let intensity = (core * 1.62 + body * 0.48 + halo * (0.15 + input.speed * 0.1)) * uniforms.visual_core;
+  return vec4<f32>(colour * intensity, intensity);
+}
+`;
+
+const bloomShader = /* wgsl */ `
+${sharedWgsl}
+
+@group(0) @binding(0) var source_texture: texture_2d<f32>;
+@group(0) @binding(1) var source_sampler: sampler;
+@group(0) @binding(2) var<uniform> uniforms: Uniforms;
+
+struct VertexOutput {
+  @builtin(position) position: vec4<f32>,
+  @location(0) uv: vec2<f32>,
+}
+
+@vertex
+fn fullscreen_vs(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
+  let position = fullscreen_position(vertex_index);
+  var output: VertexOutput;
+  output.position = vec4<f32>(position, 0.0, 1.0);
+  output.uv = vec2<f32>(position.x * 0.5 + 0.5, 1.0 - (position.y * 0.5 + 0.5));
+  return output;
+}
+
+@fragment
+fn extract_fs(input: VertexOutput) -> @location(0) vec4<f32> {
+  let texel = 1.0 / vec2<f32>(textureDimensions(source_texture));
+  // 4-tap box downsample with a soft knee so only luminous matter blooms.
+  var colour = textureSample(source_texture, source_sampler, input.uv + texel * vec2<f32>(-0.5, -0.5)).rgb;
+  colour += textureSample(source_texture, source_sampler, input.uv + texel * vec2<f32>(0.5, -0.5)).rgb;
+  colour += textureSample(source_texture, source_sampler, input.uv + texel * vec2<f32>(-0.5, 0.5)).rgb;
+  colour += textureSample(source_texture, source_sampler, input.uv + texel * vec2<f32>(0.5, 0.5)).rgb;
+  colour *= 0.25;
+  let brightness = max(colour.r, max(colour.g, colour.b));
+  let knee = smoothstep(0.16, 0.72, brightness);
+  return vec4<f32>(colour * knee, 1.0);
+}
+
+fn blur(uv: vec2<f32>, direction: vec2<f32>) -> vec3<f32> {
+  let texel = direction / vec2<f32>(textureDimensions(source_texture));
+  var colour = textureSample(source_texture, source_sampler, uv).rgb * 0.227027;
+  let offsets = array<f32, 4>(1.384615, 3.230769, 5.076923, 6.923077);
+  let weights = array<f32, 4>(0.316216, 0.070270, 0.008962, 0.000538);
+  for (var index = 0; index < 4; index += 1) {
+    let offset = texel * offsets[index];
+    colour += textureSample(source_texture, source_sampler, uv + offset).rgb * weights[index] * 0.5;
+    colour += textureSample(source_texture, source_sampler, uv - offset).rgb * weights[index] * 0.5;
+  }
+  return colour;
+}
+
+@fragment
+fn blur_h_fs(input: VertexOutput) -> @location(0) vec4<f32> {
+  return vec4<f32>(blur(input.uv, vec2<f32>(1.0, 0.0)), 1.0);
+}
+
+@fragment
+fn blur_v_fs(input: VertexOutput) -> @location(0) vec4<f32> {
+  return vec4<f32>(blur(input.uv, vec2<f32>(0.0, 1.0)), 1.0);
+}
+`;
+
+const finalShader = /* wgsl */ `
+${sharedWgsl}
+
+@group(0) @binding(0) var scene_texture: texture_2d<f32>;
+@group(0) @binding(1) var bloom_texture: texture_2d<f32>;
+@group(0) @binding(2) var final_sampler: sampler;
+@group(0) @binding(3) var<uniform> uniforms: Uniforms;
+
+struct VertexOutput {
+  @builtin(position) position: vec4<f32>,
+  @location(0) uv: vec2<f32>,
+}
+
+@vertex
+fn final_vs(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
+  let position = fullscreen_position(vertex_index);
+  var output: VertexOutput;
+  output.position = vec4<f32>(position, 0.0, 1.0);
+  output.uv = vec2<f32>(position.x * 0.5 + 0.5, 1.0 - (position.y * 0.5 + 0.5));
+  return output;
+}
+
+fn aces(colour: vec3<f32>) -> vec3<f32> {
+  let a = 2.51;
+  let b = 0.03;
+  let c = 2.43;
+  let d = 0.59;
+  let e = 0.14;
+  return clamp((colour * (a * colour + b)) / (colour * (c * colour + d) + e), vec3<f32>(0.0), vec3<f32>(1.0));
+}
+
+fn hash(uv: vec2<f32>) -> f32 {
+  return fract(sin(dot(uv, vec2<f32>(12.9898, 78.233))) * 43758.5453);
+}
+
+@fragment
+fn final_fs(input: VertexOutput) -> @location(0) vec4<f32> {
+  let scene = textureSample(scene_texture, final_sampler, input.uv).rgb;
+  let halo = textureSample(bloom_texture, final_sampler, input.uv).rgb;
+  var colour = scene + halo * (0.55 + uniforms.visual_glow * 0.45 + uniforms.transition * 0.6);
+
+  colour = aces(colour * 1.35);
+  // Gentle lift keeps the darkest water translucent rather than crushed.
+  colour = pow(colour, vec3<f32>(0.92));
+
+  let vignette = 1.0 - 0.26 * smoothstep(0.44, 1.12, length(input.uv - 0.5) * 1.45);
   colour *= vignette;
-  let alpha = clamp(max(max(colour.r, colour.g), colour.b) * 1.35, 0.0, 0.94);
-  return vec4<f32>(colour, alpha);
+
+  // Fine animated grain hides banding in the slow gradients.
+  let grain = (hash(input.uv * 1013.0 + fract(uniforms.time) * 61.7) - 0.5) * 0.012;
+  colour = max(colour + vec3<f32>(grain), vec3<f32>(0.0));
+  return vec4<f32>(colour, 1.0);
 }
 `;
 
@@ -306,17 +513,19 @@ class TrailRenderer {
 class WebGpuRenderer {
   constructor(canvas, trailCanvas, device, context, format) {
     this.canvas = canvas;
+    this.trailCanvas = trailCanvas;
     this.device = device;
     this.context = context;
     this.format = format;
     this.kind = "WEBGPU";
-    this.trails = new TrailRenderer(trailCanvas);
-    this.fieldTexture = null;
-    this.fieldView = null;
-    this.fieldWidth = 0;
-    this.fieldHeight = 0;
     this.visualGlow = 1;
     this.visualCore = 1;
+    this.memory = 0.42;
+    this.lastTime = 0;
+    this.sizedWidth = 0;
+    this.sizedHeight = 0;
+    this.trailIndex = 0;
+    this.clearTrails = true;
     device.addEventListener("uncapturederror", (event) => {
       console.error("WebGPU validation error:", event.error.message);
     });
@@ -328,18 +537,53 @@ class WebGpuRenderer {
     });
     this.uniformBuffer = device.createBuffer({
       label: "render uniforms",
-      size: 8 * Float32Array.BYTES_PER_ELEMENT,
+      size: 12 * Float32Array.BYTES_PER_ELEMENT,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
-    const fieldModule = device.createShaderModule({ label: "kernel field and particles", code: fieldShader });
-    const particleLayout = device.createBindGroupLayout({
+    this.linearSampler = device.createSampler({
+      label: "linear sampler",
+      magFilter: "linear",
+      minFilter: "linear",
+      addressModeU: "clamp-to-edge",
+      addressModeV: "clamp-to-edge",
+    });
+
+    this.particleLayout = device.createBindGroupLayout({
+      label: "particle layout",
       entries: [
         { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
         { binding: 1, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
       ],
     });
-    const particlePipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [particleLayout] });
+    this.oneTextureLayout = device.createBindGroupLayout({
+      label: "one texture layout",
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+        { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
+        { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+      ],
+    });
+    this.twoTextureLayout = device.createBindGroupLayout({
+      label: "two texture layout",
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+        { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+        { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
+        { binding: 3, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+      ],
+    });
+
+    const particlePipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [this.particleLayout] });
+    const oneTexturePipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [this.oneTextureLayout] });
+    const twoTexturePipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [this.twoTextureLayout] });
+
+    const additive = {
+      color: { srcFactor: "one", dstFactor: "one" },
+      alpha: { srcFactor: "one", dstFactor: "one" },
+    };
+
+    const fieldModule = device.createShaderModule({ label: "kernel field", code: fieldShader });
     this.fieldPipeline = device.createRenderPipeline({
       label: "kernel field pipeline",
       layout: particlePipelineLayout,
@@ -347,108 +591,181 @@ class WebGpuRenderer {
       fragment: {
         module: fieldModule,
         entryPoint: "field_fs",
-        targets: [
-          {
-            format: FIELD_FORMAT,
-            blend: {
-              color: { srcFactor: "one", dstFactor: "one" },
-              alpha: { srcFactor: "one", dstFactor: "one" },
-            },
-          },
-        ],
+        targets: [{ format: FIELD_FORMAT, blend: additive }],
       },
       primitive: { topology: "triangle-list" },
     });
+
+    const trailModule = device.createShaderModule({ label: "trail decay", code: trailShader });
+    this.trailDecayPipeline = device.createRenderPipeline({
+      label: "trail decay pipeline",
+      layout: oneTexturePipelineLayout,
+      vertex: { module: trailModule, entryPoint: "decay_vs" },
+      fragment: { module: trailModule, entryPoint: "decay_fs", targets: [{ format: HDR_FORMAT }] },
+      primitive: { topology: "triangle-list" },
+    });
+
+    const depositModule = device.createShaderModule({ label: "trail deposit", code: depositShader });
+    this.trailDepositPipeline = device.createRenderPipeline({
+      label: "trail deposit pipeline",
+      layout: particlePipelineLayout,
+      vertex: { module: depositModule, entryPoint: "deposit_vs" },
+      fragment: {
+        module: depositModule,
+        entryPoint: "deposit_fs",
+        targets: [{ format: HDR_FORMAT, blend: additive }],
+      },
+      primitive: { topology: "triangle-list" },
+    });
+
+    const sceneModule = device.createShaderModule({ label: "scene compose", code: sceneShader });
+    this.scenePipeline = device.createRenderPipeline({
+      label: "scene compose pipeline",
+      layout: twoTexturePipelineLayout,
+      vertex: { module: sceneModule, entryPoint: "scene_vs" },
+      fragment: { module: sceneModule, entryPoint: "scene_fs", targets: [{ format: HDR_FORMAT }] },
+      primitive: { topology: "triangle-list" },
+    });
+
+    const particleModule = device.createShaderModule({ label: "particle cores", code: particleShader });
     this.particlePipeline = device.createRenderPipeline({
       label: "particle core pipeline",
       layout: particlePipelineLayout,
-      vertex: { module: fieldModule, entryPoint: "particle_vs" },
+      vertex: { module: particleModule, entryPoint: "particle_vs" },
       fragment: {
-        module: fieldModule,
+        module: particleModule,
         entryPoint: "particle_fs",
-        targets: [
-          {
-            format,
-            blend: {
-              color: { srcFactor: "one", dstFactor: "one" },
-              alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
-            },
-          },
-        ],
+        targets: [{ format: HDR_FORMAT, blend: additive }],
       },
       primitive: { topology: "triangle-list" },
     });
+
+    const bloomModule = device.createShaderModule({ label: "bloom", code: bloomShader });
+    this.bloomExtractPipeline = device.createRenderPipeline({
+      label: "bloom extract pipeline",
+      layout: oneTexturePipelineLayout,
+      vertex: { module: bloomModule, entryPoint: "fullscreen_vs" },
+      fragment: { module: bloomModule, entryPoint: "extract_fs", targets: [{ format: HDR_FORMAT }] },
+      primitive: { topology: "triangle-list" },
+    });
+    this.bloomBlurHPipeline = device.createRenderPipeline({
+      label: "bloom blur h pipeline",
+      layout: oneTexturePipelineLayout,
+      vertex: { module: bloomModule, entryPoint: "fullscreen_vs" },
+      fragment: { module: bloomModule, entryPoint: "blur_h_fs", targets: [{ format: HDR_FORMAT }] },
+      primitive: { topology: "triangle-list" },
+    });
+    this.bloomBlurVPipeline = device.createRenderPipeline({
+      label: "bloom blur v pipeline",
+      layout: oneTexturePipelineLayout,
+      vertex: { module: bloomModule, entryPoint: "fullscreen_vs" },
+      fragment: { module: bloomModule, entryPoint: "blur_v_fs", targets: [{ format: HDR_FORMAT }] },
+      primitive: { topology: "triangle-list" },
+    });
+
+    const finalModule = device.createShaderModule({ label: "final grade", code: finalShader });
+    this.finalPipeline = device.createRenderPipeline({
+      label: "final grade pipeline",
+      layout: twoTexturePipelineLayout,
+      vertex: { module: finalModule, entryPoint: "final_vs" },
+      fragment: { module: finalModule, entryPoint: "final_fs", targets: [{ format }] },
+      primitive: { topology: "triangle-list" },
+    });
+
     this.particleBindGroup = device.createBindGroup({
-      layout: particleLayout,
+      layout: this.particleLayout,
       entries: [
         { binding: 0, resource: { buffer: this.particleBuffer } },
         { binding: 1, resource: { buffer: this.uniformBuffer } },
       ],
     });
-
-    const compositeModule = device.createShaderModule({ label: "field composite", code: compositeShader });
-    this.compositeLayout = device.createBindGroupLayout({
-      entries: [
-        { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
-        { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
-        { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
-      ],
-    });
-    this.compositePipeline = device.createRenderPipeline({
-      label: "field composite pipeline",
-      layout: device.createPipelineLayout({ bindGroupLayouts: [this.compositeLayout] }),
-      vertex: { module: compositeModule, entryPoint: "composite_vs" },
-      fragment: { module: compositeModule, entryPoint: "composite_fs", targets: [{ format }] },
-      primitive: { topology: "triangle-list" },
-    });
-    this.fieldSampler = device.createSampler({
-      label: "field sampler",
-      magFilter: "linear",
-      minFilter: "linear",
-      addressModeU: "clamp-to-edge",
-      addressModeV: "clamp-to-edge",
-    });
   }
 
   resetTrails() {
-    this.trails.reset();
+    this.clearTrails = true;
   }
 
   setStyle({ glow, memory, core }) {
     this.visualGlow = clamp(glow, 0.45, 1.55);
     this.visualCore = clamp(core, 0.65, 1.45);
-    this.trails.setMemory(memory);
+    this.memory = clamp(memory, 0, 1);
   }
 
-  ensureFieldTexture() {
-    const width = Math.max(1, Math.floor(this.canvas.width / 3));
-    const height = Math.max(1, Math.floor(this.canvas.height / 3));
-    if (width === this.fieldWidth && height === this.fieldHeight) return;
-    this.fieldTexture?.destroy();
-    this.fieldWidth = width;
-    this.fieldHeight = height;
-    this.fieldTexture = this.device.createTexture({
-      label: "kernel field texture",
-      size: { width, height },
-      format: FIELD_FORMAT,
-      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
-    });
-    this.fieldView = this.fieldTexture.createView();
-    this.compositeBindGroup = this.device.createBindGroup({
-      layout: this.compositeLayout,
-      entries: [
-        { binding: 0, resource: this.fieldView },
-        { binding: 1, resource: this.fieldSampler },
-        { binding: 2, resource: { buffer: this.uniformBuffer } },
-      ],
-    });
+  ensureTargets() {
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    if (width === this.sizedWidth && height === this.sizedHeight) return;
+    this.sizedWidth = width;
+    this.sizedHeight = height;
+
+    const make = (label, w, h) => {
+      const texture = this.device.createTexture({
+        label,
+        size: { width: Math.max(1, w), height: Math.max(1, h) },
+        format: HDR_FORMAT,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+      });
+      return { texture, view: texture.createView() };
+    };
+
+    for (const key of ["fieldTarget", "sceneTarget", "bloomA", "bloomB"]) {
+      this[key]?.texture.destroy();
+    }
+    this.trailTargets?.forEach((target) => target.texture.destroy());
+
+    this.fieldTarget = make("kernel field texture", Math.floor(width / 3), Math.floor(height / 3));
+    this.sceneTarget = make("scene hdr texture", width, height);
+    this.trailTargets = [
+      make("trail texture a", Math.floor(width / 2), Math.floor(height / 2)),
+      make("trail texture b", Math.floor(width / 2), Math.floor(height / 2)),
+    ];
+    this.bloomA = make("bloom texture a", Math.floor(width / 4), Math.floor(height / 4));
+    this.bloomB = make("bloom texture b", Math.floor(width / 4), Math.floor(height / 4));
+    this.clearTrails = true;
+
+    const oneTexture = (label, view) =>
+      this.device.createBindGroup({
+        label,
+        layout: this.oneTextureLayout,
+        entries: [
+          { binding: 0, resource: view },
+          { binding: 1, resource: this.linearSampler },
+          { binding: 2, resource: { buffer: this.uniformBuffer } },
+        ],
+      });
+    const twoTexture = (label, first, second) =>
+      this.device.createBindGroup({
+        label,
+        layout: this.twoTextureLayout,
+        entries: [
+          { binding: 0, resource: first },
+          { binding: 1, resource: second },
+          { binding: 2, resource: this.linearSampler },
+          { binding: 3, resource: { buffer: this.uniformBuffer } },
+        ],
+      });
+
+    this.trailDecayBindGroups = [
+      oneTexture("decay reads a", this.trailTargets[0].view),
+      oneTexture("decay reads b", this.trailTargets[1].view),
+    ];
+    this.sceneBindGroups = [
+      twoTexture("scene with trail a", this.fieldTarget.view, this.trailTargets[0].view),
+      twoTexture("scene with trail b", this.fieldTarget.view, this.trailTargets[1].view),
+    ];
+    this.bloomExtractBindGroup = oneTexture("bloom extract", this.sceneTarget.view);
+    this.bloomBlurHBindGroup = oneTexture("bloom blur h", this.bloomA.view);
+    this.bloomBlurVBindGroup = oneTexture("bloom blur v", this.bloomB.view);
+    this.finalBindGroup = twoTexture("final grade", this.sceneTarget.view, this.bloomA.view);
   }
 
   render(snapshot, metrics, time) {
     resizeCanvas(this.canvas);
-    this.trails.render(snapshot, metrics, time);
-    this.ensureFieldTexture();
-    const particleCount = snapshot.length / 4;
+    this.ensureTargets();
+    const dt = this.lastTime > 0 ? Math.min(0.1, Math.max(0, time - this.lastTime)) : 1 / 60;
+    this.lastTime = time;
+
+    const particleCount = Math.min(MAX_PARTICLES, snapshot.length / 4);
     this.device.queue.writeBuffer(this.particleBuffer, 0, snapshot);
     this.device.queue.writeBuffer(
       this.uniformBuffer,
@@ -456,20 +773,25 @@ class WebGpuRenderer {
       new Float32Array([
         this.canvas.width / this.canvas.height,
         time,
+        dt,
         metrics[1],
         metrics[3],
         metrics[6] ?? 0,
         metrics[2],
+        metrics[0],
         this.visualGlow,
         this.visualCore,
+        this.memory,
+        metrics[5] ?? 0,
       ]),
     );
 
     const encoder = this.device.createCommandEncoder({ label: "living field frame" });
+
     const fieldPass = encoder.beginRenderPass({
       colorAttachments: [
         {
-          view: this.fieldView,
+          view: this.fieldTarget.view,
           clearValue: { r: 0, g: 0, b: 0, a: 0 },
           loadOp: "clear",
           storeOp: "store",
@@ -481,38 +803,87 @@ class WebGpuRenderer {
     fieldPass.draw(6, particleCount);
     fieldPass.end();
 
-    const outputView = this.context.getCurrentTexture().createView();
-    const compositePass = encoder.beginRenderPass({
+    // Trail ping-pong: fade the previous history into the other target, then
+    // deposit this frame's particles on top.
+    const source = this.trailIndex;
+    const destination = 1 - this.trailIndex;
+    this.trailIndex = destination;
+    const trailPass = encoder.beginRenderPass({
       colorAttachments: [
         {
-          view: outputView,
-          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+          view: this.trailTargets[destination].view,
+          clearValue: { r: 0, g: 0, b: 0, a: 1 },
           loadOp: "clear",
           storeOp: "store",
         },
       ],
     });
-    compositePass.setPipeline(this.compositePipeline);
-    compositePass.setBindGroup(0, this.compositeBindGroup);
-    compositePass.draw(3);
-    compositePass.end();
+    if (!this.clearTrails) {
+      trailPass.setPipeline(this.trailDecayPipeline);
+      trailPass.setBindGroup(0, this.trailDecayBindGroups[source]);
+      trailPass.draw(3);
+    }
+    this.clearTrails = false;
+    trailPass.setPipeline(this.trailDepositPipeline);
+    trailPass.setBindGroup(0, this.particleBindGroup);
+    trailPass.draw(6, particleCount);
+    trailPass.end();
 
-    // Keep the cores in a separate load pass. Apart from making the field/core
-    // layering explicit, this avoids backend-specific pipeline state leakage
-    // when switching from a sampled full-screen pass to instanced storage data.
-    const particlePass = encoder.beginRenderPass({
+    const scenePass = encoder.beginRenderPass({
       colorAttachments: [
         {
-          view: outputView,
-          loadOp: "load",
+          view: this.sceneTarget.view,
+          clearValue: { r: 0, g: 0, b: 0, a: 1 },
+          loadOp: "clear",
           storeOp: "store",
         },
       ],
     });
-    particlePass.setPipeline(this.particlePipeline);
-    particlePass.setBindGroup(0, this.particleBindGroup);
-    particlePass.draw(6, particleCount);
-    particlePass.end();
+    scenePass.setPipeline(this.scenePipeline);
+    scenePass.setBindGroup(0, this.sceneBindGroups[destination]);
+    scenePass.draw(3);
+    scenePass.setPipeline(this.particlePipeline);
+    scenePass.setBindGroup(0, this.particleBindGroup);
+    scenePass.draw(6, particleCount);
+    scenePass.end();
+
+    const bloomSteps = [
+      { pipeline: this.bloomExtractPipeline, bindGroup: this.bloomExtractBindGroup, target: this.bloomA },
+      { pipeline: this.bloomBlurHPipeline, bindGroup: this.bloomBlurHBindGroup, target: this.bloomB },
+      { pipeline: this.bloomBlurVPipeline, bindGroup: this.bloomBlurVBindGroup, target: this.bloomA },
+    ];
+    for (const step of bloomSteps) {
+      const pass = encoder.beginRenderPass({
+        colorAttachments: [
+          {
+            view: step.target.view,
+            clearValue: { r: 0, g: 0, b: 0, a: 1 },
+            loadOp: "clear",
+            storeOp: "store",
+          },
+        ],
+      });
+      pass.setPipeline(step.pipeline);
+      pass.setBindGroup(0, step.bindGroup);
+      pass.draw(3);
+      pass.end();
+    }
+
+    const finalPass = encoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: this.context.getCurrentTexture().createView(),
+          clearValue: { r: 0, g: 0, b: 0, a: 1 },
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+    finalPass.setPipeline(this.finalPipeline);
+    finalPass.setBindGroup(0, this.finalBindGroup);
+    finalPass.draw(3);
+    finalPass.end();
+
     this.device.queue.submit([encoder.finish()]);
   }
 }
@@ -658,7 +1029,8 @@ export async function createRenderer(canvas, trailCanvas) {
     const device = await adapter.requestDevice();
     const context = canvas.getContext("webgpu");
     const format = navigator.gpu.getPreferredCanvasFormat();
-    context.configure({ device, format, alphaMode: "premultiplied" });
+    context.configure({ device, format, alphaMode: "opaque" });
+    trailCanvas.style.display = "none";
     return new WebGpuRenderer(canvas, trailCanvas, device, context, format);
   } catch (error) {
     console.warn("WebGPU unavailable; using Canvas fallback", error);

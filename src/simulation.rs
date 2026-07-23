@@ -1,7 +1,7 @@
 use std::f32::consts::TAU;
 
 const DEFAULT_PARTICLES: usize = 1_200;
-const MAX_PARTICLES: usize = 1_600;
+const MAX_PARTICLES: usize = 4_096;
 const MAX_SPEED: f32 = 0.48;
 const REPULSION_RADIUS: f32 = 0.018;
 const REPULSION_STRENGTH: f32 = 0.56;
@@ -12,8 +12,8 @@ const COLONY_COUNT: usize = 24;
 const SENSE_RADIUS: f32 = 0.24;
 const CROSS_MOTION_BOOST: f32 = 2.5;
 const POINTER_REACH: f32 = 0.42;
-const GRID_SIDE: usize = 20;
-const GRID_CELL_SIZE: f32 = 2.0 / GRID_SIDE as f32;
+const GRID_SIDE: usize = 8;
+const MAX_FORMATION_VOICES: usize = 8;
 
 #[derive(Clone, Copy, Debug)]
 struct Species {
@@ -92,37 +92,154 @@ impl SmallRng {
     }
 }
 
-#[derive(Debug)]
-struct SpatialGrid {
-    cells: Vec<Vec<usize>>,
+/// One interacting particle pair, recorded once per step. `dx`/`dy` point from
+/// particle `b` toward particle `a`, so `b`'s force uses the negated direction.
+#[derive(Clone, Copy, Debug)]
+struct Pair {
+    a: u32,
+    b: u32,
+    dx: f32,
+    dy: f32,
+    distance: f32,
 }
 
-impl SpatialGrid {
-    fn new(particles: &[Particle]) -> Self {
-        let mut cells: Vec<Vec<usize>> = (0..GRID_SIDE * GRID_SIDE)
-            .map(|_| Vec::with_capacity(8))
-            .collect();
-        for (index, particle) in particles.iter().enumerate() {
-            cells[cell_index(particle.x, particle.y)].push(index);
-        }
-        Self { cells }
-    }
+/// Reusable neighbour machinery: a flat counting-sort grid and the pair list
+/// built from it. Buffers keep their capacity between steps so the hot loop
+/// performs no allocation.
+#[derive(Debug, Default)]
+struct NeighbourScratch {
+    cell_starts: Vec<u32>,
+    cell_entries: Vec<u32>,
+    pairs: Vec<Pair>,
+    fields: Vec<f32>,
+    repulsion: Vec<f32>,
+    cross: Vec<f32>,
+    encounters: Vec<f32>,
+    growth_derivatives: Vec<f32>,
+    forces: Vec<(f32, f32)>,
+    parents: Vec<u32>,
+    cluster_sizes: Vec<u32>,
+}
 
-    fn visit_neighbours(&self, x: f32, y: f32, radius: f32, mut visit: impl FnMut(usize)) {
-        let centre_x = cell_coordinate(x) as isize;
-        let centre_y = cell_coordinate(y) as isize;
-        let reach = (radius / GRID_CELL_SIZE).ceil() as isize;
+impl NeighbourScratch {
+    /// Rebuild the grid and collect every unordered pair within `support`.
+    fn collect_pairs(&mut self, particles: &[Particle], support: f32) {
+        let count = particles.len();
+        let cells = GRID_SIDE * GRID_SIDE;
+        self.cell_starts.clear();
+        self.cell_starts.resize(cells + 1, 0);
+        self.cell_entries.clear();
+        self.cell_entries.resize(count, 0);
+
+        for particle in particles {
+            self.cell_starts[cell_index(particle.x, particle.y) + 1] += 1;
+        }
+        for cell in 0..cells {
+            self.cell_starts[cell + 1] += self.cell_starts[cell];
+        }
+        let mut cursor = self.cell_starts.clone();
+        for (index, particle) in particles.iter().enumerate() {
+            let cell = cell_index(particle.x, particle.y);
+            self.cell_entries[cursor[cell] as usize] = index as u32;
+            cursor[cell] += 1;
+        }
+
+        self.pairs.clear();
+        let support_sq = support * support;
         let side = GRID_SIDE as isize;
-        for offset_y in -reach..=reach {
-            let grid_y = (centre_y + offset_y).rem_euclid(side) as usize;
-            for offset_x in -reach..=reach {
-                let grid_x = (centre_x + offset_x).rem_euclid(side) as usize;
-                for &index in &self.cells[grid_y * GRID_SIDE + grid_x] {
-                    visit(index);
+        // Half stencil: each unordered cell pair is visited exactly once on the
+        // torus, and pairs inside a cell are taken with the triangular loop.
+        const HALF_STENCIL: [(isize, isize); 4] = [(1, 0), (-1, 1), (0, 1), (1, 1)];
+        for cell_y in 0..side {
+            for cell_x in 0..side {
+                let cell = (cell_y * side + cell_x) as usize;
+                let start = self.cell_starts[cell] as usize;
+                let end = self.cell_starts[cell + 1] as usize;
+                for slot_a in start..end {
+                    let a = self.cell_entries[slot_a];
+                    let pa = particles[a as usize];
+                    for slot_b in (slot_a + 1)..end {
+                        let b = self.cell_entries[slot_b];
+                        let pb = particles[b as usize];
+                        push_pair(&mut self.pairs, a, b, pa, pb, support_sq);
+                    }
+                }
+                for (offset_x, offset_y) in HALF_STENCIL {
+                    let other_x = (cell_x + offset_x).rem_euclid(side);
+                    let other_y = (cell_y + offset_y).rem_euclid(side);
+                    let other = (other_y * side + other_x) as usize;
+                    let other_start = self.cell_starts[other] as usize;
+                    let other_end = self.cell_starts[other + 1] as usize;
+                    for slot_a in start..end {
+                        let a = self.cell_entries[slot_a];
+                        let pa = particles[a as usize];
+                        for slot_b in other_start..other_end {
+                            let b = self.cell_entries[slot_b];
+                            let pb = particles[b as usize];
+                            push_pair(&mut self.pairs, a, b, pa, pb, support_sq);
+                        }
+                    }
                 }
             }
         }
     }
+
+    /// Accumulate per-particle fields and interaction energies from the pairs.
+    fn accumulate(&mut self, particles: &[Particle]) {
+        let count = particles.len();
+        reset(&mut self.fields, count);
+        reset(&mut self.repulsion, count);
+        reset(&mut self.cross, count);
+        reset(&mut self.encounters, count);
+
+        for pair in &self.pairs {
+            let a = pair.a as usize;
+            let b = pair.b as usize;
+            let species_a = particles[a].species as usize;
+            let species_b = particles[b].species as usize;
+            let distance = pair.distance;
+            if species_a == species_b {
+                let species = SPECIES[species_a];
+                if distance <= kernel_support(species) {
+                    let value = shell_kernel(distance, species);
+                    self.fields[a] += value;
+                    self.fields[b] += value;
+                }
+            } else if distance <= SENSE_RADIUS {
+                let sensed = sense_kernel(distance);
+                self.cross[a] += CROSS_SENSE[species_a][species_b] * sensed;
+                self.cross[b] += CROSS_SENSE[species_b][species_a] * sensed;
+                self.encounters[a] += sensed;
+                self.encounters[b] += sensed;
+            }
+            if distance < REPULSION_RADIUS {
+                let overlap = 1.0 - distance / REPULSION_RADIUS;
+                let value = REPULSION_STRENGTH * 0.5 * overlap * overlap;
+                self.repulsion[a] += value;
+                self.repulsion[b] += value;
+            }
+        }
+    }
+}
+
+fn push_pair(pairs: &mut Vec<Pair>, a: u32, b: u32, pa: Particle, pb: Particle, support_sq: f32) {
+    let (dx, dy) = torus_delta(pa.x, pa.y, pb.x, pb.y);
+    let distance_sq = dx * dx + dy * dy;
+    if distance_sq > support_sq {
+        return;
+    }
+    pairs.push(Pair {
+        a,
+        b,
+        dx,
+        dy,
+        distance: distance_sq.sqrt().max(0.000_1),
+    });
+}
+
+fn reset(buffer: &mut Vec<f32>, count: usize) {
+    buffer.clear();
+    buffer.resize(count, 0.0);
 }
 
 #[derive(Debug)]
@@ -132,9 +249,11 @@ pub(crate) struct Simulation {
     particles: Vec<Particle>,
     rng: SmallRng,
     metrics: [f32; 7],
+    formations: Vec<f32>,
     previous_energy: f32,
     previous_activity: f32,
     ecology: f32,
+    scratch: NeighbourScratch,
 }
 
 impl Simulation {
@@ -146,9 +265,11 @@ impl Simulation {
             particles: Vec::with_capacity(MAX_PARTICLES),
             rng: SmallRng::new(seed),
             metrics: [0.0; 7],
+            formations: Vec::new(),
             previous_energy: 0.5,
             previous_activity: 0.0,
             ecology: 1.0,
+            scratch: NeighbourScratch::default(),
         };
         simulation.reset(seed);
         simulation
@@ -191,8 +312,7 @@ impl Simulation {
         self.metrics = [0.0; 7];
         self.previous_energy = 0.5;
         self.previous_activity = 0.0;
-        let (fields, encounters) = measure_fields(&self.particles);
-        self.refresh_metrics(&fields, &encounters);
+        self.measure_and_refresh();
     }
 
     pub(crate) fn step(
@@ -210,98 +330,69 @@ impl Simulation {
         }
 
         let count = self.particles.len();
-        let grid = SpatialGrid::new(&self.particles);
-        let mut fields = vec![0.0_f32; count];
-        let mut repulsion_energies = vec![0.0_f32; count];
-        let mut cross_energies = vec![0.0_f32; count];
-        let mut encounters = vec![0.0_f32; count];
+        let support = max_support();
+        self.scratch.collect_pairs(&self.particles, support);
+        self.scratch.accumulate(&self.particles);
 
-        for i in 0..count {
-            let particle = self.particles[i];
-            let species_i = particle.species as usize;
-            let species = SPECIES[species_i];
-            let support = kernel_support(species).max(SENSE_RADIUS);
-            grid.visit_neighbours(particle.x, particle.y, support, |j| {
-                if i == j {
-                    return;
-                }
-                let other = self.particles[j];
-                let (dx, dy) = torus_delta(particle.x, particle.y, other.x, other.y);
-                let distance_sq = dx * dx + dy * dy;
-                if distance_sq > support * support {
-                    return;
-                }
-                let distance = distance_sq.sqrt().max(0.000_1);
-                let species_j = other.species as usize;
-                if species_i == species_j {
-                    if distance <= kernel_support(species) {
-                        fields[i] += shell_kernel(distance, species);
-                    }
-                } else if distance <= SENSE_RADIUS {
-                    let sensed = sense_kernel(distance);
-                    cross_energies[i] += CROSS_SENSE[species_i][species_j] * sensed;
-                    encounters[i] += sensed;
-                }
-                if distance < REPULSION_RADIUS {
-                    let overlap = 1.0 - distance / REPULSION_RADIUS;
-                    repulsion_energies[i] += REPULSION_STRENGTH * 0.5 * overlap * overlap;
-                }
-            });
+        let scratch = &mut self.scratch;
+        reset(&mut scratch.growth_derivatives, count);
+        scratch.forces.clear();
+        scratch.forces.resize(count, (0.0, 0.0));
+
+        for (index, particle) in self.particles.iter_mut().enumerate() {
+            let species = SPECIES[particle.species as usize];
+            let field = scratch.fields[index];
+            let growth = growth(field, species);
+            particle.energy = scratch.repulsion[index] - growth + scratch.cross[index] * 0.045;
+            scratch.growth_derivatives[index] =
+                growth * -2.0 * (field - species.growth_target) / species.growth_width.powi(2);
         }
 
-        let mut forces = vec![(0.0_f32, 0.0_f32); count];
-        for i in 0..count {
-            let particle = self.particles[i];
-            let species_i = particle.species as usize;
-            let species = SPECIES[species_i];
-            let growth = growth(fields[i], species);
-            self.particles[i].energy = repulsion_energies[i] - growth + cross_energies[i] * 0.045;
-            let growth_derivative =
-                growth * -2.0 * (fields[i] - species.growth_target) / species.growth_width.powi(2);
-            let support = kernel_support(species).max(SENSE_RADIUS);
+        let cross_gain = CROSS_MOTION_BOOST * self.ecology;
+        for pair in &scratch.pairs {
+            let a = pair.a as usize;
+            let b = pair.b as usize;
+            let species_a = self.particles[a].species as usize;
+            let species_b = self.particles[b].species as usize;
+            let distance = pair.distance;
 
-            grid.visit_neighbours(particle.x, particle.y, support, |j| {
-                if i == j {
-                    return;
+            // Shared symmetric parts of the derivative.
+            let repulsion_derivative = if distance < REPULSION_RADIUS {
+                -REPULSION_STRENGTH * (1.0 - distance / REPULSION_RADIUS) / REPULSION_RADIUS
+            } else {
+                0.0
+            };
+
+            let mut derivative_a = repulsion_derivative;
+            let mut derivative_b = repulsion_derivative;
+            if species_a == species_b {
+                let species = SPECIES[species_a];
+                if distance <= kernel_support(species) {
+                    let kernel = shell_kernel(distance, species);
+                    let kernel_derivative = kernel * -2.0 * (distance - species.kernel_radius)
+                        / species.kernel_width.powi(2);
+                    derivative_a += -scratch.growth_derivatives[a] * kernel_derivative;
+                    derivative_b += -scratch.growth_derivatives[b] * kernel_derivative;
                 }
-                let other = self.particles[j];
-                // The derivative is projected along the vector pointing away from
-                // the neighbour; this makes a negative overlap derivative repel.
-                let (dx, dy) = torus_delta(particle.x, particle.y, other.x, other.y);
-                let distance_sq = dx * dx + dy * dy;
-                if distance_sq > support * support {
-                    return;
-                }
-                let distance = distance_sq.sqrt().max(0.000_1);
-                let species_j = other.species as usize;
-                let same_species_derivative =
-                    if species_i == species_j && distance <= kernel_support(species) {
-                        let kernel = shell_kernel(distance, species);
-                        let kernel_derivative = kernel * -2.0 * (distance - species.kernel_radius)
-                            / species.kernel_width.powi(2);
-                        -growth_derivative * kernel_derivative
-                    } else {
-                        0.0
-                    };
-                let repulsion_derivative = if distance < REPULSION_RADIUS {
-                    -REPULSION_STRENGTH * (1.0 - distance / REPULSION_RADIUS) / REPULSION_RADIUS
-                } else {
-                    0.0
-                };
-                let cross_derivative = if species_i != species_j && distance <= SENSE_RADIUS {
-                    let sensed = sense_kernel(distance);
-                    CROSS_SENSE[species_i][species_j] * sensed * -2.0 * distance
-                        / SENSE_RADIUS.powi(2)
-                } else {
-                    0.0
-                };
-                let energy_derivative = repulsion_derivative
-                    + same_species_derivative
-                    + cross_derivative * CROSS_MOTION_BOOST * self.ecology;
-                let force = -energy_derivative * MOTION_SCALE * species.motion;
-                forces[i].0 += force * dx / distance;
-                forces[i].1 += force * dy / distance;
-            });
+            } else if distance <= SENSE_RADIUS {
+                let sensed = sense_kernel(distance) * -2.0 * distance / SENSE_RADIUS.powi(2);
+                derivative_a += CROSS_SENSE[species_a][species_b] * sensed * cross_gain;
+                derivative_b += CROSS_SENSE[species_b][species_a] * sensed * cross_gain;
+            }
+
+            // The derivative is projected along the vector pointing away from
+            // the neighbour; this makes a negative overlap derivative repel.
+            let motion_a = SPECIES[species_a].motion;
+            let motion_b = SPECIES[species_b].motion;
+            let inv_distance = 1.0 / distance;
+            let unit_x = pair.dx * inv_distance;
+            let unit_y = pair.dy * inv_distance;
+            let force_a = -derivative_a * MOTION_SCALE * motion_a;
+            let force_b = -derivative_b * MOTION_SCALE * motion_b;
+            scratch.forces[a].0 += force_a * unit_x;
+            scratch.forces[a].1 += force_a * unit_y;
+            scratch.forces[b].0 -= force_b * unit_x;
+            scratch.forces[b].1 -= force_b * unit_y;
         }
 
         if pointer_strength.abs() > f32::EPSILON || pointer_twist.abs() > f32::EPSILON {
@@ -312,8 +403,8 @@ impl Simulation {
                 let falloff = (-distance_sq / POINTER_REACH.powi(2)).exp();
                 let radial = pointer_strength * 0.030 * falloff / distance;
                 let tangential = pointer_twist * 0.025 * falloff / distance;
-                forces[index].0 += dx * radial - dy * tangential;
-                forces[index].1 += dy * radial + dx * tangential;
+                scratch.forces[index].0 += dx * radial - dy * tangential;
+                scratch.forces[index].1 += dy * radial + dx * tangential;
             }
         }
 
@@ -321,12 +412,12 @@ impl Simulation {
             let (centre_x, centre_y) = circular_centre(&self.particles);
             for (index, particle) in self.particles.iter().enumerate() {
                 let (dx, dy) = torus_delta(centre_x, centre_y, particle.x, particle.y);
-                forces[index].0 = forces[index].0 * 0.3 + dx * 0.16;
-                forces[index].1 = forces[index].1 * 0.3 + dy * 0.16;
+                scratch.forces[index].0 = scratch.forces[index].0 * 0.3 + dx * 0.16;
+                scratch.forces[index].1 = scratch.forces[index].1 * 0.3 + dy * 0.16;
             }
         }
 
-        for (particle, (force_x, force_y)) in self.particles.iter_mut().zip(forces) {
+        for (particle, (force_x, force_y)) in self.particles.iter_mut().zip(&scratch.forces) {
             let magnitude = (force_x * force_x + force_y * force_y).sqrt();
             let scale = if magnitude > MAX_SPEED {
                 MAX_SPEED / magnitude
@@ -340,7 +431,7 @@ impl Simulation {
             particle.y = wrap(particle.y + particle.vy * dt);
         }
 
-        self.refresh_metrics(&fields, &encounters);
+        self.refresh_metrics();
     }
 
     pub(crate) fn spawn_at(&mut self, x: f32, y: f32, count: usize) {
@@ -356,8 +447,7 @@ impl Simulation {
                 ..Particle::default()
             });
         }
-        let (fields, encounters) = measure_fields(&self.particles);
-        self.refresh_metrics(&fields, &encounters);
+        self.measure_and_refresh();
     }
 
     pub(crate) fn set_ecology(&mut self, ecology: f32) {
@@ -380,6 +470,13 @@ impl Simulation {
         self.metrics
     }
 
+    /// Up to eight of the largest connected formations, each reported as
+    /// `[x, y, size_share, species]`, ordered from largest to smallest. The
+    /// list length is always a multiple of four.
+    pub(crate) fn formations(&self) -> Vec<f32> {
+        self.formations.clone()
+    }
+
     pub(crate) fn particle_count(&self) -> usize {
         self.particles.len()
     }
@@ -388,9 +485,16 @@ impl Simulation {
         self.seed
     }
 
-    fn refresh_metrics(&mut self, fields: &[f32], encounters: &[f32]) {
+    fn measure_and_refresh(&mut self) {
+        self.scratch.collect_pairs(&self.particles, max_support());
+        self.scratch.accumulate(&self.particles);
+        self.refresh_metrics();
+    }
+
+    fn refresh_metrics(&mut self) {
         if self.particles.is_empty() {
             self.metrics = [0.0; 7];
+            self.formations.clear();
             return;
         }
 
@@ -410,8 +514,9 @@ impl Simulation {
             / 0.05)
             .clamp(0.0, 1.0);
         let energy = ((mean_energy + 1.0) * 0.5).clamp(0.0, 1.0);
-        let density = (fields.iter().sum::<f32>() / count / 0.46).clamp(0.0, 1.0);
-        let encounter_pressure = (encounters.iter().sum::<f32>() / count / 64.0).clamp(0.0, 1.0);
+        let density = (self.scratch.fields.iter().sum::<f32>() / count / 0.46).clamp(0.0, 1.0);
+        let encounter_pressure =
+            (self.scratch.encounters.iter().sum::<f32>() / count / 64.0).clamp(0.0, 1.0);
 
         let (centre_x, centre_y) = circular_centre(&self.particles);
         let mut direction_x = 0.0;
@@ -441,7 +546,7 @@ impl Simulation {
             0.0
         };
 
-        let formations = formation_count(&self.particles).clamp(1, 24) as f32;
+        let formations = self.measure_formations().clamp(1, 24) as f32;
         let transition = ((energy - self.previous_energy).abs() * 18.0
             + (activity - self.previous_activity).abs() * 2.6)
             .clamp(0.0, 1.0);
@@ -458,31 +563,73 @@ impl Simulation {
         self.previous_energy = energy;
         self.previous_activity = activity;
     }
-}
 
-fn measure_fields(particles: &[Particle]) -> (Vec<f32>, Vec<f32>) {
-    let grid = SpatialGrid::new(particles);
-    let mut fields = vec![0.0; particles.len()];
-    let mut encounters = vec![0.0; particles.len()];
-    for (i, particle) in particles.iter().copied().enumerate() {
-        let species_i = particle.species as usize;
-        let species = SPECIES[species_i];
-        let support = kernel_support(species).max(SENSE_RADIUS);
-        grid.visit_neighbours(particle.x, particle.y, support, |j| {
-            if i == j {
-                return;
+    /// Union-find over the already-collected pair list. Returns the number of
+    /// formations of at least four particles and records the largest ones with
+    /// their toroidal centroids for the audio layer.
+    fn measure_formations(&mut self) -> usize {
+        let count = self.particles.len();
+        let scratch = &mut self.scratch;
+        scratch.parents.clear();
+        scratch.parents.extend(0..count as u32);
+        for pair in &scratch.pairs {
+            if pair.distance > FORMATION_DISTANCE {
+                continue;
             }
-            let other = particles[j];
-            let (dx, dy) = torus_delta(other.x, other.y, particle.x, particle.y);
-            let distance = (dx * dx + dy * dy).sqrt();
-            if other.species == particle.species && distance <= kernel_support(species) {
-                fields[i] += shell_kernel(distance, species);
-            } else if other.species != particle.species && distance <= SENSE_RADIUS {
-                encounters[i] += sense_kernel(distance);
+            let a = pair.a as usize;
+            let b = pair.b as usize;
+            if self.particles[a].species == self.particles[b].species {
+                union(&mut scratch.parents, a, b);
             }
+        }
+
+        scratch.cluster_sizes.clear();
+        scratch.cluster_sizes.resize(count, 0);
+        for index in 0..count {
+            let root = find(&mut scratch.parents, index);
+            scratch.cluster_sizes[root] += 1;
+        }
+
+        let mut roots: Vec<usize> = (0..count)
+            .filter(|&index| scratch.cluster_sizes[index] >= 4)
+            .collect();
+        roots.sort_by(|&a, &b| {
+            scratch.cluster_sizes[b]
+                .cmp(&scratch.cluster_sizes[a])
+                .then(a.cmp(&b))
         });
+        let formation_count = roots.len().max(1);
+
+        roots.truncate(MAX_FORMATION_VOICES);
+        // Toroidal centroids via circular means, accumulated in one pass.
+        let mut sums = [[0.0_f32; 4]; MAX_FORMATION_VOICES];
+        let slot_of = |root: usize| roots.iter().position(|&r| r == root);
+        for index in 0..count {
+            let root = find(&mut scratch.parents, index);
+            let Some(slot) = slot_of(root) else { continue };
+            let particle = self.particles[index];
+            let angle_x = (particle.x + 1.0) * std::f32::consts::PI;
+            let angle_y = (particle.y + 1.0) * std::f32::consts::PI;
+            sums[slot][0] += angle_x.sin();
+            sums[slot][1] += angle_x.cos();
+            sums[slot][2] += angle_y.sin();
+            sums[slot][3] += angle_y.cos();
+        }
+
+        self.formations.clear();
+        for (slot, &root) in roots.iter().enumerate() {
+            let [sin_x, cos_x, sin_y, cos_y] = sums[slot];
+            let size = scratch.cluster_sizes[root] as f32;
+            let x = wrap(sin_x.atan2(cos_x) / std::f32::consts::PI - 1.0);
+            let y = wrap(sin_y.atan2(cos_y) / std::f32::consts::PI - 1.0);
+            self.formations.push(x);
+            self.formations.push(y);
+            self.formations.push(size / count as f32);
+            self.formations.push(self.particles[root].species as f32);
+        }
+
+        formation_count
     }
-    (fields, encounters)
 }
 
 fn shell_kernel(distance: f32, species: Species) -> f32 {
@@ -492,6 +639,12 @@ fn shell_kernel(distance: f32, species: Species) -> f32 {
 
 fn kernel_support(species: Species) -> f32 {
     species.kernel_radius + species.kernel_width * 3.5
+}
+
+fn max_support() -> f32 {
+    SPECIES.iter().fold(SENSE_RADIUS, |acc, species| {
+        acc.max(kernel_support(*species))
+    })
 }
 
 fn growth(field: f32, species: Species) -> f32 {
@@ -552,43 +705,19 @@ fn circular_centre(particles: &[Particle]) -> (f32, f32) {
     (wrap(x), wrap(y))
 }
 
-fn formation_count(particles: &[Particle]) -> usize {
-    let grid = SpatialGrid::new(particles);
-    let mut parents: Vec<usize> = (0..particles.len()).collect();
-    for i in 0..particles.len() {
-        let particle = particles[i];
-        grid.visit_neighbours(particle.x, particle.y, FORMATION_DISTANCE, |j| {
-            if j <= i || particles[j].species != particle.species {
-                return;
-            }
-            let (dx, dy) = torus_delta(particles[j].x, particles[j].y, particle.x, particle.y);
-            if dx * dx + dy * dy <= FORMATION_DISTANCE * FORMATION_DISTANCE {
-                union(&mut parents, i, j);
-            }
-        });
-    }
-
-    let mut sizes = vec![0_usize; particles.len()];
-    for index in 0..particles.len() {
-        let root = find(&mut parents, index);
-        sizes[root] += 1;
-    }
-    sizes.into_iter().filter(|&size| size >= 4).count().max(1)
-}
-
-fn find(parents: &mut [usize], mut index: usize) -> usize {
-    while parents[index] != index {
-        parents[index] = parents[parents[index]];
-        index = parents[index];
+fn find(parents: &mut [u32], mut index: usize) -> usize {
+    while parents[index] as usize != index {
+        parents[index] = parents[parents[index] as usize];
+        index = parents[index] as usize;
     }
     index
 }
 
-fn union(parents: &mut [usize], a: usize, b: usize) {
+fn union(parents: &mut [u32], a: usize, b: usize) {
     let root_a = find(parents, a);
     let root_b = find(parents, b);
     if root_a != root_b {
-        parents[root_b] = root_a;
+        parents[root_b] = root_a as u32;
     }
 }
 
@@ -606,6 +735,7 @@ mod tests {
         }
         assert_eq!(left.snapshot(), right.snapshot());
         assert_eq!(left.metrics(), right.metrics());
+        assert_eq!(left.formations(), right.formations());
     }
 
     #[test]
@@ -738,5 +868,71 @@ mod tests {
             present[record[2].floor() as usize] = true;
         }
         assert!(present.into_iter().all(|value| value));
+    }
+
+    #[test]
+    fn formations_report_positions_sizes_and_species() {
+        let mut simulation = Simulation::new(23, DEFAULT_PARTICLES);
+        for _ in 0..60 {
+            simulation.step(1.0 / 60.0, 0.0, 0.0, 0.0, 0.0, false);
+        }
+        let formations = simulation.formations();
+        assert!(!formations.is_empty());
+        assert_eq!(formations.len() % 4, 0);
+        assert!(formations.len() <= MAX_FORMATION_VOICES * 4);
+        let mut previous_share = f32::INFINITY;
+        for record in formations.chunks_exact(4) {
+            assert!((-1.0..=1.0).contains(&record[0]));
+            assert!((-1.0..=1.0).contains(&record[1]));
+            assert!(record[2] > 0.0 && record[2] <= 1.0);
+            assert!(record[2] <= previous_share);
+            previous_share = record[2];
+            assert!((0.0..SPECIES_COUNT as f32).contains(&record[3]));
+            assert_eq!(record[3], record[3].floor());
+        }
+    }
+
+    #[test]
+    fn pair_interactions_match_brute_force() {
+        // The grid/pair machinery must agree with a direct O(n^2) sweep.
+        let simulation = Simulation::new(17, 300);
+        let particles = simulation.particles.clone();
+        let mut scratch = NeighbourScratch::default();
+        scratch.collect_pairs(&particles, max_support());
+        scratch.accumulate(&particles);
+
+        let support = max_support();
+        for i in 0..particles.len() {
+            let mut field = 0.0_f32;
+            let mut encounters = 0.0_f32;
+            let species_i = particles[i].species as usize;
+            let species = SPECIES[species_i];
+            for (j, other) in particles.iter().enumerate() {
+                if i == j {
+                    continue;
+                }
+                let (dx, dy) = torus_delta(particles[i].x, particles[i].y, other.x, other.y);
+                let distance = (dx * dx + dy * dy).sqrt();
+                if distance > support {
+                    continue;
+                }
+                if other.species as usize == species_i {
+                    if distance <= kernel_support(species) {
+                        field += shell_kernel(distance.max(0.000_1), species);
+                    }
+                } else if distance <= SENSE_RADIUS {
+                    encounters += sense_kernel(distance.max(0.000_1));
+                }
+            }
+            assert!(
+                (field - scratch.fields[i]).abs() < 0.001,
+                "field mismatch at {i}: {field} vs {}",
+                scratch.fields[i]
+            );
+            assert!(
+                (encounters - scratch.encounters[i]).abs() < 0.01,
+                "encounter mismatch at {i}"
+            );
+        }
     }
 }

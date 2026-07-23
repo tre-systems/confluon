@@ -85,6 +85,9 @@
             <button id="new-seed" type="button">New field</button>
             <button id="settle" class="hold-button" type="button">Hold to gather</button>
             <button id="pause" type="button">Pause</button>
+            <button id="record" class="record-button" type="button">
+              Record <output id="record-time" hidden>0:00</output>
+            </button>
           </div>
 
           <section class="settings-grid" aria-label="Performance settings">
@@ -111,6 +114,18 @@
             <label class="setting-control">
               <span>TONE <output id="tone-label">WARM</output></span>
               <input id="tone" aria-label="Tone" type="range" min="0" max="100" value="55" />
+            </label>
+            <label class="setting-control">
+              <span>LIFE <output id="population-label">FULL</output></span>
+              <input
+                id="population"
+                aria-label="Particle population"
+                type="range"
+                min="600"
+                max="4096"
+                step="100"
+                value="2000"
+              />
             </label>
           </section>
 

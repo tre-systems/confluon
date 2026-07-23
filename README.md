@@ -14,18 +14,25 @@ of one evolving state.
 
 - An energy-inspired, three-population particle model with distinct shell fields,
   cyclic cross-population sensing, close-range repulsion, and performance forces.
+  A per-step pair list over a counting-sort grid keeps the hot loop allocation-free.
 - Deterministic reproduction from an integer seed and fixed simulation timestep.
-- A 1,200-particle field initialised as 24 compact colonies. The WebGPU renderer
-  accumulates every particle's shell kernel into a floating-point field texture, then
-  reveals growth contours behind small luminous particle cores and motion traces. A
-  cached-sprite Canvas 2D fallback preserves the same point-built image.
-- An audible WebAudio harmonic field with six sustained voices, sub foundation,
-  filtered air, sparse scale-locked tones, delay, generated reverb, compression,
+- A 2,000-particle field (adjustable from 600 to 4,096) initialised as 24 compact
+  colonies. The WebGPU renderer accumulates every particle's shell kernel into a
+  floating-point field texture, layers GPU-accumulated motion trails beneath growth
+  contours and luminous particle cores in an HDR target, then finishes with bloom,
+  ACES tone mapping, vignette, and grain. A cached-sprite Canvas 2D fallback
+  preserves the same point-built image.
+- An audible WebAudio harmonic field with six sustained voices, a formation choir
+  whose up-to-eight voices pan to the screen positions of the visible cell clusters,
+  sub foundation, filtered air, shimmer, sparse scale-locked tones, delay, a
+  generated early-reflection reverb, tape-style saturation, compression, limiting,
   and an output meter.
+- Lossless recording: a Record control taps the master bus through an AudioWorklet
+  and saves the take as a 32-bit float stereo WAV for release work.
 - Touch-friendly Gather, Orbit, and Divide gestures, plus seeding, settling, pausing,
-  and resetting.
+  and resetting. Gesture strikes sound from where they happen in the image.
 - Shareable performance settings for ecology, flow, touch strength, halo, visual
-  memory, tone, and level.
+  memory, tone, population, and level.
 - A discreet control panel that closes out of the image and fades completely after
   nine seconds of inactivity.
 - Native Rust tests for determinism, stability, bounded metrics, interaction, and

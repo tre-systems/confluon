@@ -29,7 +29,10 @@ signals:
 - directional coherence opens the sustained choir;
 - activity controls spatial width and delay feedback;
 - abrupt energy changes excite short resonant strikes;
-- connected formations select intervals from the partial lattice.
+- connected formations select intervals from the partial lattice;
+- each visible formation owns a sustained voice panned to its screen position and
+  weighted by its size, and a newly born formation rings an emergence bell from
+  where it appeared;
 - cross-population encounter pressure brightens the field, widens its tuning, and
   shortens the space between sparse tones.
 
@@ -55,6 +58,8 @@ The visual image and the audio mix read the same deterministic simulation snapsh
 - Touch changes the strength of all direct gestures.
 - Halo and Memory shape the rendered field and motion history.
 - Tone tilts the shared WebAudio spectrum between dark and bright.
+- Life sets the particle population, from a sparse 600 to a teeming 4,096.
+- Record captures the master output to a 32-bit float WAV until pressed again.
 
 The settings and selected gesture are encoded in the URL with the seed. They are
 therefore part of a reproducible performance state rather than hidden preferences.

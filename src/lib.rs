@@ -57,6 +57,12 @@ impl Engine {
         self.simulation.metrics().to_vec()
     }
 
+    /// Up to eight of the largest connected formations as flat
+    /// `[x, y, size_share, species]` records, largest first.
+    pub fn formations(&self) -> Vec<f32> {
+        self.simulation.formations()
+    }
+
     pub fn particle_count(&self) -> usize {
         self.simulation.particle_count()
     }
