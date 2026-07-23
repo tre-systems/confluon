@@ -8,6 +8,7 @@
     "build:wasm": "wasm-pack build --target web --out-dir pkg --out-name geno5 --release",
     "dev": "npm run build:wasm && vite",
     "build": "npm run build:wasm && vite build",
+    "video": "node scripts/produce-video.mjs",
     "deploy": "npm run build && wrangler deploy",
     "deploy:cloudflare": "wrangler deploy",
     "test:rust": "cargo test --all-targets",

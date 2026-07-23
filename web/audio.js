@@ -82,6 +82,11 @@ export class ConfluenceAudio {
       .connect(this.limiter)
       .connect(this.analyser)
       .connect(context.destination);
+    // The production capture pipeline records this second pull from the same
+    // mastered signal that reaches the speakers. Keeping the tap after the
+    // limiter makes browser video exports and interactive WAV takes agree.
+    this.captureDestination = context.createMediaStreamDestination();
+    this.limiter.connect(this.captureDestination);
 
     this.dry = context.createGain();
     this.dry.gain.value = 0.88;
@@ -528,6 +533,10 @@ export class ConfluenceAudio {
 
   isRecording() {
     return Boolean(this.recorder);
+  }
+
+  captureStream() {
+    return this.captureDestination?.stream ?? null;
   }
 
   reseed(seed) {

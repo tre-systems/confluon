@@ -578,6 +578,9 @@ function setAudioState() {
 
 function exposeDiagnostics() {
   window.geno5 = Object.freeze({
+    prepareCapture,
+    beginCapture,
+    captureAudioStream: () => audio.captureStream(),
     audioState: () => audio.state(),
     audioMeter: () => audio.meter(),
     renderer: () => renderer.kind,
@@ -585,8 +588,47 @@ function exposeDiagnostics() {
     particleCount: () => engine.particle_count(),
     fps: () => measuredFps,
     gestureMode: () => state.gestureMode,
+    seed: () => seed,
     settings: () => ({ ...settings }),
   });
+}
+
+async function prepareCapture() {
+  await audio.start();
+  audio.setLevel(settings.level);
+  audio.setPaused(true);
+  state.started = true;
+  state.running = false;
+  state.settle = false;
+  state.pointer.active = false;
+  state.previousTransition = 0;
+  accumulator = 0;
+  engine.reset(seed);
+  renderer.resetTrails();
+  audio.reseed(seed);
+  elements.welcome.hidden = true;
+  elements.gestureHint.classList.remove("visible");
+  setControlsOpen(false);
+  // Let the master reach silence before MediaRecorder starts. beginCapture()
+  // then opens it with the normal slow attack on the first recorded frame.
+  await new Promise((resolve) => window.setTimeout(resolve, 180));
+  return {
+    seed,
+    renderer: renderer.kind,
+    particles: engine.particle_count(),
+    settings: { ...settings },
+  };
+}
+
+function beginCapture() {
+  previousTime = performance.now() / 1000;
+  fpsWindowStarted = performance.now();
+  fpsFrameCount = 0;
+  measuredFps = 0;
+  accumulator = 0;
+  state.running = true;
+  audio.setPaused(false);
+  audio.wake(engine.metrics());
 }
 
 function eventPoint(event) {

@@ -1,6 +1,7 @@
 /dist/
 /node_modules/
 /pkg/
+/renders/
 /target/
 /.wrangler/
 .DS_Store

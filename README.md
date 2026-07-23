@@ -58,6 +58,31 @@ Run the complete verification gate with:
 npm run check
 ```
 
+## Produce video
+
+Create a synchronized, share-ready video from a seed:
+
+```sh
+npm run video -- --seed 12345 --duration 30
+```
+
+The production helper records the WebGPU field and mastered audio together, then
+encodes and verifies an H.264/AAC MP4. It supports landscape, square, 4:5 portrait,
+9:16 story, 4K, and custom sizes; MP4 and WebM can be generated together:
+
+```sh
+npm run video -- \
+  --seed 12345 \
+  --duration 30 \
+  --formats landscape,square,portrait,story \
+  --containers mp4,webm
+```
+
+Each output includes a PNG preview and a JSON manifest with the engine revision,
+seed, performance settings, resolution, frame cadence, duration, and codecs. See
+[Video production](docs/VIDEO_PRODUCTION.md) for format presets, codec choices, and
+requirements.
+
 ## Deployment
 
 Every passing push to `main` deploys the production build to Cloudflare Workers
@@ -93,6 +118,8 @@ seed and its ecology, flow, look, tone, and selected gesture can be shared toget
 - [Architecture](docs/ARCHITECTURE.md) — simulation, render, and audio contracts.
 - [Research basis](docs/RESEARCH.md) — what was learned from the Particle Lenia
   reference and what this implementation changes.
+- [Video production](docs/VIDEO_PRODUCTION.md) — reproducible local capture and
+  share-format exports.
 
 ## Research basis and attribution
 

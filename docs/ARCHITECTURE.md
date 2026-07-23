@@ -26,6 +26,23 @@ parts:
 `web/app.js` is the thin frame coordinator. Simulation state does not live in the
 renderer or audio layer.
 
+## Production capture
+
+`npm run video` builds and serves the local production artifact, opens a fresh
+Chrome profile at each requested output size, and drives the narrow capture API
+exposed as `window.geno5`. `prepareCapture()` starts and silences the audio graph,
+resets the seeded engine, clears visual history, and returns the active settings;
+`beginCapture()` releases the simulation and master gain on the first recorded
+frame. The canvas stream and a `MediaStreamAudioDestinationNode` tapped after the
+safety limiter are combined in one `MediaRecorder`, keeping picture and mastered
+audio on the same browser clock.
+
+The local script receives chunked WebM data without holding a long capture in
+browser memory. It can retain a verified VP9/Opus WebM and/or transcode an
+H.264/HEVC + AAC MP4 with fast-start metadata. Every aspect-ratio variant is a
+fresh run from the same seed and URL settings and receives a preview plus a JSON
+manifest containing the source revision and probed stream metadata.
+
 ## Frame contract
 
 At a fixed timestep the browser calls:
