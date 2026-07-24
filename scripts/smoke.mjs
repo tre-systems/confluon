@@ -47,7 +47,7 @@ try {
     manifestHref: document.querySelector('link[rel="manifest"]')?.href,
   }));
   if (initial.title !== "Confluon") throw new Error(`unexpected title: ${initial.title}`);
-  if (!["WEBGPU", "CANVAS 2D"].includes(initial.renderer)) {
+  if (!["WEBGPU", "CANVAS"].includes(initial.renderer)) {
     throw new Error(`unexpected renderer: ${initial.renderer}`);
   }
   if (initial.particles < 600 || initial.canvasWidth === 0 || initial.canvasHeight === 0) {
@@ -115,10 +115,27 @@ try {
   if (serviceWorkerState !== "activated") {
     throw new Error(`service worker is ${serviceWorkerState}`);
   }
-  await context.setOffline(true);
-  const offlineResponse = await page.reload({ waitUntil: "domcontentloaded" });
+
+  await page.goto(new URL("/?renderer=canvas&seed=424242", baseUrl).href, {
+    waitUntil: "domcontentloaded",
+  });
   await page.waitForFunction(() => Boolean(window.geno5), null, { timeout: 20_000 });
-  if (!offlineResponse?.ok()) throw new Error("offline app shell did not load");
+  const fallbackRenderer = await page.evaluate(() => window.geno5.renderer());
+  if (fallbackRenderer !== "CANVAS") {
+    throw new Error(`Canvas fallback returned ${fallbackRenderer}`);
+  }
+
+  await context.setOffline(true);
+  const offlineShell = await page.evaluate(async () => {
+    const response = await fetch("/", { cache: "reload" });
+    return {
+      ok: response.ok,
+      containsInstrument: (await response.text()).includes('id="instrument"'),
+    };
+  });
+  if (!offlineShell.ok || !offlineShell.containsInstrument) {
+    throw new Error("service worker did not serve the cached app shell offline");
+  }
   await context.setOffline(false);
 
   const ignoredErrors = browserErrors.filter(
@@ -130,7 +147,7 @@ try {
   }
 
   console.log(
-    `smoke: ${initial.renderer.toLowerCase()}, ${initial.particles} particles, audio started, offline PWA/privacy/404 healthy`,
+    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, audio started, offline PWA/privacy/404 healthy`,
   );
 } finally {
   await browser?.close();
