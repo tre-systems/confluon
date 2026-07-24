@@ -1,0 +1,36 @@
+{
+  "icons": [
+    {
+      "source": "icon.svg",
+      "output": "icon-192.png",
+      "width": 192,
+      "height": 192,
+      "sourceSha256": "86b912589af0e39cf54e81839ee5d3c783f733e607e5ac2a01d250679bd044ef",
+      "outputSha256": "e7dbe905882ac3a682b6f7a6e5c4c61f15c700a68235812260f7a5eccab3159a"
+    },
+    {
+      "source": "icon.svg",
+      "output": "icon-512.png",
+      "width": 512,
+      "height": 512,
+      "sourceSha256": "86b912589af0e39cf54e81839ee5d3c783f733e607e5ac2a01d250679bd044ef",
+      "outputSha256": "697d51cd84909e137d8a9eae5acf8e2671cd95db3e6ba234e25f109acd98a20f"
+    },
+    {
+      "source": "icon.svg",
+      "output": "apple-touch-icon.png",
+      "width": 180,
+      "height": 180,
+      "sourceSha256": "86b912589af0e39cf54e81839ee5d3c783f733e607e5ac2a01d250679bd044ef",
+      "outputSha256": "8af288604edbdb759ef44f66444debb0f349f2510834cb5ada26b615104b412f"
+    },
+    {
+      "source": "icon-maskable.svg",
+      "output": "icon-maskable-512.png",
+      "width": 512,
+      "height": 512,
+      "sourceSha256": "3f65ffd16f11c54c084db982740af35a8354206e759310f1c995b3a4a68da504",
+      "outputSha256": "6449e35ea1516e94d8cd8d883bb1f81d533d3ab59a26aa3d5113db648ba06e31"
+    }
+  ]
+}

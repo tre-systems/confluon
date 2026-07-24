@@ -39,6 +39,7 @@
   "devDependencies": {
     "@sentry/vite-plugin": "^5.4.0",
     "playwright": "^1.61.1",
+    "sharp": "^0.35.3",
     "vite": "^7.0.0",
     "wrangler": "^4.114.0"
   },
