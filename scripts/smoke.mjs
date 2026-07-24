@@ -116,7 +116,7 @@ try {
     throw new Error(`service worker is ${serviceWorkerState}`);
   }
 
-  await page.goto(new URL("/?renderer=canvas&seed=424242", baseUrl).href, {
+  await page.goto(new URL("/?renderer=canvas-locked&seed=424242", baseUrl).href, {
     waitUntil: "domcontentloaded",
   });
   await page.waitForFunction(() => Boolean(window.geno5), null, { timeout: 20_000 });

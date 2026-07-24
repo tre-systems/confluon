@@ -46,7 +46,8 @@ button {
 }
 
 #traces,
-#field {
+#field,
+.fallback-field {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -62,6 +63,11 @@ button {
   z-index: 1;
   touch-action: none;
   cursor: grab;
+}
+
+.fallback-field {
+  z-index: 1;
+  pointer-events: none;
 }
 
 #field:active {

@@ -942,9 +942,10 @@ class WebGpuRenderer {
 }
 
 class CanvasRenderer {
-  constructor(canvas, trailCanvas) {
+  constructor(canvas, trailCanvas, context = canvas.getContext("2d", { alpha: true })) {
+    if (!context) throw new Error("Canvas 2D is unavailable");
     this.canvas = canvas;
-    this.context = canvas.getContext("2d", { alpha: true });
+    this.context = context;
     this.kind = "CANVAS";
     this.trails = new TrailRenderer(trailCanvas);
     this.spriteScale = 0;
@@ -1118,10 +1119,13 @@ function resizeCanvas(canvas) {
 }
 
 export async function createRenderer(canvas, trailCanvas, options = {}) {
+  const rendererMode = new URL(window.location.href).searchParams.get("renderer");
   const forceCanvas =
     options.forceCanvas ||
-    new URL(window.location.href).searchParams.get("renderer") === "canvas";
-  if (forceCanvas || !navigator.gpu) return new CanvasRenderer(canvas, trailCanvas);
+    rendererMode === "canvas" ||
+    rendererMode === "canvas-locked";
+  if (rendererMode === "canvas-locked") canvas.getContext("webgpu");
+  if (forceCanvas || !navigator.gpu) return createCanvasRenderer(canvas, trailCanvas);
 
   try {
     const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
@@ -1142,6 +1146,26 @@ export async function createRenderer(canvas, trailCanvas, options = {}) {
   } catch (error) {
     console.warn("WebGPU unavailable; using Canvas fallback", error);
     captureException(error, { stage: "renderer_initialization", fallback: "canvas" });
-    return new CanvasRenderer(canvas, trailCanvas);
+    return createCanvasRenderer(canvas, trailCanvas);
   }
+}
+
+function createCanvasRenderer(interactionCanvas, trailCanvas) {
+  trailCanvas.style.display = "";
+  let displayCanvas = interactionCanvas;
+  let context = displayCanvas.getContext("2d", { alpha: true });
+
+  if (!context) {
+    displayCanvas = interactionCanvas.parentElement?.querySelector(".fallback-field");
+    if (!displayCanvas) {
+      displayCanvas = document.createElement("canvas");
+      displayCanvas.className = "fallback-field";
+      displayCanvas.setAttribute("aria-hidden", "true");
+      interactionCanvas.before(displayCanvas);
+    }
+    interactionCanvas.style.opacity = "0";
+    context = displayCanvas.getContext("2d", { alpha: true });
+  }
+
+  return new CanvasRenderer(displayCanvas, trailCanvas, context);
 }
