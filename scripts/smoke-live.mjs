@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { setTimeout as wait } from "node:timers/promises";
 
-const target = "https://confluon.tre.systems/";
+const target = "https://confluon.com/";
 const maximumAttempts = 5;
 
 for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {

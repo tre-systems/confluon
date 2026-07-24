@@ -12,6 +12,14 @@ not_found_handling = "404-page"
 html_handling = "auto-trailing-slash"
 
 [[routes]]
+pattern = "confluon.com"
+custom_domain = true
+
+[[routes]]
+pattern = "www.confluon.com"
+custom_domain = true
+
+[[routes]]
 pattern = "confluon.tre.systems"
 custom_domain = true
 

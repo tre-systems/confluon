@@ -109,13 +109,14 @@ requirements.
 Every passing push to `main` deploys the production build to Cloudflare Workers
 through GitHub Actions:
 
-<https://confluon.tre.systems>
+<https://confluon.com>
 
 The workflow builds and tests before deploying. Pull requests run the same checks but
 never deploy. A manual production deployment can also be started from the repository's
 Actions page. Local deployment is available to an authenticated operator with
-`npm run deploy`. The former `geno-5.tre.systems` hostname permanently redirects to
-the branded domain while preserving paths, query parameters, and shared seeds.
+`npm run deploy`. The former `confluon.tre.systems` and `geno-5.tre.systems`
+hostnames, plus `www.confluon.com`, permanently redirect to the canonical domain
+while preserving paths, query parameters, and shared seeds.
 
 Production releases can provide these GitHub Actions secrets:
 
@@ -132,7 +133,7 @@ no-op; Feedback stays hidden rather than presenting a dead control. Every deploy
 candidate is dependency-audited, built, artifact-verified, and browser-smoked before
 release, then the public hostname is smoked again after deployment.
 
-See [Privacy](https://confluon.tre.systems/privacy) for the user-facing data boundary.
+See [Privacy](https://confluon.com/privacy) for the user-facing data boundary.
 
 ## Performance map
 
@@ -155,13 +156,13 @@ through the device share sheet or copy it when native sharing is unavailable.
 
 ## Design documents
 
-- [The field](https://confluon.tre.systems/field) — how the three-population
+- [The field](https://confluon.com/field) — how the three-population
   energy system forms, senses, and responds.
-- [The sound](https://confluon.tre.systems/sound) — how collective state becomes
+- [The sound](https://confluon.com/sound) — how collective state becomes
   harmony, texture, space, and gesture.
-- [How it is built](https://confluon.tre.systems/engineering) — the Rust/WASM,
+- [How it is built](https://confluon.com/engineering) — the Rust/WASM,
   WebGPU, WebAudio, reproducibility, and production architecture.
-- [Privacy](https://confluon.tre.systems/privacy) — what remains local and how
+- [Privacy](https://confluon.com/privacy) — what remains local and how
   optional diagnostics and feedback are handled.
 - [Concept](docs/CONCEPT.md) — creative axes and musical mapping.
 - [Architecture](docs/ARCHITECTURE.md) — simulation, render, and audio contracts.

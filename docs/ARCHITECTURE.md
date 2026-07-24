@@ -143,10 +143,10 @@ engine, audio seed, renderer history, and controls from explicit query parameter
 ## Hosting and delivery
 
 The production build is served as Cloudflare Workers Static Assets at
-`confluon.tre.systems`. The same Worker returns a path- and query-preserving 308
-redirect from the former `geno-5.tre.systems` hostname before serving assets through
-its binding. `wrangler.toml` owns both custom domains, the asset binding, clean HTML
-handling, and a real custom 404 response.
+`confluon.com`. The same Worker returns path- and query-preserving 308 redirects
+from `www.confluon.com`, `confluon.tre.systems`, and `geno-5.tre.systems` before
+serving assets through its binding. `wrangler.toml` owns the custom domains, the
+asset binding, clean HTML handling, and a real custom 404 response.
 
 Vite fingerprints the JavaScript, CSS, and WASM bundles. The post-build finalizer
 stamps a release-specific runtime configuration and service-worker cache from the
