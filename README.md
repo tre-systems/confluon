@@ -43,6 +43,11 @@ audio-reactive animation: the image and music are two views of one evolving stat
   state contract.
 - A discreet control panel that closes out of the image and fades completely after
   nine seconds of inactivity.
+- An installable PWA shell with versioned offline caching and an explicit update
+  prompt, so a running performance is never replaced underneath the player.
+- Privacy-scrubbed production diagnostics, an in-instrument feedback form, and a
+  quiet support link. Diagnostics and anonymous Web Analytics are build-time
+  opt-ins and remain absent when their deployment configuration is not present.
 - Native Rust tests for determinism, stability, bounded metrics, interaction, and
   particle-count conservation.
 
@@ -64,6 +69,14 @@ Run the complete verification gate with:
 
 ```sh
 npm run check
+```
+
+Exercise the built instrument in Chromium, including audio startup, PWA metadata,
+privacy, and 404 behavior, with:
+
+```sh
+npx playwright install chromium
+npm run smoke
 ```
 
 ## Produce video
@@ -104,6 +117,23 @@ Actions page. Local deployment is available to an authenticated operator with
 `npm run deploy`. The former `geno-5.tre.systems` hostname permanently redirects to
 the branded domain while preserving paths, query parameters, and shared seeds.
 
+Production releases can provide these GitHub Actions secrets:
+
+- `SENTRY_DSN` and `SENTRY_AUTH_TOKEN` activate browser error reporting, Feedback,
+  release tagging, and private source-map upload. The build targets the
+  `total-reality-engineering/confluon` Sentry project by default;
+  `SENTRY_ORG` and `SENTRY_PROJECT` can override it.
+- `CLOUDFLARE_WEB_ANALYTICS_TOKEN` activates Cloudflare's cookieless performance
+  beacon.
+- `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` authorize deployment.
+
+Without the Sentry or analytics values the corresponding browser integration is a
+no-op; Feedback stays hidden rather than presenting a dead control. Every deploy
+candidate is dependency-audited, built, artifact-verified, and browser-smoked before
+release, then the public hostname is smoked again after deployment.
+
+See [Privacy](https://confluon.tre.systems/privacy) for the user-facing data boundary.
+
 ## Performance map
 
 - Choose **Gather**, **Orbit**, or **Divide**, then press and drag to sculpt the local
@@ -131,6 +161,8 @@ through the device share sheet or copy it when native sharing is unavailable.
   harmony, texture, space, and gesture.
 - [How it is built](https://confluon.tre.systems/engineering) — the Rust/WASM,
   WebGPU, WebAudio, reproducibility, and production architecture.
+- [Privacy](https://confluon.tre.systems/privacy) — what remains local and how
+  optional diagnostics and feedback are handled.
 - [Concept](docs/CONCEPT.md) — creative axes and musical mapping.
 - [Architecture](docs/ARCHITECTURE.md) — simulation, render, and audio contracts.
 - [Research basis](docs/RESEARCH.md) — what was learned from the Particle Lenia

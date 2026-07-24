@@ -7,13 +7,23 @@
   "scripts": {
     "build:wasm": "wasm-pack build --target web --out-dir pkg --out-name geno5 --release",
     "dev": "npm run build:wasm && vite",
-    "build": "npm run build:wasm && vite build",
+    "build": "npm run build:wasm && vite build && node scripts/finalize-build.mjs && npm run verify:build",
     "video": "node scripts/produce-video.mjs",
     "deploy": "npm run build && wrangler deploy",
     "deploy:cloudflare": "wrangler deploy",
     "test:rust": "cargo test --all-targets",
     "check:rust": "cargo fmt --all -- --check && cargo clippy --all-targets -- -D warnings && cargo test --all-targets",
-    "check": "npm run check:rust && npm run build"
+    "check:js": "node scripts/check-js.mjs",
+    "icons": "node scripts/gen-icons.mjs",
+    "check:icons": "node scripts/gen-icons.mjs --check",
+    "test:pwa": "node --test scripts/pwa-update.test.mjs",
+    "verify:build": "node scripts/verify-build.mjs",
+    "smoke": "node scripts/smoke.mjs --dir dist",
+    "smoke:live": "node scripts/smoke.mjs --url https://confluon.tre.systems/",
+    "audit:npm": "npm audit --audit-level=moderate",
+    "audit:rust": "cargo audit",
+    "audit": "npm run audit:npm && npm run audit:rust",
+    "check": "npm run check:rust && npm run check:js && npm run check:icons && npm run test:pwa && npm run build"
   },
   "keywords": [
     "generative-music",
@@ -23,8 +33,16 @@
     "webassembly"
   ],
   "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22"
+  },
   "devDependencies": {
+    "@sentry/vite-plugin": "^5.4.0",
+    "playwright": "^1.61.1",
     "vite": "^7.0.0",
-    "wrangler": "^4.112.0"
+    "wrangler": "^4.114.0"
+  },
+  "dependencies": {
+    "@sentry/browser": "^10.67.0"
   }
 }

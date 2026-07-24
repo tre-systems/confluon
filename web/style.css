@@ -497,7 +497,9 @@ input[type="range"] {
 }
 
 .article-link,
-.share-link {
+.share-link,
+.panel-support a,
+.panel-support button {
   display: inline-grid;
   place-items: center;
   min-height: 28px;
@@ -519,10 +521,38 @@ input[type="range"] {
 .article-link:hover,
 .article-link:focus-visible,
 .share-link:hover,
-.share-link:focus-visible {
+.share-link:focus-visible,
+.panel-support a:hover,
+.panel-support a:focus-visible,
+.panel-support button:hover,
+.panel-support button:focus-visible {
   background: rgba(226, 232, 224, 0.08);
   color: var(--paper);
   outline: none;
+}
+
+.panel-support {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  margin-top: 3px;
+}
+
+.panel-support a,
+.panel-support button {
+  min-height: 24px;
+  padding-inline: 8px;
+  border: 0;
+  background: transparent;
+  color: rgba(142, 145, 142, 0.58);
+}
+
+.panel-support button[hidden] {
+  display: none;
+}
+
+.panel-support span {
+  color: rgba(223, 139, 97, 0.68);
 }
 
 .featured-fields {
@@ -719,7 +749,9 @@ input[type="range"] {
   }
 
   .article-link,
-  .share-link {
+  .share-link,
+  .panel-support a,
+  .panel-support button {
     min-height: 40px;
     padding-inline: 12px;
     font-size: 8px;

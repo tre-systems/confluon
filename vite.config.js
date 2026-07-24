@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 
-const articleRoutes = new Set(["/field", "/sound", "/engineering"]);
+const articleRoutes = new Set(["/field", "/sound", "/engineering", "/privacy"]);
 
 function rewriteArticleRoute(request) {
   if (!request.url) return;
@@ -28,6 +29,37 @@ function cleanArticleRoutes() {
   };
 }
 
-export default defineConfig({
-  plugins: [cleanArticleRoutes()],
+export default defineConfig(() => {
+  const sentryRelease = process.env.SENTRY_RELEASE || process.env.GITHUB_SHA;
+  const sentryOrg = process.env.SENTRY_ORG || "total-reality-engineering";
+  const sentryProject = process.env.SENTRY_PROJECT || "confluon";
+  const sentryUploadEnabled = Boolean(
+    process.env.SENTRY_DSN && process.env.SENTRY_AUTH_TOKEN && sentryRelease,
+  );
+  const plugins = [cleanArticleRoutes()];
+
+  if (sentryUploadEnabled) {
+    plugins.push(
+      sentryVitePlugin({
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+        org: sentryOrg,
+        project: sentryProject,
+        telemetry: false,
+        release: {
+          name: sentryRelease,
+        },
+        sourcemaps: {
+          filesToDeleteAfterUpload: ["dist/assets/**/*.map"],
+        },
+      }),
+    );
+  }
+
+  return {
+    plugins,
+    build: {
+      manifest: true,
+      sourcemap: sentryUploadEnabled ? "hidden" : false,
+    },
+  };
 });

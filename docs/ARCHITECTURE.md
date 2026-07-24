@@ -146,6 +146,25 @@ The production build is served as Cloudflare Workers Static Assets at
 `confluon.tre.systems`. The same Worker returns a path- and query-preserving 308
 redirect from the former `geno-5.tre.systems` hostname before serving assets through
 its binding. `wrangler.toml` owns both custom domains, the asset binding, clean HTML
-handling, and SPA fallback. GitHub Actions runs the complete verification gate before
-deploying a push to `main`; pull requests never deploy. Cloudflare credentials remain
-encrypted GitHub Actions secrets and are not available to the browser build.
+handling, and a real custom 404 response.
+
+Vite fingerprints the JavaScript, CSS, and WASM bundles. The post-build finalizer
+stamps a release-specific runtime configuration and service-worker cache from the
+actual entry manifest. The service worker precaches only the instrument shell and
+article surface, uses network-first navigation, and waits for explicit approval before
+activating a new release. This avoids replacing a running audiovisual performance.
+
+Production browser diagnostics are a deployment opt-in. Sentry receives scrubbed
+errors and a five-percent performance sample: query strings and fragments, cookies,
+request bodies, authorization headers, and user fields are removed, while replay and
+default PII are disabled. The feedback form requests no name, email, or screenshot and
+its control stays hidden when Sentry is unavailable. Source maps are generated only
+for an authenticated release upload and are removed before deployment. Cloudflare Web
+Analytics is independently opt-in and its beacon is suppressed when the browser sends
+Do Not Track.
+
+GitHub Actions audits npm and Rust dependencies, runs the deterministic native tests,
+checks JavaScript and PWA lifecycle logic, verifies the assembled artifact and security
+policy, opens the complete production build in Chromium, deploys only after those
+checks pass, and smoke-tests the public hostname. Cloudflare and Sentry credentials
+remain encrypted GitHub Actions secrets and are not available in the repository.

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Privacy — Confluon</title>
+    <meta
+      name="description"
+      content="How Confluon keeps the instrument local while using restrained diagnostics, feedback, and anonymous performance measurement."
+    />
+    <link rel="canonical" href="https://confluon.tre.systems/privacy" />
+    <meta name="robots" content="index,follow" />
+    <meta name="theme-color" content="#05070a" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/article.css" />
+  </head>
+  <body>
+    <nav class="top" aria-label="Article navigation">
+      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>CONFLUON</span>
+      <span class="spacer"></span>
+      <a href="/">Open the instrument</a>
+      <a href="/field">The field</a>
+      <a href="/sound">The sound</a>
+      <a href="/engineering">How it is built</a>
+    </nav>
+
+    <header class="hero">
+      <p class="eyebrow">Privacy</p>
+      <h1>The instrument stays with you.</h1>
+      <p class="lede">
+        Confluon runs locally in your browser. Its simulation, sound, gestures, recordings,
+        and rendered files do not need an account or a remote creative service.
+      </p>
+    </header>
+
+    <main>
+      <section>
+        <h2><span class="num" aria-hidden="true">01</span>What remains local</h2>
+        <p>
+          The Geno-5 simulation runs as WebAssembly on your device. WebGPU or Canvas draws the
+          field, and WebAudio makes and records the music in the browser. A WAV or video is
+          written to your device only when you ask for it; Confluon does not upload the take.
+        </p>
+        <p>
+          The address bar records the seed and visible performance settings so a take can be
+          reproduced. Those values leave your device only when you share or copy that address.
+          There are no accounts, advertising profiles, or cross-site identifiers.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">02</span>Diagnostics</h2>
+        <p>
+          When production diagnostics are enabled, Confluon sends software errors and a small
+          sample of performance timings to Sentry. This helps identify failed WebGPU devices,
+          audio startup problems, recording errors, and browser-specific crashes.
+        </p>
+        <p>
+          Diagnostic reports remove URL query strings and fragments, cookies, request bodies,
+          authorization headers, and user fields. Session replay is disabled, and Confluon does
+          not ask Sentry to collect default personal information. The Sentry project should also
+          be configured not to retain client IP addresses.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">03</span>Feedback and measurement</h2>
+        <p>
+          The optional Feedback control sends the message you write, together with restrained
+          technical context, to Sentry. It does not request your name or email and cannot attach
+          a screenshot. Please do not include private information in the message.
+        </p>
+        <p>
+          Confluon may use Cloudflare Web Analytics to measure anonymous page performance and
+          broad traffic. Cloudflare documents that its browser beacon does not use cookies or
+          browser storage and discards the source IP address at the nearest data centre. The
+          beacon is not loaded when your browser sends a Do Not Track preference.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num" aria-hidden="true">04</span>External links</h2>
+        <p>
+          Opening Ko-fi or a cited research source takes you to another service with its own
+          privacy terms. Confluon does not tell those services which seed or settings you were
+          playing.
+        </p>
+        <div class="note">
+          <span class="tag">Questions</span>
+          <p>
+            Use the Feedback control inside the instrument for a concise report. If diagnostics
+            are unavailable, the control stays hidden rather than sending data somewhere else.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        <a href="/">Open Confluon</a> · <a href="/field">The field</a> ·
+        <a href="/engineering">How it is built</a> ·
+        <a href="https://ko-fi.com/robgilks" target="_blank" rel="noopener noreferrer">Support Confluon</a>
+      </p>
+      <p>Confluon · powered by the Geno-5 deterministic engine.</p>
+    </footer>
+    <script src="/runtime-config.js"></script>
+    <script src="/telemetry.js"></script>
+    <script type="module" src="/pwa.js"></script>
+    <script type="module" src="/article.js"></script>
+  </body>
+</html>

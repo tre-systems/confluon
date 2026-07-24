@@ -1,3 +1,5 @@
+import { captureException, captureMessage } from "./monitoring.js";
+
 const MAX_PARTICLES = 4096;
 const FIELD_FORMAT = "rgba16float";
 const HDR_FORMAT = "rgba16float";
@@ -550,7 +552,7 @@ class TrailRenderer {
 }
 
 class WebGpuRenderer {
-  constructor(canvas, trailCanvas, device, context, format) {
+  constructor(canvas, trailCanvas, device, context, format, onDeviceLost) {
     this.canvas = canvas;
     this.trailCanvas = trailCanvas;
     this.device = device;
@@ -567,6 +569,18 @@ class WebGpuRenderer {
     this.clearTrails = true;
     device.addEventListener("uncapturederror", (event) => {
       console.error("WebGPU validation error:", event.error.message);
+      captureMessage("WebGPU validation error", {
+        renderer: "webgpu",
+        message: event.error.message,
+      });
+    });
+    device.lost.then((info) => {
+      captureMessage("WebGPU device lost", {
+        renderer: "webgpu",
+        reason: info.reason || "unknown",
+        message: info.message || "",
+      });
+      onDeviceLost?.(info);
     });
 
     this.particleBuffer = device.createBuffer({
@@ -1103,8 +1117,10 @@ function resizeCanvas(canvas) {
   return false;
 }
 
-export async function createRenderer(canvas, trailCanvas) {
-  const forceCanvas = new URL(window.location.href).searchParams.get("renderer") === "canvas";
+export async function createRenderer(canvas, trailCanvas, options = {}) {
+  const forceCanvas =
+    options.forceCanvas ||
+    new URL(window.location.href).searchParams.get("renderer") === "canvas";
   if (forceCanvas || !navigator.gpu) return new CanvasRenderer(canvas, trailCanvas);
 
   try {
@@ -1115,9 +1131,17 @@ export async function createRenderer(canvas, trailCanvas) {
     const format = navigator.gpu.getPreferredCanvasFormat();
     context.configure({ device, format, alphaMode: "opaque" });
     trailCanvas.style.display = "none";
-    return new WebGpuRenderer(canvas, trailCanvas, device, context, format);
+    return new WebGpuRenderer(
+      canvas,
+      trailCanvas,
+      device,
+      context,
+      format,
+      options.onDeviceLost,
+    );
   } catch (error) {
     console.warn("WebGPU unavailable; using Canvas fallback", error);
+    captureException(error, { stage: "renderer_initialization", fallback: "canvas" });
     return new CanvasRenderer(canvas, trailCanvas);
   }
 }

@@ -1,6 +1,11 @@
 import init, { Engine } from "/pkg/geno5.js";
 import { ConfluonAudio } from "./audio.js";
 import { createRenderer } from "./renderer.js";
+import {
+  captureException,
+  initializeMonitoring,
+  setRuntimeTag,
+} from "./monitoring.js";
 
 const FIXED_STEP = 1 / 30;
 const IDLE_CONTROLS_MS = 9000;
@@ -81,24 +86,47 @@ let shareFeedbackTimer;
 let visualSnapshot;
 let visualMetrics;
 
+await initializeMonitoring();
+
 try {
   await init();
   engine = new Engine(seed, settings.population);
   resetVisualSmoothing();
-  renderer = await createRenderer(elements.field, elements.traces);
+  renderer = await createRenderer(elements.field, elements.traces, {
+    onDeviceLost: recoverFromRendererLoss,
+  });
   audio = new ConfluonAudio(seed);
   applyPerformanceSettings(false);
   elements.renderer.textContent = renderer.kind;
+  setRuntimeTag("renderer", renderer.kind.toLowerCase());
   elements.seed.textContent = formatSeed(seed);
   installControls();
   exposeDiagnostics();
   requestAnimationFrame(frame);
 } catch (error) {
   console.error(error);
+  captureException(error, { stage: "instrument_initialization" });
   elements.begin.querySelector("span").textContent = "UNAVAILABLE";
   elements.begin.disabled = true;
   elements.runtimeStatus.textContent = "This browser could not start the instrument.";
   elements.runtimeStatus.classList.add("error");
+}
+
+async function recoverFromRendererLoss(info) {
+  if (renderer?.kind !== "WEBGPU") return;
+  elements.runtimeStatus.textContent = "Graphics device changed. Continuing with Canvas.";
+  try {
+    renderer = await createRenderer(elements.field, elements.traces, { forceCanvas: true });
+    elements.renderer.textContent = renderer.kind;
+    setRuntimeTag("renderer", renderer.kind.toLowerCase());
+  } catch (error) {
+    captureException(error, {
+      stage: "renderer_recovery",
+      reason: info?.reason || "unknown",
+    });
+    elements.runtimeStatus.textContent = "The graphics renderer could not recover.";
+    elements.runtimeStatus.classList.add("error");
+  }
 }
 
 function installControls() {
@@ -418,6 +446,7 @@ async function startExperience() {
     }, 1100);
   } catch (error) {
     console.error(error);
+    captureException(error, { stage: "audio_start" });
     elements.begin.querySelector("span").textContent = "TRY AGAIN";
     elements.audioState.dataset.state = "error";
     elements.audioState.textContent = "sound unavailable";
@@ -435,6 +464,7 @@ async function resumeSound() {
     setAudioState();
   } catch (error) {
     console.warn("Could not resume audio", error);
+    captureException(error, { stage: "audio_resume" });
   }
 }
 
@@ -637,6 +667,7 @@ async function toggleRecording() {
     }
   } catch (error) {
     console.error("Could not start recording", error);
+    captureException(error, { stage: "recording_start" });
     elements.runtimeStatus.textContent = "Recording is unavailable in this browser.";
   }
 }
@@ -824,6 +855,7 @@ async function sharePerformance() {
         elements.runtimeStatus.textContent = "Sharing cancelled.";
         return;
       }
+      captureException(error, { stage: "native_share" });
     }
   }
 

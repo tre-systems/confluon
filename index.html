@@ -8,6 +8,11 @@
       content="Confluon is a deterministic energy-driven audiovisual swarm instrument."
     />
     <meta name="theme-color" content="#05070a" />
+    <meta name="application-name" content="Confluon" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="canonical" href="https://confluon.tre.systems/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Confluon" />
@@ -35,10 +40,7 @@
       name="twitter:image:alt"
       content="Confluon particle populations meeting in a dark luminous field."
     />
-    <link
-      rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='23' fill='%2305070a' stroke='%237ad9da' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23dff'/%3E%3C/svg%3E"
-    />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <title>Confluon</title>
     <link rel="stylesheet" href="/web/style.css" />
   </head>
@@ -175,9 +177,18 @@
             <nav class="panel-links" aria-label="About and sharing">
               <a class="article-link" href="/field">About</a>
               <button id="share-link" class="share-link" type="button">Share</button>
+              <a class="article-link" href="/privacy">Privacy</a>
             </nav>
             <span id="renderer-value">INITIALISING</span>
           </div>
+
+          <nav class="panel-support" aria-label="Feedback and support">
+            <button id="feedback-button" type="button" hidden>Feedback</button>
+            <a href="https://ko-fi.com/robgilks" target="_blank" rel="noopener noreferrer">
+              <span aria-hidden="true">♥</span>
+              Support Confluon
+            </a>
+          </nav>
 
           <details class="featured-fields">
             <summary>
@@ -230,6 +241,9 @@
       <p id="runtime-status" class="runtime-status" role="status" aria-live="polite"></p>
     </main>
 
+    <script src="/runtime-config.js"></script>
+    <script src="/telemetry.js"></script>
+    <script type="module" src="/pwa.js"></script>
     <script type="module" src="/web/app.js"></script>
   </body>
 </html>
