@@ -25,7 +25,10 @@ internally designated Geno-5 engine and has three cooperating parts:
    `AudioWorklet` tap (`public/recorder.js`).
 
 `web/app.js` is the thin frame coordinator. Simulation state does not live in the
-renderer or audio layer.
+renderer or audio layer. For display, it applies a short frame-rate-independent
+interpolation to particle positions and visual metrics, including a slower release
+for transition brightness. This removes 30 Hz contour stepping and metric flashes
+without feeding smoothed values back into the simulation or audio state.
 
 ## Production capture
 

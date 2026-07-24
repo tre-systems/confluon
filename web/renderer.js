@@ -463,8 +463,15 @@ fn final_fs(input: VertexOutput) -> @location(0) vec4<f32> {
   let vignette = 1.0 - 0.26 * smoothstep(0.44, 1.12, length(input.uv - 0.5) * 1.45);
   colour *= vignette;
 
-  // Fine animated grain hides banding in the slow gradients.
-  let grain = (hash(input.uv * 1013.0 + fract(uniforms.time) * 61.7) - 0.5) * 0.012;
+  // Cross-fade low-rate grain frames so the texture hides banding without
+  // producing full-frame temporal sparkle around bright contours.
+  let grain_time = uniforms.time * 3.0;
+  let grain_frame = floor(grain_time);
+  let grain_mix = smoothstep(0.0, 1.0, fract(grain_time));
+  let grain_a = hash(input.uv * 1013.0 + vec2<f32>(grain_frame * 17.3, grain_frame * 29.1));
+  let grain_b = hash(input.uv * 1013.0 + vec2<f32>((grain_frame + 1.0) * 17.3,
+                                                   (grain_frame + 1.0) * 29.1));
+  let grain = (mix(grain_a, grain_b, grain_mix) - 0.5) * 0.009;
   colour = max(colour + vec3<f32>(grain), vec3<f32>(0.0));
   return vec4<f32>(colour, 1.0);
 }

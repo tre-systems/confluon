@@ -78,10 +78,13 @@ let renderer;
 let audio;
 let idleTimer;
 let shareFeedbackTimer;
+let visualSnapshot;
+let visualMetrics;
 
 try {
   await init();
   engine = new Engine(seed, settings.population);
+  resetVisualSmoothing();
   renderer = await createRenderer(elements.field, elements.traces);
   audio = new ConfluonAudio(seed);
   applyPerformanceSettings(false);
@@ -231,6 +234,7 @@ function installControls() {
     settings.population = clampPopulation(Number(elements.population.value));
     engine = new Engine(seed, settings.population);
     engine.set_ecology(settings.ecology);
+    resetVisualSmoothing();
     renderer.resetTrails();
     updateSettingLabels();
     syncSettingsUrl();
@@ -248,6 +252,7 @@ function installControls() {
       togglePause();
     } else if (event.code === "KeyR") {
       engine.reset(seed);
+      resetVisualSmoothing();
       renderer.resetTrails();
       audio.strike(0.62, 0.5);
     } else if (event.code === "KeyS") {
@@ -490,7 +495,8 @@ function frame(milliseconds) {
 
   const snapshot = engine.snapshot();
   const metrics = engine.metrics();
-  renderer.render(snapshot, metrics, time);
+  const visualState = smoothVisualState(snapshot, metrics, elapsed);
+  renderer.render(visualState.snapshot, visualState.metrics, time);
   audio.update(metrics, engine.formations());
   if (metrics[5] > 0.24 && state.previousTransition <= 0.24 && state.running) {
     audio.strike(metrics[5], metrics[0]);
@@ -512,6 +518,60 @@ function frame(milliseconds) {
   requestAnimationFrame(frame);
 }
 
+function resetVisualSmoothing() {
+  visualSnapshot = new Float32Array(engine.snapshot());
+  visualMetrics = Array.from(engine.metrics());
+}
+
+function smoothVisualState(snapshot, metrics, elapsed) {
+  if (!visualSnapshot || visualSnapshot.length !== snapshot.length) {
+    visualSnapshot = new Float32Array(snapshot);
+  } else {
+    const positionBlend = 1 - Math.exp(-elapsed / 0.052);
+    const attributeBlend = 1 - Math.exp(-elapsed / 0.09);
+    for (let offset = 0; offset < snapshot.length; offset += 4) {
+      visualSnapshot[offset] = smoothWrappedCoordinate(
+        visualSnapshot[offset],
+        snapshot[offset],
+        positionBlend,
+      );
+      visualSnapshot[offset + 1] = smoothWrappedCoordinate(
+        visualSnapshot[offset + 1],
+        snapshot[offset + 1],
+        positionBlend,
+      );
+      visualSnapshot[offset + 2] +=
+        (snapshot[offset + 2] - visualSnapshot[offset + 2]) * attributeBlend;
+      visualSnapshot[offset + 3] +=
+        (snapshot[offset + 3] - visualSnapshot[offset + 3]) * attributeBlend;
+    }
+  }
+
+  if (!visualMetrics || visualMetrics.length !== metrics.length) {
+    visualMetrics = Array.from(metrics);
+  } else {
+    for (let index = 0; index < metrics.length; index += 1) {
+      const target = metrics[index];
+      const timeConstant =
+        index === 5 ? (target > visualMetrics[index] ? 0.085 : 0.48) : 0.22;
+      const blend = 1 - Math.exp(-elapsed / timeConstant);
+      visualMetrics[index] += (target - visualMetrics[index]) * blend;
+    }
+  }
+
+  return { snapshot: visualSnapshot, metrics: visualMetrics };
+}
+
+function smoothWrappedCoordinate(current, target, blend) {
+  let difference = target - current;
+  if (difference > 1) difference -= 2;
+  if (difference < -1) difference += 2;
+  let value = current + difference * blend;
+  if (value > 1) value -= 2;
+  if (value < -1) value += 2;
+  return value;
+}
+
 function spawn(x, y) {
   engine.spawn_at(x, y, 50);
   audio.strike(0.84, engine.metrics()[0], x);
@@ -522,6 +582,7 @@ function newField() {
   crypto.getRandomValues(values);
   seed = values[0] || 1;
   engine.reset(seed);
+  resetVisualSmoothing();
   renderer.resetTrails();
   audio.reseed(seed);
   const url = new URL(window.location.href);
@@ -539,6 +600,7 @@ function loadFeaturedField(link) {
   seed = featuredSeed >>> 0;
   Object.assign(settings, readPerformanceSettings(featuredUrl));
   engine = new Engine(seed, settings.population);
+  resetVisualSmoothing();
   renderer.resetTrails();
   audio.reseed(seed);
   applyPerformanceSettings(false);
@@ -644,6 +706,7 @@ async function prepareCapture() {
   state.previousTransition = 0;
   accumulator = 0;
   engine.reset(seed);
+  resetVisualSmoothing();
   renderer.resetTrails();
   audio.reseed(seed);
   elements.welcome.hidden = true;
