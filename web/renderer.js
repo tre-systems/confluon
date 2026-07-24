@@ -288,10 +288,21 @@ struct ParticleVertexOutput {
   @location(4) @interpolate(flat) species: u32,
   @location(5) @interpolate(flat) tint: vec3<f32>,
   @location(6) @interpolate(flat) luminosity: f32,
+  @location(7) @interpolate(flat) character: f32,
 }
 
 fn particle_variation(index: u32, salt: f32) -> f32 {
   return fract(sin((f32(index) + salt) * 12.9898) * 43758.5453);
+}
+
+fn particle_colour(species: u32, variation: f32) -> vec3<f32> {
+  if (species == 1u) {
+    return mix(vec3<f32>(1.18, 0.18, 0.055), vec3<f32>(1.12, 0.64, 0.10), variation);
+  }
+  if (species == 2u) {
+    return mix(vec3<f32>(0.52, 0.34, 1.20), vec3<f32>(1.08, 0.30, 0.78), variation);
+  }
+  return mix(vec3<f32>(0.055, 0.94, 0.78), vec3<f32>(0.22, 0.61, 1.16), variation);
 }
 
 @vertex
@@ -303,12 +314,13 @@ fn particle_vs(
   let species = u32(floor(particle.energy));
   let local = corner(vertex_index);
   let breath = 0.5 + 0.5 * sin(uniforms.time * 0.57 + f32(instance_index) * 0.37);
-  let radius_variation = mix(0.92, 1.08, particle_variation(instance_index, 3.7));
-  let radius = (0.0102 + particle.speed * 0.0032 + breath * uniforms.coherence * 0.0017) * radius_variation;
+  let size_seed = particle_variation(instance_index, 3.7);
+  let radius_variation = mix(0.62, 1.42, pow(size_seed, 1.35));
+  let radius = (0.0098 + particle.speed * 0.0028 + breath * uniforms.coherence * 0.0014)
+    * radius_variation;
   let offset = vec2<f32>(local.x / max(uniforms.aspect, 0.01), local.y) * radius;
   let hue = particle_variation(instance_index, 11.3);
-  let cool = vec3<f32>(0.82, 1.04, 1.15);
-  let warm = vec3<f32>(1.14, 1.01, 0.82);
+  let character = particle_variation(instance_index, 47.9);
 
   var output: ParticleVertexOutput;
   output.position = vec4<f32>(particle.position + offset, 0.0, 1.0);
@@ -317,8 +329,9 @@ fn particle_vs(
   output.energy = fract(particle.energy);
   output.speed = particle.speed;
   output.breath = breath;
-  output.tint = species_colour(species) * mix(cool, warm, hue);
-  output.luminosity = mix(0.52, 1.22, particle_variation(instance_index, 29.1));
+  output.tint = particle_colour(species, hue);
+  output.luminosity = mix(0.40, 1.36, pow(particle_variation(instance_index, 29.1), 0.78));
+  output.character = character;
   return output;
 }
 
@@ -326,15 +339,20 @@ fn particle_vs(
 fn particle_fs(input: ParticleVertexOutput) -> @location(0) vec4<f32> {
   let distance = length(input.local);
   if (distance > 1.0) { discard; }
-  let core = exp(-distance * distance * 7.5);
-  let body = exp(-distance * distance * 2.9);
-  let halo = pow(max(0.0, 1.0 - distance), 2.35);
-  let pearl = vec3<f32>(0.91, 1.0, 0.95);
-  let colour = mix(input.tint * (0.9 + input.energy * 0.34), pearl * 1.12, core * 0.46);
+  let distance_squared = distance * distance;
+  let nucleus = exp(-distance_squared * mix(170.0, 270.0, input.character));
+  let body = exp(-distance_squared * mix(18.0, 31.0, input.character));
+  let halo = exp(-distance_squared * mix(3.1, 5.4, input.character))
+    * (1.0 - smoothstep(0.68, 1.0, distance));
+  let pearl = vec3<f32>(0.95, 1.08, 1.02);
+  let colour = input.tint * (0.82 + input.energy * 0.30);
   let pulse = 0.91 + input.breath * 0.14;
-  let intensity = (core * 1.18 + body * 0.56 + halo * (0.2 + input.speed * 0.1))
-    * input.luminosity * pulse * uniforms.visual_core;
-  return vec4<f32>(colour * intensity, intensity);
+  let luminosity = input.luminosity * pulse * uniforms.visual_core;
+  let coloured_light = colour
+    * (body * (0.50 + input.energy * 0.20) + halo * (0.16 + input.speed * 0.09));
+  let nucleus_light = pearl * nucleus * 2.15;
+  let alpha = (nucleus * 1.2 + body * 0.48 + halo * 0.16) * luminosity;
+  return vec4<f32>((coloured_light + nucleus_light) * luminosity, alpha);
 }
 `;
 
@@ -961,10 +979,11 @@ class CanvasRenderer {
       const breath = 0.5 + 0.5 * Math.sin(time * 0.57 + offset * 0.0925);
       const particleIndex = offset / 4;
       const variant = particleIndex % PARTICLE_SPRITE_VARIANTS;
-      const radiusVariation = 0.92 + particleVariation(particleIndex, 3) * 0.16;
+      const sizeSeed = particleVariation(particleIndex, 3);
+      const radiusVariation = 0.62 + Math.pow(sizeSeed, 1.35) * 0.8;
       const pulse = 0.91 + breath * 0.14;
-      const radius = (2.0 + speed * 1.25 + breath * metrics[1] * 0.48) * deviceScale() * radiusVariation;
-      const diameter = radius * (5.2 + energy * 0.45 + speed * 0.3) * this.visualCore;
+      const radius = (1.9 + speed * 1.1 + breath * metrics[1] * 0.42) * deviceScale() * radiusVariation;
+      const diameter = radius * (5.4 + energy * 0.4 + speed * 0.25) * this.visualCore;
       context.globalAlpha = pulse;
       context.drawImage(
         this.sprites[species][variant],
@@ -990,20 +1009,15 @@ class CanvasRenderer {
         const spriteContext = sprite.getContext("2d");
         const centre = sprite.width / 2;
         const hue = particleVariation(variant, 11);
-        const luminosity = 0.68 + particleVariation(variant, 29) * 0.6;
-        const [baseRed, baseGreen, baseBlue] = speciesColour(species);
-        const colourScale = [
-          0.82 + hue * 0.32,
-          1.04 - hue * 0.03,
-          1.15 - hue * 0.33,
-        ];
-        const [red, green, blue] = [baseRed, baseGreen, baseBlue].map((channel, index) =>
-          Math.round(Math.min(255, channel * colourScale[index])),
-        );
+        const luminosity = 0.4 + Math.pow(particleVariation(variant, 29), 0.78) * 0.96;
+        const character = particleVariation(variant, 47);
+        const [red, green, blue] = particleColour(species, hue);
         const gradient = spriteContext.createRadialGradient(centre, centre, 0, centre, centre, centre);
-        gradient.addColorStop(0, `rgba(239, 255, 247, ${0.72 + luminosity * 0.2})`);
-        gradient.addColorStop(0.18, `rgba(${red}, ${green}, ${blue}, ${0.5 + luminosity * 0.27})`);
-        gradient.addColorStop(0.54, `rgba(${red}, ${green}, ${blue}, ${0.1 + luminosity * 0.15})`);
+        gradient.addColorStop(0, `rgba(244, 255, 250, ${Math.min(1, 0.82 + luminosity * 0.13)})`);
+        gradient.addColorStop(0.055 + character * 0.025, `rgba(244, 255, 250, ${0.72 + luminosity * 0.12})`);
+        gradient.addColorStop(0.14 + character * 0.035, `rgba(${red}, ${green}, ${blue}, ${0.46 + luminosity * 0.28})`);
+        gradient.addColorStop(0.42 + character * 0.08, `rgba(${red}, ${green}, ${blue}, ${0.12 + luminosity * 0.14})`);
+        gradient.addColorStop(0.78, `rgba(${red}, ${green}, ${blue}, ${0.018 + luminosity * 0.03})`);
         gradient.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`);
         spriteContext.fillStyle = gradient;
         spriteContext.fillRect(0, 0, sprite.width, sprite.height);
@@ -1013,7 +1027,7 @@ class CanvasRenderer {
   }
 }
 
-const PARTICLE_SPRITE_VARIANTS = 12;
+const PARTICLE_SPRITE_VARIANTS = 24;
 
 function speciesOf(packedEnergy) {
   return Math.max(0, Math.min(2, Math.floor(packedEnergy)));
@@ -1034,6 +1048,18 @@ function speciesColour(species, brightness = 1) {
     [177, 116, 221],
   ];
   return colours[species].map((channel) => Math.round(Math.min(255, channel * brightness)));
+}
+
+function particleColour(species, variation) {
+  const ranges = [
+    [[14, 240, 199], [56, 156, 255]],
+    [[255, 46, 14], [255, 163, 26]],
+    [[133, 87, 255], [255, 77, 199]],
+  ];
+  const [start, end] = ranges[species];
+  return start.map((channel, index) =>
+    Math.round(Math.min(255, channel + (end[index] - channel) * variation)),
+  );
 }
 
 function particleVariation(index, salt = 0) {

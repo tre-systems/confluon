@@ -13,8 +13,9 @@ internally designated Geno-5 engine and has three cooperating parts:
    half-resolution trail textures accumulates motion history with a frame-rate
    independent exponential fade. A full-screen pass composes the background, trails,
    and the field mapped through the same growth-response ranges as the simulation
-   into a full-resolution HDR target, followed by an instanced pass for the particle
-   cores. A quarter-resolution bloom chain (soft-knee extract, separable Gaussian
+   into a full-resolution HDR target, followed by an instanced pass that gives each
+   particle a deterministic size, colour, luminosity, pin-point nucleus, and diffuse
+   halo. A quarter-resolution bloom chain (soft-knee extract, separable Gaussian
    blur) feeds the final pass, which applies ACES tone mapping, a gentle lift,
    vignette, and animated grain. There are no hulls or inferred nuclei: visible
    membranes are made by the particles and their measured field. A cached-sprite
