@@ -1,11 +1,11 @@
 {
-  "name": "geno-5",
+  "name": "confluon",
   "version": "0.1.0",
   "private": true,
   "description": "Confluon: an energy-driven audiovisual instrument",
   "type": "module",
   "scripts": {
-    "build:wasm": "wasm-pack build --target web --out-dir pkg --out-name geno5 --release",
+    "build:wasm": "wasm-pack build --target web --out-dir pkg --out-name confluon --release",
     "dev": "npm run build:wasm && vite",
     "build": "npm run build:wasm && vite build && node scripts/finalize-build.mjs && npm run verify:build",
     "video": "node scripts/produce-video.mjs",

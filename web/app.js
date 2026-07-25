@@ -1,4 +1,4 @@
-import init, { Engine } from "/pkg/geno5.js";
+import init, { Engine } from "/pkg/confluon.js";
 import { ConfluonAudio } from "./audio.js";
 import { createRenderer } from "./renderer.js";
 import {
@@ -710,7 +710,7 @@ function setAudioState() {
 }
 
 function exposeDiagnostics() {
-  window.geno5 = Object.freeze({
+  window.confluon = Object.freeze({
     prepareCapture,
     beginCapture,
     captureAudioStream: () => audio.captureStream(),

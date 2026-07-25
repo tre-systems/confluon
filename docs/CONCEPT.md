@@ -1,6 +1,6 @@
 # Confluon
 
-Confluon is an audiovisual instrument powered by the Geno-5 deterministic engine.
+Confluon is an audiovisual instrument powered by a deterministic Rust/WASM engine.
 
 ## One-sentence concept
 

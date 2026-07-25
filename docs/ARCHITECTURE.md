@@ -2,8 +2,8 @@
 
 ## System boundary
 
-Confluon is a static web app with no server-side runtime. It is powered by the
-internally designated Geno-5 engine and has three cooperating parts:
+Confluon is a static web app with no server-side runtime. It has three cooperating
+parts:
 
 1. `src/simulation.rs` owns deterministic particle state, the energy-inspired motion
    rule, performance forces, collective metrics, and per-formation summaries.
@@ -34,7 +34,7 @@ without feeding smoothed values back into the simulation or audio state.
 
 `npm run video` builds and serves the local production artifact, opens a fresh
 Chrome profile at each requested output size, and drives the narrow capture API
-exposed as `window.geno5`. `prepareCapture()` starts and silences the audio graph,
+exposed as `window.confluon`. `prepareCapture()` starts and silences the audio graph,
 resets the seeded engine, clears visual history, and returns the active settings;
 `beginCapture()` releases the simulation and master gain on the first recorded
 frame. The canvas stream and a `MediaStreamAudioDestinationNode` tapped after the

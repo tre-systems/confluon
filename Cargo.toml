@@ -1,10 +1,10 @@
 [package]
-name = "geno-5"
+name = "confluon"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "Geno-5, the deterministic swarm engine behind Confluon"
-repository = "https://github.com/tre-systems/geno-5"
+description = "The deterministic swarm engine behind Confluon"
+repository = "https://github.com/tre-systems/confluon"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

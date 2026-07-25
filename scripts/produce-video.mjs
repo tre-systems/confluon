@@ -462,7 +462,7 @@ async function recordFormat(options, format, baseUrl) {
   const previewPath = join(options.outDir, `${artifactName}-preview.png`);
   const manifestPath = join(options.outDir, `${artifactName}.json`);
   const sourcePath = join(options.outDir, `${artifactName}-source.webm`);
-  const temporary = mkdtempSync(join(tmpdir(), "geno5-video-"));
+  const temporary = mkdtempSync(join(tmpdir(), "confluon-video-"));
   const chunks = join(temporary, "chunks");
   const profile = join(temporary, "profile");
   mkdirSync(chunks);
@@ -520,14 +520,14 @@ async function recordFormat(options, format, baseUrl) {
       page,
       `(async () => {
         const started = performance.now();
-        while (!window.geno5 && performance.now() - started < 30000) {
+        while (!window.confluon && performance.now() - started < 30000) {
           await new Promise((resolve) => setTimeout(resolve, 50));
         }
-        if (!window.geno5) throw new Error("Geno-5 did not become ready");
+        if (!window.confluon) throw new Error("Confluon did not become ready");
         const style = document.createElement("style");
         style.textContent = "#welcome,#controls,#gesture-hint,#runtime-status{display:none!important}#instrument{min-height:0!important}body{cursor:none!important;overflow:hidden!important}";
         document.head.appendChild(style);
-        const result = await window.geno5.prepareCapture();
+        const result = await window.confluon.prepareCapture();
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         const canvas = document.getElementById("field");
         return {...result, width: canvas.width, height: canvas.height};
@@ -552,10 +552,10 @@ async function recordFormat(options, format, baseUrl) {
 
     const result = await evaluate(
       page,
-      `window.__geno5Capture = (async () => {
+      `window.__confluonCapture = (async () => {
         const canvas = document.getElementById("field");
         const video = canvas.captureStream(${options.fps});
-        const audio = window.geno5.captureAudioStream();
+        const audio = window.confluon.captureAudioStream();
         if (!${options.silent} && !audio?.getAudioTracks().length) {
           throw new Error("The mastered audio capture stream is unavailable");
         }
@@ -577,7 +577,7 @@ async function recordFormat(options, format, baseUrl) {
         const uploads = [];
         const samples = [];
         const timer = setInterval(() => {
-          const fps = window.geno5.fps();
+          const fps = window.confluon.fps();
           if (fps > 0) samples.push(fps);
         }, 500);
         recorder.ondataavailable = (event) => {
@@ -619,7 +619,7 @@ async function recordFormat(options, format, baseUrl) {
           };
         });
         recorder.start(1000);
-        window.geno5.beginCapture();
+        window.confluon.beginCapture();
         setTimeout(() => recorder.stop(), ${Math.round(options.duration * 1000)});
         return await stopped;
       })()`,
@@ -724,7 +724,7 @@ requireExecutable("ffmpeg", ["-version"], "ffmpeg is required (macOS: brew insta
 requireExecutable("ffprobe", ["-version"], "ffprobe is required (macOS: brew install ffmpeg)");
 
 if (!flag("--no-build")) {
-  console.log("● Building Geno-5…");
+  console.log("● Building Confluon…");
   run("npm", ["run", "build"], { inherit: true });
 }
 if (!existsSync("dist/index.html")) {

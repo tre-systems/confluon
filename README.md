@@ -7,12 +7,9 @@ avoidance pull the populations into encounters. Local crowding excites resonant
 voices, coherent movement opens a shared drone, and changes in collective energy
 produce strikes and transitions.
 
-The internal engine designation is **Geno-5**. Its Rust/WASM simulation drives both
-WebGPU visuals and WebAudio sound. There is no sequencer and no separate
-audio-reactive animation: the image and music are two views of one evolving state.
-
-> **Confluon** is the instrument. **Geno-5** is the internal engine that makes it
-> reproducible.
+Its deterministic Rust/WASM simulation drives both WebGPU visuals and WebAudio
+sound. There is no sequencer and no separate audio-reactive animation: the image
+and music are two views of one evolving state.
 
 ## What is here
 

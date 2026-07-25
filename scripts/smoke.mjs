@@ -33,13 +33,13 @@ try {
 
   const response = await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
   if (!response?.ok()) throw new Error(`root returned ${response?.status()}`);
-  await page.waitForFunction(() => Boolean(window.geno5), null, { timeout: 30_000 });
+  await page.waitForFunction(() => Boolean(window.confluon), null, { timeout: 30_000 });
   await page.waitForTimeout(750);
 
   const initial = await page.evaluate(() => ({
     title: document.title,
-    renderer: window.geno5.renderer(),
-    particles: window.geno5.particleCount(),
+    renderer: window.confluon.renderer(),
+    particles: window.confluon.particleCount(),
     canvasWidth: document.querySelector("#field")?.width || 0,
     canvasHeight: document.querySelector("#field")?.height || 0,
     feedbackHidden: document.querySelector("#feedback-button")?.hidden,
@@ -62,7 +62,7 @@ try {
 
   await page.click("#begin");
   await page.waitForFunction(
-    () => ["running", "suspended"].includes(window.geno5.audioState()),
+    () => ["running", "suspended"].includes(window.confluon.audioState()),
     null,
     { timeout: 15_000 },
   );
@@ -119,8 +119,8 @@ try {
   await page.goto(new URL("/?renderer=canvas-locked&seed=424242", baseUrl).href, {
     waitUntil: "domcontentloaded",
   });
-  await page.waitForFunction(() => Boolean(window.geno5), null, { timeout: 20_000 });
-  const fallbackRenderer = await page.evaluate(() => window.geno5.renderer());
+  await page.waitForFunction(() => Boolean(window.confluon), null, { timeout: 20_000 });
+  const fallbackRenderer = await page.evaluate(() => window.confluon.renderer());
   if (fallbackRenderer !== "CANVAS") {
     throw new Error(`Canvas fallback returned ${fallbackRenderer}`);
   }

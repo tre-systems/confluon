@@ -1,4 +1,4 @@
-use geno_5::Engine;
+use confluon::Engine;
 use std::time::Instant;
 
 fn main() {
