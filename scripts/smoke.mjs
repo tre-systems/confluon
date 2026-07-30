@@ -24,7 +24,10 @@ try {
       "--disable-renderer-backgrounding",
     ],
   });
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    hasTouch: true,
+  });
   let page = await context.newPage();
   watchPage(page, browserErrors);
 
@@ -97,26 +100,10 @@ try {
     throw new Error(`pointer poke did not reach audio: ${JSON.stringify(audiblePoke)}`);
   }
 
-  const touchClient = await context.newCDPSession(page);
-  await touchClient.send("Emulation.setTouchEmulationEnabled", {
-    enabled: true,
-    maxTouchPoints: 1,
-  });
-  const touchTap = async (id) => {
-    await touchClient.send("Input.dispatchTouchEvent", {
-      type: "touchStart",
-      touchPoints: [{ x: 900, y: 560, radiusX: 8, radiusY: 8, force: 1, id }],
-    });
-    await page.waitForTimeout(35);
-    await touchClient.send("Input.dispatchTouchEvent", {
-      type: "touchEnd",
-      touchPoints: [],
-    });
-  };
   const beforeDoubleTap = await page.evaluate(() => window.confluon.particleCount());
-  await touchTap(1);
+  await page.touchscreen.tap(900, 560);
   await page.waitForTimeout(120);
-  await touchTap(2);
+  await page.touchscreen.tap(900, 560);
   await page.waitForTimeout(120);
   const afterDoubleTap = await page.evaluate(() => window.confluon.particleCount());
   if (afterDoubleTap !== beforeDoubleTap + 50) {
