@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import sharp from "sharp";
 
 const root = process.cwd();
+const publicDirectory = join(root, "public");
 const checkMode = process.argv.includes("--check");
 const ledgerPath = join(root, "assets", "icons.generated.json");
 const targets = [
@@ -25,8 +26,8 @@ if (checkMode) {
     ? JSON.parse(readFileSync(ledgerPath, "utf8"))
     : { icons: [] };
   for (const [source, output, width, height] of targets) {
-    const sourcePath = join(root, "public", source);
-    const outputPath = join(root, "public", output);
+    const sourcePath = join(publicDirectory, source);
+    const outputPath = join(publicDirectory, output);
     const record = ledger.icons.find((icon) => icon.output === output);
     if (!record) {
       errors.push(`missing generation record for ${output}`);
@@ -50,29 +51,29 @@ if (checkMode) {
   }
   console.log(`gen-icons: ${targets.length} brand assets match their SVG sources`);
 } else {
-  await renderTargets(join(root, "public"), false);
+  await renderTargets();
   const ledger = {
     icons: targets.map(([source, output, width, height]) => ({
       source,
       output,
       width,
       height,
-      sourceSha256: digest(join(root, "public", source)),
-      outputSha256: digest(join(root, "public", output)),
+      sourceSha256: digest(join(publicDirectory, source)),
+      outputSha256: digest(join(publicDirectory, output)),
     })),
   };
   mkdirSync(dirname(ledgerPath), { recursive: true });
   writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
 }
 
-async function renderTargets(outputDirectory, quiet) {
+async function renderTargets() {
   for (const [source, output, width, height] of targets) {
-    const input = join(root, "public", source);
+    const input = join(publicDirectory, source);
     if (!existsSync(input)) throw new Error(`gen-icons: missing ${input}`);
-    const destination = join(outputDirectory, output);
+    const destination = join(publicDirectory, output);
     mkdirSync(dirname(destination), { recursive: true });
     await sharp(input).resize(width, height).png({ compressionLevel: 9 }).toFile(destination);
-    if (!quiet) console.log(`gen-icons: ${source} -> ${output} (${width}x${height})`);
+    console.log(`gen-icons: ${source} -> ${output} (${width}x${height})`);
   }
 }
 

@@ -23,16 +23,11 @@ const CONTROL_STEPS = {
 };
 
 /**
- * The Confluon audio engine. Everything is synthesized from native Web Audio
- * nodes — no samples, no worklets in the signal path — so the graph stays
- * self-contained and portable. The mix reads the same simulation state as the
- * image: sustained formation voices sit at the screen positions of the visible
- * cell clusters, continuous metrics steer the texture, and discrete events
- * (formations appearing, transitions, gestures) strike sparse tones.
+ * Projects simulation metrics, formations, and interactions through a
+ * self-contained native Web Audio graph.
  */
 export class ConfluonAudio {
   constructor(seed) {
-    this.seed = seed;
     this.random = seededRandom(seed ^ 0x91e1_0da5);
     this.context = null;
     this.voices = [];
@@ -45,7 +40,6 @@ export class ConfluonAudio {
     this.lastEmergence = -Infinity;
     this.nextNoteTime = Infinity;
     this.currentRoot = 48;
-    this.latestMetrics = [0.5, 0, 0, 0.5, 1, 0, 0];
     this.performance = {
       ecology: 1,
       flow: 1,
@@ -109,6 +103,7 @@ export class ConfluonAudio {
     this.analyser = context.createAnalyser();
     this.analyser.fftSize = 1024;
     this.analyser.smoothingTimeConstant = 0.72;
+    this.meterSamples = new Float32Array(this.analyser.fftSize);
     this.master
       .connect(this.highpass)
       .connect(this.saturator)
@@ -307,9 +302,8 @@ export class ConfluonAudio {
     }
   }
 
-  wake(metrics = this.latestMetrics) {
+  wake() {
     if (!this.context) return;
-    this.latestMetrics = Array.from(metrics);
     const now = this.context.currentTime;
     const root = this.currentRoot * 2;
     [0, 7, 14].forEach((semitones, index) => {
@@ -320,7 +314,6 @@ export class ConfluonAudio {
 
   update(metrics, formations = []) {
     if (!this.context) return;
-    this.latestMetrics = Array.from(metrics);
     const [energy, coherence, activity, density, formationCount, , encounters = 0] = metrics;
     const now = this.context.currentTime;
     const contact = this.interaction;
@@ -489,10 +482,9 @@ export class ConfluonAudio {
         voice: slot,
         degree: (slot * 2 + candidate.species * 3) % SCALE.length,
         lastSeen: now,
-        born: now,
       };
       this.tracked.push(track);
-      if (!this.paused && now - this.lastEmergence > 0.5 && now - (track.born ?? 0) >= 0) {
+      if (!this.paused && now - this.lastEmergence > 0.5) {
         // The emergence bell speaks from where the new cell appeared.
         const frequency = this.formationFrequency(track);
         this.playTone(frequency * 2, 0.028 + candidate.share * 0.1, now + 0.02, 6.5, clampPan(candidate.x));
@@ -506,7 +498,7 @@ export class ConfluonAudio {
       const frequency = this.formationFrequency(track);
       const level =
         Math.pow(track.share, 0.72) *
-        (0.045 + (metrics?.[METRIC_FIELD.COHERENCE] ?? 0) * 0.02);
+        (0.045 + metrics[METRIC_FIELD.COHERENCE] * 0.02);
       voice.primary.frequency.setTargetAtTime(frequency, now, 0.7);
       voice.partner.frequency.setTargetAtTime(frequency * 2.003, now, 0.7);
       voice.filter.frequency.setTargetAtTime(
@@ -600,10 +592,8 @@ export class ConfluonAudio {
   }
 
   reseed(seed) {
-    this.seed = seed;
     this.random = seededRandom(seed ^ 0x91e1_0da5);
     this.currentRoot = 48;
-    this.latestMetrics = [0.5, 0, 0, 0.5, 1, 0, 0];
     this.lastStrike = -Infinity;
     this.lastEmergence = -Infinity;
     this.nextNoteTime = this.context ? this.context.currentTime + 0.35 : Infinity;
@@ -688,7 +678,7 @@ export class ConfluonAudio {
     if (!this.analyser || !this.context) {
       return { state: this.state(), rms: 0, peak: 0, level: this.level, paused: this.paused };
     }
-    const samples = new Float32Array(this.analyser.fftSize);
+    const samples = this.meterSamples;
     this.analyser.getFloatTimeDomainData(samples);
     let sum = 0;
     let peak = 0;
@@ -730,7 +720,7 @@ function torusDistance(ax, ay, bx, by) {
 function claimPlaybackSession() {
   try {
     if (navigator.audioSession) navigator.audioSession.type = "playback";
-  } catch (_) {
+  } catch {
     // AudioSession is a best-effort WebKit enhancement.
   }
 }

@@ -16,13 +16,13 @@ export async function checkForServiceWorkerUpdate(registration, swUrl, fetcher =
 }
 
 export function installUpdateCheckTriggers(check, options = {}) {
-  const windowTarget = options.windowTarget || window;
-  const documentTarget = options.documentTarget || document;
-  const isVisible = options.isVisible || (() => document.visibilityState === "visible");
-  const isOnline = options.isOnline || (() => navigator.onLine);
-  const setIntervalFn = options.setIntervalFn || window.setInterval.bind(window);
-  const clearIntervalFn = options.clearIntervalFn || window.clearInterval.bind(window);
-  const intervalMs = options.intervalMs || UPDATE_CHECK_INTERVAL_MS;
+  const windowTarget = options.windowTarget ?? window;
+  const documentTarget = options.documentTarget ?? document;
+  const isVisible = options.isVisible ?? (() => document.visibilityState === "visible");
+  const isOnline = options.isOnline ?? (() => navigator.onLine);
+  const setIntervalFn = options.setIntervalFn ?? window.setInterval.bind(window);
+  const clearIntervalFn = options.clearIntervalFn ?? window.clearInterval.bind(window);
+  const intervalMs = options.intervalMs ?? UPDATE_CHECK_INTERVAL_MS;
   const checkWhenAvailable = () => {
     if (isVisible() && isOnline()) check();
   };
@@ -43,10 +43,10 @@ export function installUpdateCheckTriggers(check, options = {}) {
 }
 
 export function activateWaitingServiceWorker(worker, options = {}) {
-  const serviceWorkerContainer = options.serviceWorkerContainer || navigator.serviceWorker;
-  const reload = options.reload || (() => window.location.reload());
-  const setTimeoutFn = options.setTimeoutFn || window.setTimeout.bind(window);
-  const clearTimeoutFn = options.clearTimeoutFn || window.clearTimeout.bind(window);
+  const serviceWorkerContainer = options.serviceWorkerContainer ?? navigator.serviceWorker;
+  const reload = options.reload ?? (() => window.location.reload());
+  const setTimeoutFn = options.setTimeoutFn ?? window.setTimeout.bind(window);
+  const clearTimeoutFn = options.clearTimeoutFn ?? window.clearTimeout.bind(window);
   let finished = false;
 
   const finish = () => {

@@ -74,7 +74,6 @@ const precache = new Set([
   "/icons/icon-512.png",
   "/icons/icon-maskable-512.png",
   "/icons/icon.svg",
-  "/manifest.json",
   "/privacy",
   "/pwa-update.js",
   "/pwa.js",

@@ -23,7 +23,6 @@ const requiredFiles = [
   "icons/icon-maskable-512.png",
   "icons/icon.svg",
   "index.html",
-  "manifest.json",
   "og-card.png",
   "privacy.html",
   "pwa-update.js",
@@ -60,7 +59,6 @@ const headers = readText("_headers");
 const serviceWorker = readText("sw.js");
 const runtimeConfig = readText("runtime-config.js");
 const manifest = readText("site.webmanifest");
-const compatibilityManifest = readText("manifest.json");
 const privacy = readText("privacy.html");
 
 for (const token of [
@@ -103,10 +101,6 @@ try {
 } catch (error) {
   errors.push(`site.webmanifest is invalid JSON: ${error.message}`);
 }
-if (manifest !== compatibilityManifest) {
-  errors.push("site.webmanifest and manifest.json are not byte-identical");
-}
-
 verifyPng("og-card.png", 1200, 630);
 verifyPng("icons/apple-touch-icon.png", 180, 180);
 verifyPng("icons/icon-192.png", 192, 192);

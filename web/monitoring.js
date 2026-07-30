@@ -18,13 +18,14 @@ function scrubUrl(value) {
 }
 
 function scrubPossibleUrl(value) {
-  if (
-    typeof value !== "string" ||
-    (!/^https?:\/\//.test(value) && !value.startsWith("/"))
-  ) {
-    return value;
-  }
-  return scrubUrl(value);
+  return isPossibleUrl(value) ? scrubUrl(value) : value;
+}
+
+function isPossibleUrl(value) {
+  return (
+    typeof value === "string" &&
+    (/^https?:\/\//i.test(value) || value.startsWith("/"))
+  );
 }
 
 function scrubEvent(event) {
@@ -41,10 +42,7 @@ function scrubEvent(event) {
   }
   event.transaction = scrubPossibleUrl(event.transaction);
   for (const span of event.spans || []) {
-    if (
-      typeof span.description === "string" &&
-      (/^https?:\/\//.test(span.description) || span.description.startsWith("/"))
-    ) {
+    if (isPossibleUrl(span.description)) {
       span.description = scrubPossibleUrl(span.description);
     }
     if (!span.data) continue;

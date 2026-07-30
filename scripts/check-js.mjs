@@ -6,12 +6,14 @@ const roots = ["web", "public", "scripts"];
 const files = ["vite.config.js", "worker.js"];
 
 for (const root of roots) collect(root, files);
-for (const file of files.sort()) {
-  if (![".js", ".mjs"].includes(extname(file))) continue;
+const modules = files
+  .filter((file) => [".js", ".mjs"].includes(extname(file)))
+  .sort();
+for (const file of modules) {
   const result = spawnSync(process.execPath, ["--check", file], { stdio: "inherit" });
   if (result.status !== 0) process.exit(result.status || 1);
 }
-console.log(`check-js: ${files.length} JavaScript modules parsed`);
+console.log(`check-js: ${modules.length} JavaScript modules parsed`);
 
 function collect(dir, output) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

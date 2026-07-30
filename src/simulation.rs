@@ -1,7 +1,10 @@
-use std::f32::consts::TAU;
+use std::f32::consts::{PI, TAU};
 
 const DEFAULT_PARTICLES: usize = 2_000;
 const MAX_PARTICLES: usize = 4_096;
+const SNAPSHOT_STRIDE: usize = 4;
+const METRIC_COUNT: usize = 7;
+const FORMATION_STRIDE: usize = 4;
 const MAX_SPEED: f32 = 0.48;
 const REPULSION_RADIUS: f32 = 0.018;
 const REPULSION_STRENGTH: f32 = 0.56;
@@ -253,7 +256,7 @@ pub(crate) struct Simulation {
     initial_count: usize,
     particles: Vec<Particle>,
     rng: SmallRng,
-    metrics: [f32; 7],
+    metrics: [f32; METRIC_COUNT],
     formations: Vec<f32>,
     previous_energy: f32,
     previous_activity: f32,
@@ -273,8 +276,8 @@ impl Simulation {
             initial_count,
             particles: Vec::with_capacity(MAX_PARTICLES),
             rng: SmallRng::new(seed),
-            metrics: [0.0; 7],
-            formations: Vec::new(),
+            metrics: [0.0; METRIC_COUNT],
+            formations: Vec::with_capacity(MAX_FORMATION_VOICES * FORMATION_STRIDE),
             previous_energy: 0.5,
             previous_activity: 0.0,
             ecology: 1.0,
@@ -289,11 +292,7 @@ impl Simulation {
         self.rng = SmallRng::new(seed);
         self.particles.clear();
 
-        let count = if self.initial_count == 0 {
-            DEFAULT_PARTICLES
-        } else {
-            self.initial_count
-        };
+        let count = self.initial_count;
         let phase = self.rng.unit() * TAU;
         for index in 0..count {
             let colony = index * COLONY_COUNT / count;
@@ -318,7 +317,7 @@ impl Simulation {
             });
         }
 
-        self.metrics = [0.0; 7];
+        self.metrics = [0.0; METRIC_COUNT];
         self.previous_energy = 0.5;
         self.previous_activity = 0.0;
         self.measure_and_refresh();
@@ -333,10 +332,10 @@ impl Simulation {
         pointer_twist: f32,
         settle: bool,
     ) {
-        let dt = dt.clamp(0.0, 0.04);
-        if dt == 0.0 || self.particles.is_empty() {
+        if !dt.is_finite() || dt <= 0.0 || self.particles.is_empty() {
             return;
         }
+        let dt = dt.min(0.04);
 
         let count = self.particles.len();
         let support = max_support();
@@ -404,7 +403,12 @@ impl Simulation {
             scratch.forces[b].1 -= force_b * unit_y;
         }
 
-        if pointer_strength.abs() > f32::EPSILON || pointer_twist.abs() > f32::EPSILON {
+        let pointer_is_active = pointer_x.is_finite()
+            && pointer_y.is_finite()
+            && pointer_strength.is_finite()
+            && pointer_twist.is_finite()
+            && (pointer_strength.abs() > f32::EPSILON || pointer_twist.abs() > f32::EPSILON);
+        if pointer_is_active {
             for (index, particle) in self.particles.iter().enumerate() {
                 let (dx, dy) = torus_delta(pointer_x, pointer_y, particle.x, particle.y);
                 let distance_sq = dx * dx + dy * dy;
@@ -448,8 +452,12 @@ impl Simulation {
 
     pub(crate) fn spawn_at(&mut self, x: f32, y: f32, count: usize) {
         let available = MAX_PARTICLES.saturating_sub(self.particles.len());
+        let spawn_count = count.min(available);
+        if spawn_count == 0 || !x.is_finite() || !y.is_finite() {
+            return;
+        }
         let species = (self.rng.next_u32() as usize % SPECIES_COUNT) as u8;
-        for _ in 0..count.min(available) {
+        for _ in 0..spawn_count {
             let angle = self.rng.unit() * TAU;
             let radius = self.rng.unit().sqrt() * 0.05;
             self.particles.push(Particle {
@@ -463,11 +471,13 @@ impl Simulation {
     }
 
     pub(crate) fn set_ecology(&mut self, ecology: f32) {
-        self.ecology = ecology.clamp(0.25, 1.8);
+        if ecology.is_finite() {
+            self.ecology = ecology.clamp(0.25, 1.8);
+        }
     }
 
     pub(crate) fn snapshot(&self) -> Vec<f32> {
-        let mut values = Vec::with_capacity(self.particles.len() * 4);
+        let mut values = Vec::with_capacity(self.particles.len() * SNAPSHOT_STRIDE);
         for particle in &self.particles {
             values.push(particle.x);
             values.push(particle.y);
@@ -478,7 +488,7 @@ impl Simulation {
         values
     }
 
-    pub(crate) fn metrics(&self) -> [f32; 7] {
+    pub(crate) fn metrics(&self) -> [f32; METRIC_COUNT] {
         self.metrics
     }
 
@@ -505,7 +515,7 @@ impl Simulation {
 
     fn refresh_metrics(&mut self) {
         if self.particles.is_empty() {
-            self.metrics = [0.0; 7];
+            self.metrics = [0.0; METRIC_COUNT];
             self.formations.clear();
             return;
         }
@@ -626,8 +636,8 @@ impl Simulation {
                 continue;
             };
             let particle = self.particles[index];
-            let angle_x = (particle.x + 1.0) * std::f32::consts::PI;
-            let angle_y = (particle.y + 1.0) * std::f32::consts::PI;
+            let angle_x = (particle.x + 1.0) * PI;
+            let angle_y = (particle.y + 1.0) * PI;
             sums[slot][0] += angle_x.sin();
             sums[slot][1] += angle_x.cos();
             sums[slot][2] += angle_y.sin();
@@ -638,8 +648,8 @@ impl Simulation {
         for (slot, &root) in scratch.roots.iter().enumerate() {
             let [sin_x, cos_x, sin_y, cos_y] = sums[slot];
             let size = scratch.cluster_sizes[root] as f32;
-            let x = wrap(sin_x.atan2(cos_x) / std::f32::consts::PI - 1.0);
-            let y = wrap(sin_y.atan2(cos_y) / std::f32::consts::PI - 1.0);
+            let x = wrap(sin_x.atan2(cos_x) / PI - 1.0);
+            let y = wrap(sin_y.atan2(cos_y) / PI - 1.0);
             self.formations.push(x);
             self.formations.push(y);
             self.formations.push(size / count as f32);
@@ -719,8 +729,8 @@ fn circular_centre(particles: &[Particle]) -> (f32, f32) {
     let (sin_x, cos_x, sin_y, cos_y) = particles.iter().fold(
         (0.0, 0.0, 0.0, 0.0),
         |(sin_x, cos_x, sin_y, cos_y), particle| {
-            let angle_x = (particle.x + 1.0) * std::f32::consts::PI;
-            let angle_y = (particle.y + 1.0) * std::f32::consts::PI;
+            let angle_x = (particle.x + 1.0) * PI;
+            let angle_y = (particle.y + 1.0) * PI;
             (
                 sin_x + angle_x.sin(),
                 cos_x + angle_x.cos(),
@@ -729,8 +739,8 @@ fn circular_centre(particles: &[Particle]) -> (f32, f32) {
             )
         },
     );
-    let x = (sin_x / count).atan2(cos_x / count) / std::f32::consts::PI - 1.0;
-    let y = (sin_y / count).atan2(cos_y / count) / std::f32::consts::PI - 1.0;
+    let x = (sin_x / count).atan2(cos_x / count) / PI - 1.0;
+    let y = (sin_y / count).atan2(cos_y / count) / PI - 1.0;
     (wrap(x), wrap(y))
 }
 
@@ -775,6 +785,48 @@ mod tests {
     }
 
     #[test]
+    fn non_finite_step_values_do_not_poison_the_state() {
+        let mut reference = Simulation::new(41, 96);
+        let mut invalid_dt = Simulation::new(41, 96);
+        invalid_dt.step(f32::NAN, 0.0, 0.0, 0.0, 0.0, false);
+        assert_eq!(invalid_dt.snapshot(), reference.snapshot());
+        assert_eq!(invalid_dt.metrics(), reference.metrics());
+        assert_eq!(invalid_dt.formations(), reference.formations());
+
+        reference.step(1.0 / 90.0, 0.0, 0.0, 0.0, 0.0, false);
+        invalid_dt.step(1.0 / 90.0, f32::NAN, 0.0, 1.0, 0.0, false);
+        assert_eq!(invalid_dt.snapshot(), reference.snapshot());
+        assert_eq!(invalid_dt.metrics(), reference.metrics());
+        assert_eq!(invalid_dt.formations(), reference.formations());
+    }
+
+    #[test]
+    fn non_finite_ecology_is_ignored() {
+        let mut reference = Simulation::new(51, 144);
+        let mut invalid = Simulation::new(51, 144);
+        invalid.set_ecology(f32::NAN);
+        for _ in 0..20 {
+            reference.step(1.0 / 60.0, 0.0, 0.0, 0.0, 0.0, false);
+            invalid.step(1.0 / 60.0, 0.0, 0.0, 0.0, 0.0, false);
+        }
+        assert_eq!(invalid.snapshot(), reference.snapshot());
+    }
+
+    #[test]
+    fn rejected_spawns_are_deterministic_no_ops() {
+        let mut reference = Simulation::new(12, 72);
+        let mut rejected = Simulation::new(12, 72);
+        rejected.spawn_at(0.0, 0.0, 0);
+        rejected.spawn_at(f32::NAN, 0.0, 24);
+
+        reference.spawn_at(0.2, -0.1, 24);
+        rejected.spawn_at(0.2, -0.1, 24);
+        assert_eq!(rejected.snapshot(), reference.snapshot());
+        assert_eq!(rejected.metrics(), reference.metrics());
+        assert_eq!(rejected.formations(), reference.formations());
+    }
+
+    #[test]
     fn zero_particle_count_uses_the_public_default() {
         let simulation = Simulation::new(41, 0);
         assert_eq!(simulation.particle_count(), DEFAULT_PARTICLES);
@@ -786,7 +838,7 @@ mod tests {
         for _ in 0..600 {
             simulation.step(1.0 / 90.0, 0.2, -0.4, 0.0, 0.0, false);
         }
-        for record in simulation.snapshot().chunks_exact(4) {
+        for record in simulation.snapshot().chunks_exact(SNAPSHOT_STRIDE) {
             assert!(record.iter().all(|value| value.is_finite()));
             assert!((-1.0..=1.0).contains(&record[0]));
             assert!((-1.0..=1.0).contains(&record[1]));
@@ -841,9 +893,9 @@ mod tests {
         let before = simulation.particle_count();
         simulation.spawn_at(0.0, 0.0, 24);
         let snapshot = simulation.snapshot();
-        let species = snapshot[before * 4 + 2].floor();
-        assert!(snapshot[before * 4..]
-            .chunks_exact(4)
+        let species = snapshot[before * SNAPSHOT_STRIDE + 2].floor();
+        assert!(snapshot[before * SNAPSHOT_STRIDE..]
+            .chunks_exact(SNAPSHOT_STRIDE)
             .all(|record| record[2].floor() == species));
     }
 
@@ -915,7 +967,7 @@ mod tests {
     fn initial_field_contains_all_populations() {
         let simulation = Simulation::new(5, 72);
         let mut present = [false; SPECIES_COUNT];
-        for record in simulation.snapshot().chunks_exact(4) {
+        for record in simulation.snapshot().chunks_exact(SNAPSHOT_STRIDE) {
             present[record[2].floor() as usize] = true;
         }
         assert!(present.into_iter().all(|value| value));
@@ -929,10 +981,10 @@ mod tests {
         }
         let formations = simulation.formations();
         assert!(!formations.is_empty());
-        assert_eq!(formations.len() % 4, 0);
-        assert!(formations.len() <= MAX_FORMATION_VOICES * 4);
+        assert_eq!(formations.len() % FORMATION_STRIDE, 0);
+        assert!(formations.len() <= MAX_FORMATION_VOICES * FORMATION_STRIDE);
         let mut previous_share = f32::INFINITY;
-        for record in formations.chunks_exact(4) {
+        for record in formations.chunks_exact(FORMATION_STRIDE) {
             assert!((-1.0..=1.0).contains(&record[0]));
             assert!((-1.0..=1.0).contains(&record[1]));
             assert!(record[2] > 0.0 && record[2] <= 1.0);

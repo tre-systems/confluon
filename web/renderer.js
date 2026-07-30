@@ -8,6 +8,18 @@ import {
 
 const FIELD_FORMAT = "rgba16float";
 const HDR_FORMAT = "rgba16float";
+const SPECIES_COLOURS = [
+  [43, 177, 185],
+  [235, 83, 49],
+  [177, 116, 221],
+];
+const TRAIL_COLOURS = SPECIES_COLOURS.map((colour) => scaleColour(colour, 0.7));
+const HALO_COLOURS = SPECIES_COLOURS.map((colour) => scaleColour(colour, 0.72));
+const PARTICLE_COLOUR_RANGES = [
+  [[14, 240, 199], [56, 156, 255]],
+  [[255, 46, 14], [255, 163, 26]],
+  [[133, 87, 255], [255, 77, 199]],
+];
 
 const sharedWgsl = /* wgsl */ `
 struct Uniforms {
@@ -556,7 +568,7 @@ class TrailRenderer {
         if (Math.abs(dx) > 0.35 || Math.abs(dy) > 0.35) continue;
         const speed = snapshot[offset + PARTICLE_FIELD.SPEED];
         const packedEnergy = snapshot[offset + PARTICLE_FIELD.PACKED_SPECIES_ENERGY];
-        const [red, green, blue] = speciesColour(speciesOf(packedEnergy), 0.7);
+        const [red, green, blue] = TRAIL_COLOURS[speciesOf(packedEnergy)];
         const traceAlpha = (0.018 + speed * 0.11) * (0.42 + this.memory * 1.08);
         context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${traceAlpha})`;
         context.lineWidth = deviceScale() * (0.34 + speed * 0.5);
@@ -573,17 +585,18 @@ class TrailRenderer {
       }
     }
     context.globalCompositeOperation = "source-over";
-    this.previous = new Float32Array(snapshot);
+    if (this.previous?.length !== snapshot.length) {
+      this.previous = new Float32Array(snapshot.length);
+    }
+    this.previous.set(snapshot);
   }
 }
 
 class WebGpuRenderer {
-  constructor(canvas, trailCanvas, device, context, format, onDeviceLost) {
+  constructor(canvas, device, context, format, onDeviceLost) {
     this.canvas = canvas;
-    this.trailCanvas = trailCanvas;
     this.device = device;
     this.context = context;
-    this.format = format;
     this.kind = "WEBGPU";
     this.visualGlow = 1;
     this.visualCore = 1;
@@ -593,6 +606,7 @@ class WebGpuRenderer {
     this.sizedHeight = 0;
     this.trailIndex = 0;
     this.clearTrails = true;
+    this.uniformValues = new Float32Array(12);
     device.addEventListener("uncapturederror", (event) => {
       console.error("WebGPU validation error:", event.error.message);
       captureMessage("WebGPU validation error", {
@@ -846,24 +860,20 @@ class WebGpuRenderer {
 
     const particleCount = Math.min(MAX_PARTICLES, snapshot.length / PARTICLE_STRIDE);
     this.device.queue.writeBuffer(this.particleBuffer, 0, snapshot);
-    this.device.queue.writeBuffer(
-      this.uniformBuffer,
-      0,
-      new Float32Array([
-        this.canvas.width / this.canvas.height,
-        time,
-        dt,
-        metrics[METRIC_FIELD.COHERENCE],
-        metrics[METRIC_FIELD.DENSITY],
-        metrics[METRIC_FIELD.ENCOUNTERS] ?? 0,
-        metrics[METRIC_FIELD.ACTIVITY],
-        metrics[METRIC_FIELD.ENERGY],
-        this.visualGlow,
-        this.visualCore,
-        this.memory,
-        metrics[METRIC_FIELD.TRANSITION] ?? 0,
-      ]),
-    );
+    const uniforms = this.uniformValues;
+    uniforms[0] = this.canvas.width / this.canvas.height;
+    uniforms[1] = time;
+    uniforms[2] = dt;
+    uniforms[3] = metrics[METRIC_FIELD.COHERENCE];
+    uniforms[4] = metrics[METRIC_FIELD.DENSITY];
+    uniforms[5] = metrics[METRIC_FIELD.ENCOUNTERS] ?? 0;
+    uniforms[6] = metrics[METRIC_FIELD.ACTIVITY];
+    uniforms[7] = metrics[METRIC_FIELD.ENERGY];
+    uniforms[8] = this.visualGlow;
+    uniforms[9] = this.visualCore;
+    uniforms[10] = this.memory;
+    uniforms[11] = metrics[METRIC_FIELD.TRANSITION] ?? 0;
+    this.device.queue.writeBuffer(this.uniformBuffer, 0, uniforms);
 
     const encoder = this.device.createCommandEncoder({ label: "living field frame" });
 
@@ -1000,7 +1010,7 @@ class CanvasRenderer {
     context.save();
     context.filter = `blur(${Math.round(5 * deviceScale())}px)`;
     for (let species = 0; species < 3; species += 1) {
-      const [red, green, blue] = speciesColour(species, 0.72);
+      const [red, green, blue] = HALO_COLOURS[species];
       context.fillStyle = `rgba(${red}, ${green}, ${blue}, ${0.012 * this.visualGlow})`;
       context.beginPath();
       for (let offset = 0; offset < snapshot.length; offset += PARTICLE_STRIDE) {
@@ -1099,22 +1109,12 @@ function clamp(value, minimum, maximum) {
   return Math.max(minimum, Math.min(maximum, Number(value)));
 }
 
-function speciesColour(species, brightness = 1) {
-  const colours = [
-    [43, 177, 185],
-    [235, 83, 49],
-    [177, 116, 221],
-  ];
-  return colours[species].map((channel) => Math.round(Math.min(255, channel * brightness)));
+function scaleColour(colour, brightness) {
+  return colour.map((channel) => Math.round(Math.min(255, channel * brightness)));
 }
 
 function particleColour(species, variation) {
-  const ranges = [
-    [[14, 240, 199], [56, 156, 255]],
-    [[255, 46, 14], [255, 163, 26]],
-    [[133, 87, 255], [255, 77, 199]],
-  ];
-  const [start, end] = ranges[species];
+  const [start, end] = PARTICLE_COLOUR_RANGES[species];
   return start.map((channel, index) =>
     Math.round(Math.min(255, channel + (end[index] - channel) * variation)),
   );
@@ -1160,12 +1160,13 @@ export async function createRenderer(canvas, trailCanvas, options = {}) {
     options.forceCanvas ||
     rendererMode === "canvas" ||
     rendererMode === "canvas-locked";
+  // Locking this canvas exercises creation of a separate Canvas fallback.
   if (rendererMode === "canvas-locked") canvas.getContext("webgpu");
   if (forceCanvas || !navigator.gpu) return createCanvasRenderer(canvas, trailCanvas);
 
   try {
     const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
-    if (!adapter) return new CanvasRenderer(canvas, trailCanvas);
+    if (!adapter) return createCanvasRenderer(canvas, trailCanvas);
     const device = await adapter.requestDevice();
     const context = canvas.getContext("webgpu");
     const format = navigator.gpu.getPreferredCanvasFormat();
@@ -1173,7 +1174,6 @@ export async function createRenderer(canvas, trailCanvas, options = {}) {
     trailCanvas.style.display = "none";
     return new WebGpuRenderer(
       canvas,
-      trailCanvas,
       device,
       context,
       format,

@@ -26,6 +26,7 @@ const FIXED_STEP = 1 / 30;
 const MAX_CATCH_UP_STEPS = 2;
 const CONFLUON_API_VERSION = 1;
 const IDLE_CONTROLS_MS = 9000;
+const AUDIO_STATUS_INTERVAL_MS = 500;
 const SOUND_START_EVENTS = [
   "pointerdown",
   "pointerup",
@@ -123,7 +124,6 @@ try {
 } catch (error) {
   console.error(error);
   elements.runtimeStatus.textContent = "This browser could not start the instrument.";
-  elements.runtimeStatus.classList.add("error");
   void monitoringReady.then(() => {
     captureException(error, { stage: "instrument_initialization" });
   });
@@ -141,7 +141,6 @@ async function recoverFromRendererLoss(info) {
       reason: info?.reason || "unknown",
     });
     elements.runtimeStatus.textContent = "The graphics renderer could not recover.";
-    elements.runtimeStatus.classList.add("error");
   }
 }
 
@@ -156,8 +155,7 @@ function installControls() {
   elements.shareLink.addEventListener("click", sharePerformance);
   elements.fieldScore.addEventListener("change", () => {
     if (!elements.fieldScore.value) return;
-    const name = elements.fieldScore.selectedOptions[0]?.textContent.trim() || "field";
-    loadFieldScore(elements.fieldScore.value, name);
+    loadFieldScore(elements.fieldScore.value);
   });
 
   document.addEventListener("pointerdown", (event) => {
@@ -525,7 +523,7 @@ async function startExperience() {
   try {
     await audio.start();
     audio.setLevel(Number(elements.volume.value) / 100);
-    audio.wake(engine.metrics());
+    audio.wake();
     state.started = true;
     setAudioState();
     SOUND_START_EVENTS.forEach((eventName) => {
@@ -542,7 +540,6 @@ async function startExperience() {
     elements.audioState.dataset.state = "error";
     elements.audioState.textContent = "sound unavailable";
     elements.runtimeStatus.textContent = "Sound did not start. Check this tab’s audio permission and try again.";
-    elements.runtimeStatus.classList.add("error");
   } finally {
     state.starting = false;
   }
@@ -578,7 +575,7 @@ function wakeControls() {
 
 let previousTime = performance.now() / 1000;
 let accumulator = 0;
-let lastReadout = 0;
+let lastStatusUpdate = 0;
 let fpsWindowStarted = performance.now();
 let fpsFrameCount = 0;
 let measuredFps = 0;
@@ -587,7 +584,6 @@ function frame(milliseconds) {
   fpsFrameCount += 1;
   if (milliseconds - fpsWindowStarted >= 1000) {
     measuredFps = (fpsFrameCount * 1000) / (milliseconds - fpsWindowStarted);
-    elements.instrument.dataset.fps = measuredFps.toFixed(1);
     fpsFrameCount = 0;
     fpsWindowStarted = milliseconds;
   }
@@ -646,10 +642,9 @@ function frame(milliseconds) {
   }
   state.previousTransition = metrics[METRIC_FIELD.TRANSITION];
 
-  if (milliseconds - lastReadout > 160) {
-    elements.instrument.dataset.particles = String(engine.particle_count());
+  if (milliseconds - lastStatusUpdate > AUDIO_STATUS_INTERVAL_MS) {
     setAudioState();
-    lastReadout = milliseconds;
+    lastStatusUpdate = milliseconds;
   }
   requestAnimationFrame(frame);
 }
@@ -721,7 +716,7 @@ function spawn(x, y) {
   audio.strike(0.84, engine.metrics()[METRIC_FIELD.ENERGY], x);
 }
 
-function loadFieldScore(source, name) {
+function loadFieldScore(source) {
   const featuredUrl = new URL(source, window.location.href);
   const featuredSeed = parseSeed(featuredUrl);
   if (featuredSeed === null) return;
@@ -735,7 +730,6 @@ function loadFieldScore(source, name) {
   applyPerformanceSettings(false);
   window.history.replaceState({}, "", `${featuredUrl.pathname}${featuredUrl.search}`);
   elements.seed.textContent = formatSeed(seed);
-  elements.runtimeStatus.textContent = `Entered ${name}, seed ${formatSeed(seed)}.`;
   setControlsOpen(false);
   if (state.started) audio.strike(0.7, engine.metrics()[METRIC_FIELD.ENERGY]);
 }
@@ -747,13 +741,9 @@ function togglePause() {
 
 function setAudioState() {
   const current = audio?.state() ?? "waiting";
-  const meter = audio?.meter() ?? { rms: 0, peak: 0 };
   elements.audioState.dataset.state = current;
   elements.audioState.textContent =
     current === "running" ? "sound running" : current === "waiting" ? "sound waiting" : `sound ${current}`;
-  elements.instrument.dataset.audioState = current;
-  elements.instrument.dataset.audioRms = meter.rms.toFixed(5);
-  elements.instrument.dataset.audioPeak = meter.peak.toFixed(5);
 }
 
 function exposeDiagnostics() {
@@ -823,7 +813,7 @@ function beginCapture() {
   accumulator = 0;
   state.running = true;
   audio.setPaused(false);
-  audio.wake(engine.metrics());
+  audio.wake();
 }
 
 function eventPoint(event) {
@@ -877,14 +867,11 @@ async function sharePerformance() {
     try {
       if (typeof navigator.canShare !== "function" || navigator.canShare(shareData)) {
         await navigator.share(shareData);
-        showShareFeedback("Shared", "Shared this seeded performance.");
+        showShareFeedback("Shared");
         return;
       }
     } catch (error) {
-      if (error?.name === "AbortError") {
-        elements.runtimeStatus.textContent = "Sharing cancelled.";
-        return;
-      }
+      if (error?.name === "AbortError") return;
       captureException(error, { stage: "native_share" });
     }
   }
@@ -915,18 +902,12 @@ async function copyPerformanceLink(shareUrl) {
     }
   }
 
-  showShareFeedback(
-    copied ? "Copied" : "Copy failed",
-    copied
-      ? "Copied this seeded performance link."
-      : "The link could not be copied. Copy it from the address bar instead.",
-  );
+  showShareFeedback(copied ? "Copied" : "Copy failed");
 }
 
-function showShareFeedback(label, status) {
+function showShareFeedback(label) {
   window.clearTimeout(shareFeedbackTimer);
   elements.shareLink.textContent = label;
-  elements.runtimeStatus.textContent = status;
   shareFeedbackTimer = window.setTimeout(() => {
     elements.shareLink.textContent = shareButtonLabel();
   }, 2400);

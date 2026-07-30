@@ -2,10 +2,9 @@
 
 Confluon is an original generative audiovisual instrument. It brings three
 deterministic particle populations together to compose long-form electronic music.
-Each forms its own structures while cyclic attraction and
-avoidance pull the populations into encounters. Local crowding excites resonant
-voices, coherent movement opens a shared drone, and changes in collective energy
-produce strikes and transitions.
+Each population forms its own structures while cyclic attraction and avoidance pull
+them into encounters. Local crowding excites resonant voices, coherent movement opens
+a shared drone, and changes in collective energy produce strikes and transitions.
 
 Its deterministic Rust/WASM simulation drives both WebGPU visuals and WebAudio
 sound. There is no sequencer and no separate audio-reactive animation: the image
@@ -192,19 +191,6 @@ collective musical mapping; it includes no upstream code or creative assets.
 - [Research article](https://google-research.github.io/self-organising-systems/particle-lenia/)
 - [Interactive reference demo](https://znah.net/lenia/)
 - [Reproducible notebook](https://github.com/google-research/self-organising-systems/blob/master/notebooks/particle_lenia.ipynb)
-
-## Next production slices
-
-- Export a take as audio, video, seed, engine version, and gesture stream for direct
-  ingestion into the Multivibrator review pipeline.
-- Add bounded field feedback for longer-lived energy contours without obscuring the
-  particle-built membranes.
-- Add an offline render path that uses the same fixed-step contract.
-- Test and tune several six-minute seeds by listening, then record defended seeds in a
-  small local preset ledger.
-
-Publishing and deployment remain explicit human decisions; the production deployment
-above was enabled by the project owner on 2026-07-21.
 
 ## License
 

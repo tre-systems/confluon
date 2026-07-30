@@ -2,7 +2,6 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import {
-  createReadStream,
   createWriteStream,
   existsSync,
   mkdirSync,
@@ -16,8 +15,9 @@ import {
 import { createServer } from "node:http";
 import { createServer as createTcpServer } from "node:net";
 import { tmpdir } from "node:os";
-import { extname, join, resolve, sep } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { startStaticServer } from "./static-server.mjs";
 import { flag, numberValue, run, value } from "./video-cli.mjs";
 
 const FORMAT_PRESETS = Object.freeze({
@@ -27,16 +27,6 @@ const FORMAT_PRESETS = Object.freeze({
   story: { width: 1080, height: 1920 },
   "4k": { width: 3840, height: 2160 },
 });
-
-const MIME_TYPES = new Map([
-  [".css", "text/css; charset=utf-8"],
-  [".html", "text/html; charset=utf-8"],
-  [".js", "text/javascript; charset=utf-8"],
-  [".json", "application/json; charset=utf-8"],
-  [".png", "image/png"],
-  [".svg", "image/svg+xml"],
-  [".wasm", "application/wasm"],
-]);
 
 function usage() {
   console.log(`Create synchronized, share-ready Confluon videos.
@@ -146,47 +136,6 @@ async function freePort() {
   await new Promise((resolveClose) => server.close(resolveClose));
   if (!port) throw new Error("Could not allocate a local port");
   return port;
-}
-
-async function startStaticServer(directory) {
-  const root = resolve(directory);
-  const server = createServer(async (request, response) => {
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      response.writeHead(405);
-      response.end();
-      return;
-    }
-    try {
-      const url = new URL(request.url ?? "/", "http://capture.invalid");
-      const pathname = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
-      const file = resolve(root, pathname.replace(/^\/+/, ""));
-      if (file !== root && !file.startsWith(root + sep)) throw new Error("Invalid path");
-      const type = MIME_TYPES.get(extname(file)) ?? "application/octet-stream";
-      response.writeHead(200, {
-        "Cache-Control": "no-store",
-        "Content-Type": type,
-      });
-      if (request.method === "HEAD") {
-        response.end();
-      } else {
-        createReadStream(file)
-          .on("error", () => {
-            if (!response.headersSent) response.writeHead(404);
-            response.end();
-          })
-          .pipe(response);
-      }
-    } catch {
-      response.writeHead(404);
-      response.end("Not found");
-    }
-  });
-  await new Promise((resolveListen, rejectListen) => {
-    server.once("error", rejectListen);
-    server.listen(0, "127.0.0.1", resolveListen);
-  });
-  const address = server.address();
-  return { server, url: `http://127.0.0.1:${address.port}/` };
 }
 
 async function startChunkServer(directory) {
@@ -542,7 +491,7 @@ async function recordFormat(options, format, baseUrl) {
           throw new Error("Unsupported Confluon capture API");
         }
         const style = document.createElement("style");
-        style.textContent = "#controls,#runtime-status{display:none!important}#instrument{min-height:0!important}body{cursor:none!important;overflow:hidden!important}";
+        style.textContent = "#controls{display:none!important}#instrument{min-height:0!important}body{cursor:none!important;overflow:hidden!important}";
         document.head.appendChild(style);
         const result = await window.confluon.prepareCapture();
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -775,7 +724,10 @@ const options = {
 };
 
 mkdirSync(outDir, { recursive: true });
-const { server: staticServer, url } = await startStaticServer("dist");
+const { server: staticServer, url } = await startStaticServer("dist", {
+  cacheControl: "no-store",
+  cleanRoutes: { "/": "index.html" },
+});
 try {
   console.log(`● Capturing seed ${seed} for ${duration}s in ${formats.length} format(s)…`);
   for (const format of formats) {

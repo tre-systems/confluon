@@ -7,7 +7,7 @@
   --muted: #8e918e;
   --line: rgba(226, 232, 224, 0.14);
   --glass: rgba(7, 10, 14, 0.74);
-  --signal: #bcead5;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
 * {
@@ -24,7 +24,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -151,7 +152,7 @@ button {
 
 .panel-heading h2 {
   margin: 0;
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--mono);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.14em;
@@ -164,7 +165,7 @@ button {
   gap: 6px;
   margin-top: 2px;
   color: var(--muted);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.08em;
   white-space: nowrap;
@@ -187,8 +188,7 @@ button {
   box-shadow: 0 0 8px rgba(134, 216, 181, 0.7);
 }
 
-.audio-state[data-state="error"],
-.runtime-status.error {
+.audio-state[data-state="error"] {
   color: #e3aaa0;
 }
 
@@ -210,7 +210,7 @@ button {
 .setting-control span,
 .tuning h3 {
   color: var(--muted);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.08em;
 }
@@ -289,7 +289,7 @@ button {
 .setting-control output {
   justify-self: end;
   color: rgba(218, 235, 227, 0.88);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--mono);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -398,7 +398,7 @@ input[type="range"]::-moz-range-thumb {
 
 .seed-readout {
   color: rgba(174, 177, 174, 0.76);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.08em;
   line-height: 1;
@@ -430,7 +430,7 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 999px;
   background: transparent;
   color: rgba(206, 218, 212, 0.76);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.06em;
   line-height: 1;
@@ -484,16 +484,15 @@ input[type="range"]::-moz-range-thumb {
   color: rgba(223, 139, 97, 0.68);
 }
 
-.runtime-status {
+.visually-hidden {
   position: absolute;
-  z-index: 12;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: max(16px, env(safe-area-inset-bottom));
-  max-width: min(420px, calc(100% - 32px));
-  margin: 0;
-  color: var(--muted);
-  font-size: 10px;
-  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 @media (max-width: 600px) {

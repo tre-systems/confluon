@@ -8,9 +8,7 @@
 /.claude/
 /.idea/
 /.playwright-cli/
-/output/playwright/
 /.vscode/
 .env
 .env.*
-!.env.example
 .DS_Store

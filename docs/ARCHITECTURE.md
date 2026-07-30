@@ -345,6 +345,10 @@ Each output receives a preview and JSON manifest with source revision, environme
 score, frame cadence, duration, and probed stream metadata. Renders and local account
 details are never repository inputs.
 
+Capture and browser smoke tools share `scripts/static-server.mjs`. Keep local
+artifact routing, MIME types, root-path validation, and cache policy in that adapter
+rather than maintaining test-specific HTTP servers.
+
 ## Performance constraints
 
 - The normal field has 2,000 particles in 24 colonies. Life ranges from 600 to the

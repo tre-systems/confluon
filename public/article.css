@@ -1,7 +1,6 @@
 :root {
   color-scheme: dark;
   --bg: #05070a;
-  --bg-soft: #091014;
   --panel: rgba(13, 20, 24, 0.72);
   --paper: #eee9df;
   --ink: #c8ceca;
@@ -14,6 +13,7 @@
   --accent: var(--cyan);
   --accent-rgb: 120, 217, 215;
   --max-width: 52rem;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
 * {
@@ -64,7 +64,7 @@ a:hover {
     max(clamp(16px, 4vw, 42px), env(safe-area-inset-left));
   border-bottom: 1px solid var(--line);
   background: rgba(5, 7, 10, 0.76);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.08em;
   backdrop-filter: blur(16px);
@@ -188,7 +188,7 @@ a:hover {
 .eyebrow {
   margin: 0 0 18px;
   color: var(--accent);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--mono);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.22em;
@@ -238,7 +238,7 @@ a:hover {
   gap: 18px;
   padding: 9px 15px;
   color: var(--paper);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--mono);
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.11em;
@@ -298,7 +298,7 @@ a:hover {
   padding: 4px 18px 16px 42px;
   border-top: 1px solid rgba(188, 234, 213, 0.08);
   color: var(--accent);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--mono);
   font-size: 10px;
   line-height: 1.45;
 }
@@ -347,18 +347,11 @@ h2 {
 h2 .num {
   margin-right: 0.7em;
   color: var(--accent);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--mono);
   font-size: 0.56em;
   font-variant-numeric: tabular-nums;
   font-weight: 650;
   letter-spacing: 0.08em;
-}
-
-h3 {
-  margin: 28px 0 6px;
-  color: var(--paper);
-  font-size: 19px;
-  font-weight: 540;
 }
 
 p {
@@ -394,10 +387,6 @@ code {
 
 var {
   font-family: Georgia, "Times New Roman", serif;
-}
-
-.dim {
-  color: var(--muted);
 }
 
 .eq,
@@ -445,7 +434,7 @@ var {
   display: block;
   margin-bottom: 6px;
   color: var(--mint);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--mono);
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.16em;
@@ -479,7 +468,7 @@ var {
 
 .mapping dt {
   color: var(--paper);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--mono);
   font-size: 12px;
   font-weight: 650;
   letter-spacing: 0.08em;

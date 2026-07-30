@@ -7,6 +7,5 @@
   script.src = `https://static.cloudflareinsights.com/beacon.min.js?token=${encodeURIComponent(
     config.analyticsToken,
   )}`;
-  script.defer = true;
   document.head.appendChild(script);
 })();

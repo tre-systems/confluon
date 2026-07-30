@@ -1,14 +1,21 @@
-import { createServer } from "node:http";
-import { readFileSync, statSync } from "node:fs";
-import { extname, join, normalize, resolve } from "node:path";
 import { chromium } from "playwright";
+import { startStaticServer } from "./static-server.mjs";
 
 const options = parseArguments(process.argv.slice(2));
 let server;
 let baseUrl = options.url;
 
 if (!baseUrl) {
-  ({ server, url: baseUrl } = await startStaticServer(options.dir || "dist"));
+  ({ server, url: baseUrl } = await startStaticServer(options.dir || "dist", {
+    cleanRoutes: {
+      "/": "index.html",
+      "/field": "field.html",
+      "/sound": "sound.html",
+      "/engineering": "engineering.html",
+      "/privacy": "privacy.html",
+    },
+    notFoundFile: "404.html",
+  }));
 }
 
 const browserErrors = [];
@@ -56,6 +63,9 @@ try {
       !document.querySelector(".tuning summary"),
     transportButtons: document.querySelectorAll("#settle, #pause, #record").length,
     newSeedButtons: document.querySelectorAll("#new-seed").length,
+    runtimeStatusHidden:
+      document.querySelector("#runtime-status")?.classList.contains("visually-hidden"),
+    runtimeStatusText: document.querySelector("#runtime-status")?.textContent,
     footerDocs: Array.from(document.querySelectorAll(".panel-links a"), (link) => link.pathname),
   }));
   if (
@@ -87,6 +97,8 @@ try {
     !initial.tuningPermanent ||
     initial.transportButtons !== 0 ||
     initial.newSeedButtons !== 0 ||
+    !initial.runtimeStatusHidden ||
+    initial.runtimeStatusText !== "" ||
     initial.footerDocs.join(",") !== "/field,/engineering,/sound,/privacy"
   ) {
     throw new Error(`controls were not simplified: ${JSON.stringify(initial)}`);
@@ -178,6 +190,23 @@ try {
     audibleControl.lastControlCue?.kind !== "glow"
   ) {
     throw new Error(`Halo did not reach audio: ${JSON.stringify(audibleControl)}`);
+  }
+
+  await page.selectOption("#field-score", { label: "Ember Rift" });
+  await page.waitForFunction(() => window.confluon.particleCount() === 2600);
+  const featuredField = await page.evaluate(() => ({
+    seed: window.confluon.seed(),
+    particles: window.confluon.particleCount(),
+    mode: window.confluon.gestureMode(),
+    statusText: document.querySelector("#runtime-status")?.textContent,
+  }));
+  if (
+    featuredField.seed !== 153812312 ||
+    featuredField.particles !== 2600 ||
+    featuredField.mode !== "divide" ||
+    featuredField.statusText !== ""
+  ) {
+    throw new Error(`featured field did not load cleanly: ${JSON.stringify(featuredField)}`);
   }
 
   const manifestResponse = await context.request.get(new URL("/site.webmanifest", baseUrl).href);
@@ -278,7 +307,7 @@ try {
   }
 
   console.log(
-    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, mouse/touch/audio response, 50-particle double-tap, musical controls, offline PWA/privacy/404 healthy`,
+    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, caption-free featured fields, mouse/touch/audio response, 50-particle double-tap, musical controls, offline PWA/privacy/404 healthy`,
   );
 } finally {
   await browser?.close();
@@ -300,53 +329,4 @@ function parseArguments(args) {
   }
   if (parsed.url) parsed.url = new URL(parsed.url).href;
   return parsed;
-}
-
-async function startStaticServer(directory) {
-  const root = resolve(process.cwd(), directory);
-  const server = createServer((request, response) => {
-    const url = new URL(request.url, "http://localhost");
-    const cleanRoutes = new Map([
-      ["/", "index.html"],
-      ["/field", "field.html"],
-      ["/sound", "sound.html"],
-      ["/engineering", "engineering.html"],
-      ["/privacy", "privacy.html"],
-    ]);
-    const requested = cleanRoutes.get(url.pathname) || url.pathname.slice(1);
-    const safePath = normalize(requested).replace(/^(\.\.(\/|\\|$))+/, "");
-    let path = join(root, safePath);
-    let status = 200;
-    try {
-      if (!statSync(path).isFile()) throw new Error("not a file");
-    } catch {
-      path = join(root, "404.html");
-      status = 404;
-    }
-    const content = readFileSync(path);
-    response.writeHead(status, {
-      "Content-Type": mimeType(path),
-      "Cache-Control": "no-cache",
-    });
-    response.end(content);
-  });
-  await new Promise((resolveListen) => server.listen(0, "127.0.0.1", resolveListen));
-  const address = server.address();
-  return { server, url: `http://127.0.0.1:${address.port}/` };
-}
-
-function mimeType(path) {
-  return (
-    {
-      ".css": "text/css; charset=utf-8",
-      ".html": "text/html; charset=utf-8",
-      ".js": "text/javascript; charset=utf-8",
-      ".json": "application/json; charset=utf-8",
-      ".png": "image/png",
-      ".svg": "image/svg+xml",
-      ".wasm": "application/wasm",
-      ".webmanifest": "application/manifest+json; charset=utf-8",
-      ".xml": "application/xml; charset=utf-8",
-    }[extname(path)] || "application/octet-stream"
-  );
 }

@@ -1,6 +1,11 @@
+import { MAX_PARTICLES } from "./simulation-contract.js";
+
 const URL_BASE = "https://confluon.invalid/";
+const DEFAULT_POPULATION = 2000;
+const MINIMUM_POPULATION = 600;
 
 export const GESTURE_MODES = Object.freeze(["gather", "orbit", "divide"]);
+const DEFAULT_GESTURE_MODE = GESTURE_MODES[0];
 
 export const PERFORMANCE_PARAMETER_SCHEMA = Object.freeze([
   parameter("ecology", "ecology", 1, 0.25, 1.8),
@@ -22,9 +27,11 @@ export function parsePerformanceSettings(source) {
     settings[descriptor.property] = readScaledParameter(parameters, descriptor);
   }
 
-  settings.population = clampPopulation(Number(parameters.get("life") ?? 2000));
+  settings.population = clampPopulation(
+    Number(parameters.get("life") ?? DEFAULT_POPULATION),
+  );
   const mode = parameters.get("mode");
-  settings.mode = isGestureMode(mode) ? mode : "gather";
+  settings.mode = isGestureMode(mode) ? mode : DEFAULT_GESTURE_MODE;
   return settings;
 }
 
@@ -43,7 +50,10 @@ export function encodePerformanceState(source, seed, settings) {
   }
 
   url.searchParams.set("life", String(clampPopulation(Number(settings.population))));
-  url.searchParams.set("mode", isGestureMode(settings.mode) ? settings.mode : "gather");
+  url.searchParams.set(
+    "mode",
+    isGestureMode(settings.mode) ? settings.mode : DEFAULT_GESTURE_MODE,
+  );
   return url;
 }
 
@@ -66,7 +76,8 @@ export function formatSeed(value) {
 }
 
 export function clampPopulation(value) {
-  return Math.max(600, Math.min(4096, Math.round(Number.isFinite(value) ? value : 2000)));
+  const population = Number.isFinite(value) ? value : DEFAULT_POPULATION;
+  return Math.max(MINIMUM_POPULATION, Math.min(MAX_PARTICLES, Math.round(population)));
 }
 
 export function isGestureMode(value) {
