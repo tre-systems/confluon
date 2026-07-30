@@ -1,7 +1,15 @@
 /dist/
 /node_modules/
+/output/
 /pkg/
 /renders/
 /target/
 /.wrangler/
+/.claude/
+/.idea/
+/.playwright-cli/
+/.vscode/
+.env
+.env.*
+!.env.example
 .DS_Store

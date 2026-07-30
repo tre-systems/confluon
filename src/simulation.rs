@@ -1,6 +1,6 @@
 use std::f32::consts::TAU;
 
-const DEFAULT_PARTICLES: usize = 1_200;
+const DEFAULT_PARTICLES: usize = 2_000;
 const MAX_PARTICLES: usize = 4_096;
 const MAX_SPEED: f32 = 0.48;
 const REPULSION_RADIUS: f32 = 0.018;
@@ -53,7 +53,7 @@ const SPECIES: [Species; SPECIES_COUNT] = [
 ];
 
 // A cyclic, deliberately non-symmetric ecology. Negative values attract and
-// positive values avoid. The forces are weaker and shorter-range than each
+// positive values avoid. The forces are weaker and longer-range than each
 // population's own formation rule, so cells keep their internal organisation.
 const CROSS_SENSE: [[f32; SPECIES_COUNT]; SPECIES_COUNT] =
     [[0.0, -0.18, 0.25], [0.27, 0.0, -0.16], [-0.17, 0.23, 0.0]];
@@ -109,6 +109,7 @@ struct Pair {
 #[derive(Debug, Default)]
 struct NeighbourScratch {
     cell_starts: Vec<u32>,
+    cell_cursor: Vec<u32>,
     cell_entries: Vec<u32>,
     pairs: Vec<Pair>,
     fields: Vec<f32>,
@@ -119,6 +120,7 @@ struct NeighbourScratch {
     forces: Vec<(f32, f32)>,
     parents: Vec<u32>,
     cluster_sizes: Vec<u32>,
+    roots: Vec<usize>,
 }
 
 impl NeighbourScratch {
@@ -137,11 +139,12 @@ impl NeighbourScratch {
         for cell in 0..cells {
             self.cell_starts[cell + 1] += self.cell_starts[cell];
         }
-        let mut cursor = self.cell_starts.clone();
+        self.cell_cursor.clear();
+        self.cell_cursor.extend_from_slice(&self.cell_starts);
         for (index, particle) in particles.iter().enumerate() {
             let cell = cell_index(particle.x, particle.y);
-            self.cell_entries[cursor[cell] as usize] = index as u32;
-            cursor[cell] += 1;
+            self.cell_entries[self.cell_cursor[cell] as usize] = index as u32;
+            self.cell_cursor[cell] += 1;
         }
 
         self.pairs.clear();
@@ -258,7 +261,11 @@ pub(crate) struct Simulation {
 
 impl Simulation {
     pub(crate) fn new(seed: u32, particle_count: usize) -> Self {
-        let initial_count = particle_count.clamp(24, MAX_PARTICLES);
+        let initial_count = if particle_count == 0 {
+            DEFAULT_PARTICLES
+        } else {
+            particle_count.clamp(24, MAX_PARTICLES)
+        };
         let mut simulation = Self {
             seed,
             initial_count,
@@ -590,23 +597,29 @@ impl Simulation {
             scratch.cluster_sizes[root] += 1;
         }
 
-        let mut roots: Vec<usize> = (0..count)
-            .filter(|&index| scratch.cluster_sizes[index] >= 4)
-            .collect();
-        roots.sort_by(|&a, &b| {
+        scratch.roots.clear();
+        scratch
+            .roots
+            .extend((0..count).filter(|&index| scratch.cluster_sizes[index] >= 4));
+        scratch.roots.sort_by(|&a, &b| {
             scratch.cluster_sizes[b]
                 .cmp(&scratch.cluster_sizes[a])
                 .then(a.cmp(&b))
         });
-        let formation_count = roots.len().max(1);
+        let formation_count = scratch.roots.len().max(1);
 
-        roots.truncate(MAX_FORMATION_VOICES);
+        scratch.roots.truncate(MAX_FORMATION_VOICES);
         // Toroidal centroids via circular means, accumulated in one pass.
         let mut sums = [[0.0_f32; 4]; MAX_FORMATION_VOICES];
-        let slot_of = |root: usize| roots.iter().position(|&r| r == root);
         for index in 0..count {
             let root = find(&mut scratch.parents, index);
-            let Some(slot) = slot_of(root) else { continue };
+            let Some(slot) = scratch
+                .roots
+                .iter()
+                .position(|&candidate| candidate == root)
+            else {
+                continue;
+            };
             let particle = self.particles[index];
             let angle_x = (particle.x + 1.0) * std::f32::consts::PI;
             let angle_y = (particle.y + 1.0) * std::f32::consts::PI;
@@ -617,7 +630,7 @@ impl Simulation {
         }
 
         self.formations.clear();
-        for (slot, &root) in roots.iter().enumerate() {
+        for (slot, &root) in scratch.roots.iter().enumerate() {
             let [sin_x, cos_x, sin_y, cos_y] = sums[slot];
             let size = scratch.cluster_sizes[root] as f32;
             let x = wrap(sin_x.atan2(cos_x) / std::f32::consts::PI - 1.0);
@@ -743,6 +756,12 @@ mod tests {
         let left = Simulation::new(41, 96);
         let right = Simulation::new(42, 96);
         assert_ne!(left.snapshot(), right.snapshot());
+    }
+
+    #[test]
+    fn zero_particle_count_uses_the_public_default() {
+        let simulation = Simulation::new(41, 0);
+        assert_eq!(simulation.particle_count(), DEFAULT_PARTICLES);
     }
 
     #[test]

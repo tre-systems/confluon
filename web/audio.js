@@ -6,8 +6,8 @@ const FORMATION_VOICES = 8;
 
 /**
  * The Confluon audio engine. Everything is synthesized from native Web Audio
- * nodes — no samples, no worklets in the signal path — so the whole graph stays
- * deterministic and portable. The mix reads the same simulation state as the
+ * nodes — no samples, no worklets in the signal path — so the graph stays
+ * self-contained and portable. The mix reads the same simulation state as the
  * image: sustained formation voices sit at the screen positions of the visible
  * cell clusters, continuous metrics steer the texture, and discrete events
  * (formations appearing, transitions, gestures) strike sparse tones.
@@ -542,6 +542,20 @@ export class ConfluonAudio {
   reseed(seed) {
     this.seed = seed;
     this.random = seededRandom(seed ^ 0x91e1_0da5);
+    this.currentRoot = 48;
+    this.latestMetrics = [0.5, 0, 0, 0.5, 1, 0, 0];
+    this.lastStrike = -Infinity;
+    this.lastEmergence = -Infinity;
+    this.nextNoteTime = this.context ? this.context.currentTime + 0.35 : Infinity;
+    this.tracked = [];
+    if (this.context) {
+      const now = this.context.currentTime;
+      for (const voice of this.formationVoices) {
+        voice.busy = false;
+        voice.gain.gain.cancelScheduledValues(now);
+        voice.gain.gain.setTargetAtTime(0.0001, now, 0.08);
+      }
+    }
   }
 
   setLevel(level) {

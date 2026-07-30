@@ -16,8 +16,8 @@ also writes:
 
 - a PNG preview of its first frame;
 - a JSON manifest containing the seed, settings, source revision, resolution,
-  measured render cadence, browser recording codec, final stream codecs, and
-  verified duration.
+  browser and platform, measured render cadence, browser recording codec, final
+  stream codecs, canonical performance URL, and verified duration.
 
 `renders/` is ignored by git. Renders are production artifacts, not source files.
 
@@ -94,14 +94,14 @@ npm run video -- \
 ```
 
 Supported flags are `--ecology`, `--flow`, `--touch`, `--halo`, `--memory`,
-`--tone`, `--level`, `--life`, and `--mode`. The generated manifest stores both
-the encoded URL and the decoded settings.
+`--tone`, `--level`, `--life`, and `--mode`. The generated manifest stores the
+canonical performance URL and the decoded settings.
 
 The production run starts from a clean reset and contains no pointer gestures.
-Use the same engine revision, seed, duration, settings, format, frame rate, and
-render machine to reproduce it. Browser/WebGPU timing and floating-point behaviour
-can vary across machines, so retain the source revision and manifest with release
-masters.
+Use the same engine revision, seed, duration, settings, format, frame rate, browser,
+platform, and comparable render cadence to reproduce it. WebGPU timing and
+floating-point behaviour can vary across machines, so retain the source revision
+and manifest with release masters.
 
 ## Options
 
@@ -113,14 +113,16 @@ masters.
 --quality 18
 --silent
 --keep-source
+--canonical-url https://example.org/
 --no-build
 --no-headless
 --chrome /path/to/Chrome
 ```
 
 `--silent` omits audio. `--keep-source` retains the browser-recorded WebM before
-transcoding. `--no-build` is only safe when `dist/` already represents the source
-revision you intend to render.
+transcoding. Forks can use `--canonical-url` so the manifest points to their public
+instrument rather than confluon.com. `--no-build` is only safe when `dist/` already
+represents the source revision you intend to render.
 
 ## Requirements and limits
 

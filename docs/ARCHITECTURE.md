@@ -113,8 +113,9 @@ sub level, and master brightness together so the whole mix breathes as one.
 
 The Record control taps the limiter output through an `AudioWorklet`
 (`public/recorder.js`), accumulates 32-bit float stereo blocks, and downloads the
-take as a WAV named after the seed and duration. With the seed and URL-encoded
-settings, a take is reproducible.
+take as a WAV named after the seed and duration. The seed and URL-encoded settings
+reproduce its starting state; a performed take additionally needs a timed gesture
+stream.
 
 The Share control first synchronises the full seed and settings into the URL. It then
 uses the browser's native Web Share API when available and falls back to clipboard

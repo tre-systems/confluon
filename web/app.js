@@ -280,6 +280,7 @@ function installControls() {
       togglePause();
     } else if (event.code === "KeyR") {
       engine.reset(seed);
+      audio.reseed(seed);
       resetVisualSmoothing();
       renderer.resetTrails();
       audio.strike(0.62, 0.5);

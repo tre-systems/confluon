@@ -61,10 +61,9 @@
       <p class="eyebrow">The sound</p>
       <h1>How a swarm becomes music</h1>
       <p class="lede">
-        In Confluon, there is no backing track and no animation
-        reacting to a separate song. The Rust engine produces one evolving state. WebGPU reads
-        it as light; WebAudio reads it as harmony, texture, position, and event. What you see
-        and what you hear are two interpretations of the same field.
+        Confluon has no backing track and no animation reacting to a separate song. The Rust
+        engine produces one evolving state. WebGPU turns it into light; WebAudio turns it into
+        harmony, texture, position, and event.
       </p>
     </header>
 
@@ -72,16 +71,15 @@
       <section>
         <h2><span class="num" aria-hidden="true">01</span>One state, two senses</h2>
         <p>
-          A tempting sonification strategy is to give every particle an oscillator. It is
-          direct, but with two thousand particles it becomes more diagram than composition:
-          thousands of tiny voices obscure the larger changes that make the field interesting.
+          Giving every particle an oscillator is direct, but 2,000 tiny voices obscure the
+          larger changes that make the field musically interesting.
         </p>
         <p>
-          Confluon instead reduces the swarm into a compact musical state. Seven collective
-          metrics describe its energy, coherence, activity, density, formation count,
-          transitions, and cross-population encounters. Up to eight formation summaries add
-          position, size, and species. The same values reach the renderer and the sound engine
-          on every display frame.
+          Confluon uses a compact musical state instead. Seven metrics describe energy,
+          coherence, activity, density, formations, transitions, and cross-population
+          encounters. Up to eight formation summaries add position, size, and population.
+          Both paths read the same engine frame; the visual path adds only a short display
+          interpolation that never feeds back into motion or sound.
         </p>
         <figure class="diagram">
           <svg viewBox="0 0 760 210" role="img" aria-label="The Rust swarm state feeds both WebGPU image and WebAudio sound.">
@@ -107,7 +105,7 @@
             <text class="d-copy" x="625" y="160">field becomes music</text>
           </svg>
           <figcaption>
-            There is no audio-reactive visual layer. Both outputs consume the same simulation snapshot.
+            There is no audio-reactive visual layer. Both outputs start from the same engine frame.
           </figcaption>
         </figure>
       </section>
@@ -128,10 +126,10 @@
           </small>
         </div>
         <p>
-          More coherent movement raises the sustained partials and the sub foundation. Density
-          opens their low-pass filter. Activity spreads them wider in stereo while taking a
-          little weight out of the bed. Encounter pressure increases detuning, so populations
-          pressing into one another can be heard as a gentle widening of the tuning.
+          Coherent movement raises the sustained partials and sub. Density opens their
+          low-pass filter. Activity spreads them in stereo while taking a little weight out of
+          the bed. Encounter pressure increases detuning, so populations pressing into one
+          another gently widen the tuning.
         </p>
         <p>
           Every change is smoothed on the audio clock with
@@ -171,8 +169,8 @@
       <section>
         <h2><span class="num" aria-hidden="true">04</span>What each collective reading does</h2>
         <p>
-          The mappings overlap deliberately. A metric does not own one obvious knob; it leaves a
-          fingerprint across the whole sound.
+          Each metric affects several parts of the sound rather than acting like one obvious
+          meter.
         </p>
         <dl class="mapping">
           <dt>Energy</dt>
@@ -193,9 +191,8 @@
         <div class="note">
           <span class="tag">The compositional rule</span>
           <p>
-            A value should be audible without becoming a meter demonstration. The mappings are
-            intentionally slow, overlapping, and bounded: collective change alters the
-            character of the music rather than announcing a number.
+            A value should be audible without announcing itself. Slow, overlapping, bounded
+            mappings let collective change alter the music's character.
           </p>
         </div>
       </section>
@@ -203,9 +200,8 @@
       <section>
         <h2><span class="num" aria-hidden="true">05</span>Events give the field punctuation</h2>
         <p>
-          Continuous mappings provide atmosphere; discrete events provide form. A rapid change
-          in energy or activity raises the transition measure. When it crosses a threshold, the
-          app excites a short filtered resonator whose brightness follows current energy.
+          Rapid changes in energy or activity raise the transition measure. Crossing a
+          threshold excites a short filtered resonator whose brightness follows current energy.
         </p>
         <p>
           The performer produces related events. A strong drag, a released settle, a new seed,
@@ -223,24 +219,22 @@
       <section>
         <h2><span class="num" aria-hidden="true">06</span>One slow breath across the mix</h2>
         <p>
-          A 0.1 Hz oscillator—a ten-second cycle, or roughly six cycles a minute—moves three
-          parts of the graph together: pad brightness, sub level, and master brightness. It is
-          deliberately subtle. Rather than adding an audible low-frequency wobble, it makes the
-          whole instrument inhale and exhale as one body.
+          A 0.1 Hz oscillator, one ten-second cycle, moves pad brightness, sub level, and master
+          brightness together. The effect is subtle: a shared slow contour rather than an
+          audible wobble.
         </p>
         <p>
-          This is a compositional pacing device, not a therapeutic claim. Its job is to prevent
-          the continuous bed becoming mechanically fixed and to give very slow change a shared
-          contour beneath the faster life of the swarm.
+          This is a compositional pacing device, not a therapeutic claim. It keeps the
+          continuous bed from becoming mechanically fixed.
         </p>
       </section>
 
       <section>
         <h2><span class="num" aria-hidden="true">07</span>Space is synthesized too</h2>
         <p>
-          There are no samples anywhere in the signal path. The air bed is four seconds of
-          seeded, gently correlated noise. The hall impulse is generated in code from twelve
-          early reflections and a diffuse noise tail whose low-pass closes as it decays.
+          There are no samples. The looping air bed is seeded, gently correlated noise. The
+          hall impulse is generated in code from twelve early reflections and a diffuse tail
+          that darkens as it decays.
         </p>
         <p>
           The shared pad also feeds an octave waveshaper. The curve
@@ -295,23 +289,23 @@
       <section>
         <h2><span class="num" aria-hidden="true">08</span>Seeded sound, living timing</h2>
         <p>
-          The simulation seed also seeds the musical random walk. Rebuilding the same field
-          recreates note choices, detune offsets, and spatial decisions in the same order when
-          the same inputs are replayed. The noise bed and hall use fixed seeds, so their texture
-          is stable rather than changing with every page load.
+          The simulation seed also seeds the musical random walk. Resetting the same field and
+          replaying the same inputs resets note choices and spatial decisions to the same
+          sequence. The noise bed and hall have fixed seeds, so their texture does not change on
+          every page load.
         </p>
         <p>
-          WebAudio itself runs on its own high-resolution clock. Long tones are scheduled on
-          that clock, not with frame timers, and continuously mapped parameters are smoothed
-          toward new targets. This preserves musical continuity when rendering work is briefly
-          expensive.
+          WebAudio runs on its own high-resolution clock. Long tones are scheduled there rather
+          than with frame timers, and continuous parameters are smoothed towards new targets.
+          This keeps the music continuous when a render frame is briefly expensive.
         </p>
         <div class="note honesty">
           <span class="tag">What reproduction requires</span>
           <p>
             An untouched take needs the same engine revision, seed, fixed timestep, and settings.
-            A performed take also needs the gesture stream and timing. A shared URL records the
-            starting score; a finished render manifest records the production conditions.
+            A performed take also needs the timed gesture stream. A URL records the starting
+            score; a render manifest records the browser, platform, cadence, and codec
+            conditions needed to defend a finished export.
           </p>
         </div>
       </section>
@@ -321,8 +315,8 @@
         <p>
           The live <strong>Record</strong> control taps the graph after the safety limiter with
           an <code>AudioWorklet</code>. It collects stereo 32-bit floating-point blocks and
-          writes a lossless WAV named with the seed and duration. The recorder is a silent tap:
-          it does not sit in series with playback and cannot colour the live mix.
+          writes a lossless WAV named with the seed and duration. The recorder is a silent
+          parallel tap, so it does not colour playback.
         </p>
         <p>
           Video production uses another post-limiter tap as a
@@ -336,16 +330,14 @@
       <section>
         <h2><span class="num" aria-hidden="true">10</span>What comes from data, and what comes from taste</h2>
         <p>
-          The state-to-sound coupling is literal: formation position really is pan, size really
-          is voice level, and encounter pressure really does enter the detune and spectral
-          mappings. But a mapping is still a compositional decision. The simulation does not
-          contain a natural major third, a seven-and-a-half-second hall, or a preferred amount of
-          shimmer.
+          Formation position becomes pan, size becomes voice level, and encounter pressure
+          enters the detune and spectral mappings. Those links are literal, but the mapping is
+          still composition. The simulation contains no natural major third, hall length, or
+          correct amount of shimmer.
         </p>
         <p>
-          Those choices are taste, tuned by listening. The discipline is to keep that taste
-          downstream of real state: the sound may interpret the field, but it should not invent
-          a dramatic arc that the field did not produce.
+          Those choices are taste, tuned by listening. The sound interprets real field state; it
+          does not invent a dramatic arc that the field did not produce.
         </p>
       </section>
 

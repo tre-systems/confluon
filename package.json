@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "description": "Confluon: an energy-driven audiovisual instrument",
+  "homepage": "https://confluon.com/",
+  "bugs": {
+    "url": "https://github.com/tre-systems/confluon/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tre-systems/confluon.git"
+  },
   "type": "module",
   "scripts": {
     "build:wasm": "wasm-pack build --target web --out-dir pkg --out-name confluon --release",

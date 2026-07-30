@@ -50,7 +50,7 @@ try {
   if (!["WEBGPU", "CANVAS"].includes(initial.renderer)) {
     throw new Error(`unexpected renderer: ${initial.renderer}`);
   }
-  if (initial.particles < 600 || initial.canvasWidth === 0 || initial.canvasHeight === 0) {
+  if (initial.particles !== 2000 || initial.canvasWidth === 0 || initial.canvasHeight === 0) {
     throw new Error(`instrument is not drawing: ${JSON.stringify(initial)}`);
   }
   if (!initial.supportHref?.startsWith("https://ko-fi.com/robgilks")) {

@@ -65,12 +65,11 @@
 
     <header class="hero">
       <p class="eyebrow">The engineering</p>
-      <h1>One engine, three readings</h1>
+      <h1>How Confluon is built</h1>
       <p class="lede">
-        Confluon keeps its simulation in a small Rust/WebAssembly core, then hands
-        one compact state to a WebGPU renderer and a WebAudio instrument. The architecture is
-        built around separation without disconnection: image, sound, and export are independent
-        systems, but none may invent a second reality.
+        A small Rust/WebAssembly core owns the simulation. One compact state then feeds the
+        WebGPU image, the WebAudio instrument, and production capture. Each part can change
+        independently without creating a second version of the field.
       </p>
     </header>
 
@@ -117,10 +116,9 @@
           </figcaption>
         </figure>
         <p>
-          This split is a practical creative constraint. The renderer can be replaced without
-          changing motion; the sound graph can be retuned without changing formation; and tests
-          can run the core without a browser. At the same time, both outputs must read the same
-          state rather than maintaining their own simulations.
+          The renderer can be replaced without changing motion, the sound graph can be retuned
+          without changing formations, and the core can be tested without a browser. Image and
+          sound still read the same simulation rather than maintaining their own copies.
         </p>
       </section>
 
@@ -149,19 +147,18 @@ impl Engine {
 }</code></pre>
         </figure>
         <p>
-          Keeping the core ordinary Rust makes its important properties ordinary to test:
-          identical seeds produce identical motion, particle count is conserved except when
-          explicitly seeding, outputs stay finite and bounded, the neighbour grid agrees with a
-          brute-force implementation, and gestures measurably alter the trajectory.
+          Ordinary Rust tests cover the properties that matter: identical seeds produce
+          identical motion, particle count is conserved except when explicitly seeding, output
+          stays finite and bounded, the neighbour grid agrees with brute force, and gestures
+          alter the trajectory.
         </p>
       </section>
 
       <section>
         <h2><span class="num" aria-hidden="true">03</span>Fixed simulation time, fluid display time</h2>
         <p>
-          A display may refresh at 60, 90, or 120 Hz; a backgrounded tab may miss frames
-          entirely. None of those conditions should silently change the dynamics. The browser
-          therefore accumulates elapsed wall time and advances the Rust engine in fixed
+          Display refresh and missed frames should not change the dynamics. The browser
+          accumulates elapsed wall time and advances Rust in fixed
           <strong>1/30-second</strong> steps:
         </p>
         <figure class="code">
@@ -180,20 +177,18 @@ renderer.render(engine.snapshot(), engine.metrics(), time);
 audio.update(engine.metrics(), engine.formations());</code></pre>
         </figure>
         <p>
-          Catch-up is capped at two steps per display frame. Under sustained overload the
-          instrument slows rather than entering a spiral of ever more catch-up work. The
-          <strong>Flow</strong> setting scales deterministic simulation time before it enters
-          this accumulator; it never changes display cadence.
+          Catch-up stops at two steps per display frame. Under sustained load the instrument
+          slows instead of building an endless backlog. <strong>Flow</strong> scales simulation
+          time before it enters the accumulator; it does not change display cadence.
         </p>
       </section>
 
       <section>
         <h2><span class="num" aria-hidden="true">04</span>Finding neighbours without testing everyone</h2>
         <p>
-          The expensive work is local: field, repulsion, ecology, and formation all depend on
-          particles inside a finite sensing radius. A naïve implementation would still inspect
-          every possible pair—more than eight million candidate pairs at the 4,096-particle
-          cap—only to reject almost all of them.
+          Field, repulsion, ecology, and formation depend only on particles inside a finite
+          radius. Testing every possible pair would inspect more than eight million candidates
+          at the 4,096-particle cap, then reject almost all of them.
         </p>
         <p>
           Confluon divides its wrapped world into an <strong>8 × 8 counting-sort grid</strong>.
@@ -202,17 +197,16 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
           support radius, a cell needs only itself and its adjacent cells.
         </p>
         <p>
-          A four-offset half stencil visits each neighbouring cell pair once. Pairs inside one
-          cell use a triangular loop. Every accepted unordered particle pair is stored with its
-          wrapped delta and distance, then reused by the field, energy derivative, force, and
-          union-find passes.
+          A four-offset half stencil visits each neighbouring cell pair once; a triangular loop
+          handles pairs in the same cell. Accepted pairs keep their wrapped delta and distance
+          for reuse by field, derivative, force, and union-find passes.
         </p>
         <div class="note">
           <span class="tag">Why one pair list matters</span>
           <p>
-            The hot loop does not allocate: vectors keep their capacity between steps. More
-            importantly, the simulation cannot accidentally use one neighbourhood definition
-            for motion and another for formation analysis. Both read the same collected pairs.
+            Reused vectors avoid allocating on every step. More importantly, motion and
+            formation analysis cannot drift into different definitions of a neighbour: both
+            read the same pair list.
           </p>
         </div>
       </section>
@@ -232,10 +226,9 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
           <dd>Four floats per reported cluster: toroidal x, y, population share, and species.</dd>
         </dl>
         <p>
-          At the default population, the visual snapshot is only 8,000 floats. The renderer
-          uploads it once per display frame; audio consumes the seven metrics and at most 32
-          formation floats. The boundary is small enough to be obvious and rich enough that
-          neither output needs to inspect particle neighbourhoods itself.
+          At the default population, the visual snapshot is 8,000 floats. The renderer uploads
+          it once per display frame; audio reads seven metrics and at most 32 formation floats.
+          Neither output needs to inspect particle neighbourhoods.
         </p>
       </section>
 
@@ -274,14 +267,13 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
           </li>
         </ol>
         <p>
-          Halo and Memory alter this render graph but never feed back into Rust. Ecology and
-          gestures alter the engine. That separation keeps aesthetic controls from becoming
-          hidden physics.
+          Halo and Memory alter the render graph without feeding back into Rust. Ecology and
+          gestures alter the engine. Visual controls therefore cannot become hidden physics.
         </p>
       </section>
 
       <section>
-        <h2><span class="num" aria-hidden="true">07</span>A fallback that preserves the idea</h2>
+        <h2><span class="num" aria-hidden="true">07</span>The Canvas fallback</h2>
         <p>
           WebGPU is preferred, but it is not assumed. If no adapter is available—or if
           <code>?renderer=canvas</code> is present—the app uses Canvas 2D. Cached radial sprites
@@ -289,14 +281,13 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
           trails, and additive compositing keeps the field luminous.
         </p>
         <p>
-          The fallback is simpler and visually different, but it keeps the important contract:
-          particle-built matter, three populations, energy and speed encoded in appearance, and
-          no replacement simulation.
+          It is simpler and visually different, but still shows particle-built matter, three
+          populations, energy, and speed from the same simulation.
         </p>
       </section>
 
       <section>
-        <h2><span class="num" aria-hidden="true">08</span>WebAudio is a sibling, not a post-process</h2>
+        <h2><span class="num" aria-hidden="true">08</span>Sound reads the same state</h2>
         <p>
           The sound graph is built from standard WebAudio nodes after an explicit user gesture.
           It contains sustained oscillators, filtered procedural noise, panners, delay,
@@ -311,8 +302,8 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
         </p>
         <p>
           The limiter feeds both the speakers and a
-          <code>MediaStreamAudioDestinationNode</code>. Recording therefore receives the same
-          mastered signal as playback, rather than an approximate second mix.
+          <code>MediaStreamAudioDestinationNode</code>. Recording receives the mastered
+          playback signal, not an approximate second mix.
         </p>
       </section>
 
@@ -326,10 +317,10 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
           back to the clipboard.
         </p>
         <p>
-          Reproduction has an explicit contract: engine revision, seed, particle count, fixed
-          timestep, performance settings, and gesture stream. The current share URL covers an
-          untouched field and the starting state of a performance. A future performed-take
-          bundle can add timestamped gestures without changing the engine boundary.
+          Reproduction needs the engine revision, seed, particle count, fixed timestep,
+          performance settings, and timed gesture stream. The current URL covers an untouched
+          field and the starting state of a performance. A future take bundle can add gestures
+          without changing the engine boundary.
         </p>
       </section>
 
@@ -350,9 +341,9 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
         </p>
         <p>
           Each landscape, square, portrait, story, 4K, or custom aspect ratio is a fresh run
-          from the same seed. Beside the video, the tool writes a PNG preview and JSON manifest
-          containing source revision, encoded URL, settings, resolution, measured cadence,
-          duration, and probed codecs.
+          from the same seed. The tool also writes a PNG preview and JSON manifest with the
+          source revision, canonical performance URL, settings, browser and platform, measured
+          cadence, duration, and probed codecs.
         </p>
       </section>
 
@@ -365,18 +356,17 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
           deploys that exact artifact through GitHub Actions and Cloudflare Workers Static Assets.
         </p>
         <p>
-          The native tests concentrate on invariants that matter creatively: same-seed
-          reproduction, different-seed divergence, stable dense fields, bounded metrics,
-          finite long runs, pair-grid agreement, gesture effect, species presence, formation
-          records, and particle conservation.
+          Native tests concentrate on creative invariants: same-seed reproduction,
+          different-seed divergence, stable dense fields, bounded metrics, finite long runs,
+          pair-grid agreement, gesture effect, species presence, formation records, and
+          particle conservation.
         </p>
         <div class="note honesty">
           <span class="tag">A useful division of labour</span>
           <p>
-            Rust owns the rules that must reproduce. WebGPU owns a replaceable interpretation of
-            those rules as light. WebAudio owns a replaceable interpretation as music. The
-            browser app owns timing and consent. The production tool owns delivery formats.
-            Keeping those responsibilities narrow is what lets them remain one instrument.
+            Rust owns reproducible rules. WebGPU interprets them as light; WebAudio interprets
+            them as music. The browser owns timing and consent. The production tool owns
+            delivery formats.
           </p>
         </div>
       </section>

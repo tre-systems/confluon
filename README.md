@@ -11,12 +11,17 @@ Its deterministic Rust/WASM simulation drives both WebGPU visuals and WebAudio
 sound. There is no sequencer and no separate audio-reactive animation: the image
 and music are two views of one evolving state.
 
+**Live:** [confluon.com](https://confluon.com/)
+
+![Confluon: three luminous particle populations meeting in a dark field](public/og-card.png)
+
 ## What is here
 
 - An energy-inspired, three-population particle model with distinct shell fields,
   cyclic cross-population sensing, close-range repulsion, and performance forces.
-  A per-step pair list over a counting-sort grid keeps the hot loop allocation-free.
-- Deterministic reproduction from an integer seed and fixed simulation timestep.
+  A per-step pair list over a counting-sort grid reuses scratch storage across steps.
+- Deterministic engine reproduction from an integer seed and fixed simulation
+  timestep.
 - A 2,000-particle field (adjustable from 600 to 4,096) initialised as 24 compact
   colonies. The WebGPU renderer accumulates every particle's shell kernel into a
   floating-point field texture, layers GPU-accumulated motion trails beneath growth
@@ -54,7 +59,7 @@ Requires Node.js 22+, `wasm-pack`, and stable Rust with the
 `wasm32-unknown-unknown` target.
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
@@ -97,7 +102,8 @@ npm run video -- \
 ```
 
 Each output includes a PNG preview and a JSON manifest with the engine revision,
-seed, performance settings, resolution, frame cadence, duration, and codecs. See
+seed, performance settings, canonical performance URL, browser and platform,
+resolution, frame cadence, duration, and codecs. See
 [Video production](docs/VIDEO_PRODUCTION.md) for format presets, codec choices, and
 requirements.
 
@@ -167,6 +173,12 @@ through the device share sheet or copy it when native sharing is unavailable.
   reference and what this implementation changes.
 - [Video production](docs/VIDEO_PRODUCTION.md) — reproducible local capture and
   share-format exports.
+
+## Contributing
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup,
+verification, and the determinism contract. Please use an issue to discuss a large
+change before investing heavily in it.
 
 ## Research basis and attribution
 

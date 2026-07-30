@@ -55,35 +55,32 @@
       <p class="eyebrow">The field</p>
       <h1>A field finding its own form</h1>
       <p class="lede">
-        Confluon begins with two thousand points and no
-        picture of what they should become. Each point feels a local field, looks for a
-        preferred kind of neighbourhood, and senses two other populations differently. The
-        membranes, cells, ruptures, and encounters are consequences of that negotiation.
+        Confluon starts with 2,000 points and no target image. Each point reads a local
+        field, seeks a useful neighbourhood, and responds differently to the other two
+        populations. Membranes, cells, ruptures, and encounters emerge from those local rules.
       </p>
     </header>
 
     <main>
       <section>
-        <h2><span class="num" aria-hidden="true">01</span>Not an animation of organisms</h2>
+        <h2><span class="num" aria-hidden="true">01</span>The organisms are not drawn</h2>
         <p>
-          The image is not a collection of sprites following paths. It is one deterministic
-          particle system on a wrapped two-dimensional world. The default seed places
-          <strong>2,000 particles</strong> into 24 loose colonies, divided evenly among three
-          populations. From the first step onward, no outline tells a colony where its edge is.
+          This is one deterministic particle system on a wrapped two-dimensional world, not
+          sprites following paths. A new field places <strong>2,000 particles</strong> in 24
+          loose colonies, divided evenly among three populations. No outline tells a colony
+          where its edge should be.
         </p>
         <p>
-          What looks like a membrane is made by the particles themselves. Neighbours prefer to
-          sit at a shell-like distance, very close particles repel, and each population has a
-          slightly different shell radius and preferred crowding. A cell can stretch, split,
-          absorb newly seeded matter, or lose its coherence because there is no hidden body
-          underneath keeping it intact.
+          The particles make the apparent membrane. Neighbours favour a shell-like distance,
+          close particles repel, and each population has its own shell radius and preferred
+          crowding. With no hidden body holding it together, a cell can stretch, split, absorb
+          newly seeded matter, or fall apart.
         </p>
         <div class="note">
           <span class="tag">Look closely</span>
           <p>
-            Even at maximum glow, the points remain visible. Confluon deliberately draws no
-            fabricated hulls or nuclei: if the simulation has not organised, the renderer does
-            not pretend that it has.
+            The points remain visible even at maximum glow. There are no fabricated hulls or
+            nuclei. If the simulation has not organised, the renderer does not tidy it up.
           </p>
         </div>
       </section>
@@ -91,9 +88,8 @@
       <section>
         <h2><span class="num" aria-hidden="true">02</span>The shell every particle casts</h2>
         <p>
-          A particle does not simply attract its nearest neighbours. It contributes a soft
-          circular <strong>shell field</strong>. For population <var>s</var>, the contribution at
-          distance <var>r</var> is a Gaussian ring:
+          Each particle contributes a soft circular <strong>shell field</strong>. For population
+          <var>s</var>, its contribution at distance <var>r</var> is a Gaussian ring:
         </p>
         <div class="eq">
           K<sub>s</sub>(r) =
@@ -103,11 +99,10 @@
           </small>
         </div>
         <p>
-          At each particle, Confluon sums the rings cast by nearby particles of the
-          <em>same</em> population. The result <var>U</var> is local crowding with structure:
-          neighbours on the useful shell count strongly; particles much nearer or farther away
-          count less. This is why the matter can arrange into perforated skins instead of
-          collapsing into solid dots.
+          Confluon sums the rings cast by nearby particles of the <em>same</em> population.
+          The result <var>U</var> measures structured local crowding: neighbours on the useful
+          shell count strongly, while nearer or farther particles count less. That lets the
+          matter form perforated skins instead of collapsing into solid dots.
         </p>
       </section>
 
@@ -125,22 +120,23 @@
           </small>
         </div>
         <p>
-          Close-range repulsion contributes an opposing energy <var>R</var>. Ignoring the other
-          populations for a moment, a particle follows the downhill direction of
-          <var>E</var> = <var>R</var> − <var>G</var>. It is trying to reduce overlap while moving
-          toward a neighbourhood where the shell field has the right density.
+          Close-range repulsion contributes an opposing energy <var>R</var>. Within one
+          population, a particle follows the downhill direction of
+          <var>E</var> = <var>R</var> − <var>G</var>: away from overlap and towards a
+          neighbourhood with the right shell density.
         </p>
         <p>
-          There is no momentum in this model. Velocity is the current energy-gradient direction,
-          speed-limited and integrated over a fixed step. It behaves less like a ball in empty
-          space and more like microscopic matter in a medium where inertia dissipates quickly.
+          The model has no momentum. Velocity is the current energy-gradient direction,
+          speed-limited and integrated over a fixed step. It behaves like matter in a strongly
+          damping medium, not a ball moving through empty space.
         </p>
       </section>
 
       <section>
         <h2><span class="num" aria-hidden="true">04</span>Three populations, one asymmetric ecology</h2>
         <p>
-          Same-population interactions make formations; cross-population sensing makes drama.
+          Same-population interactions make formations; cross-population sensing drives
+          encounters.
           The ecology is deliberately cyclic and non-reciprocal. A negative value attracts, a
           positive value avoids:
         </p>
@@ -153,32 +149,28 @@
           <dd>Attraction (−0.17), while cyan avoids violet (+0.25).</dd>
         </dl>
         <p>
-          That lack of symmetry matters. If every attraction were returned equally, the groups
-          would mostly merge or orbit in balanced pairs. Here one population can pursue another
-          that is actively trying to leave, while a third interrupts both. The cross forces are
-          weaker and longer-range than the internal formation rule, so encounters deform cells
-          without automatically dissolving them.
+          Because the forces are not reciprocal, one population can pursue another that is
+          trying to leave while the third interrupts both. Cross forces are weaker and
+          longer-range than the formation rule, so encounters deform cells without
+          automatically dissolving them.
         </p>
         <p>
           The <strong>Ecology</strong> control scales this existing cross-population derivative.
-          It does not add a visual effect after the fact: changing it changes the motion rule
-          itself.
+          Changing it alters the motion rule, not a visual effect applied afterwards.
         </p>
       </section>
 
       <section>
-        <h2><span class="num" aria-hidden="true">05</span>Why local descent stays alive</h2>
+        <h2><span class="num" aria-hidden="true">05</span>Why the field does not simply settle</h2>
         <p>
-          The energy language can sound as if the field should simply relax to one final minimum.
-          The subtlety inherited from the Particle Lenia formulation is that each particle
-          greedily improves <em>its own</em> local energy. It does not calculate the move that
-          would minimise one global energy for the whole population.
+          Each particle greedily improves <em>its own</em> local energy, an idea taken from the
+          Particle Lenia formulation. The system does not calculate a single global minimum for
+          the whole population.
         </p>
         <p>
-          When one particle moves, it changes the field perceived by its neighbours. Their next
-          locally useful move changes the first particle's situation in return. This moving
-          landscape allows spinning, crawling, reorganising attractors and sudden transitions
-          instead of only static packing.
+          One move changes the field seen by neighbouring particles, and their moves change it
+          again. That moving landscape allows spinning, crawling, reorganisation, and sudden
+          transitions rather than only static packing.
         </p>
         <div class="note honesty">
           <span class="tag">What is original here</span>
@@ -210,17 +202,15 @@
           <dd>Internal forces are softened while the whole population is encouraged toward a common centre.</dd>
         </dl>
         <p>
-          Releasing a gesture matters as much as applying it. Matter returns immediately to its
-          own rules, carrying the altered arrangement into the next negotiation. The player does
-          not pose a frozen shape; they change the conditions from which the field continues.
+          On release, the matter returns to its own rules from a changed arrangement. The player
+          changes the conditions; they do not pose a frozen shape.
         </p>
       </section>
 
       <section>
         <h2><span class="num" aria-hidden="true">07</span>Seven readings of one state</h2>
         <p>
-          Neither the renderer nor the sound engine needs all particle-to-particle detail. The
-          Rust core reduces each frame to seven collective readings:
+          The Rust core reduces the particle detail to seven collective readings:
         </p>
         <dl class="mapping">
           <dt>Energy</dt>
@@ -240,9 +230,9 @@
         </dl>
         <p>
           The engine also reports the position, size, and species of up to eight large visible
-          formations. These are not labels added by image recognition; they come from a
-          same-species union-find pass over the neighbour pairs already used by the simulation.
-          They let the sound occupy the same places as the structures on screen.
+          formations. They come from a same-species union-find pass over the simulation's
+          existing neighbour pairs, not image recognition. The sound can therefore occupy the
+          same places as the structures on screen.
         </p>
       </section>
 
@@ -255,10 +245,10 @@
           settings live in the URL.
         </p>
         <p>
-          Determinism does not mean there is a prewritten sequence. It means the same engine
-          version and the same inputs can retrace the same consequences. A performed take also
-          needs its gesture stream; an untouched field needs only its seed and settings. This is
-          why a Confluon URL is closer to a score than a screenshot.
+          There is no prewritten sequence. Determinism means the same engine version and inputs
+          can retrace the same consequences. A performed take also needs its gesture stream; an
+          untouched field needs only its seed and settings. A Confluon URL is closer to a score
+          than a screenshot.
         </p>
         <div class="note">
           <span class="tag">Try it</span>
@@ -279,10 +269,9 @@
           local, repeatable rules can produce organisation that was never explicitly drawn.
         </p>
         <p>
-          Its test is therefore not “does this predict nature?” but “does this rule remain
-          legible, surprising, playable, and musically consequential?” The implementation keeps
-          conservation of particle count, bounded motion, and direct state-to-sound coupling
-          because those constraints make the instrument honest about what is happening inside it.
+          The useful questions are whether the rules stay legible, surprising, playable, and
+          musically consequential. Particle conservation, bounded motion, and direct
+          state-to-sound coupling make it clear what is happening inside the instrument.
         </p>
       </section>
 

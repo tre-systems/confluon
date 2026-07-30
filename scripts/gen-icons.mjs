@@ -12,10 +12,11 @@ const root = process.cwd();
 const checkMode = process.argv.includes("--check");
 const ledgerPath = join(root, "assets", "icons.generated.json");
 const targets = [
-  ["icon.svg", "icon-192.png", 192, 192],
-  ["icon.svg", "icon-512.png", 512, 512],
-  ["icon.svg", "apple-touch-icon.png", 180, 180],
-  ["icon-maskable.svg", "icon-maskable-512.png", 512, 512],
+  ["icons/icon.svg", "icons/icon-192.png", 192, 192],
+  ["icons/icon.svg", "icons/icon-512.png", 512, 512],
+  ["icons/icon.svg", "icons/apple-touch-icon.png", 180, 180],
+  ["icons/icon-maskable.svg", "icons/icon-maskable-512.png", 512, 512],
+  ["og-card.svg", "og-card.png", 1200, 630],
 ];
 
 if (checkMode) {
@@ -24,8 +25,8 @@ if (checkMode) {
     ? JSON.parse(readFileSync(ledgerPath, "utf8"))
     : { icons: [] };
   for (const [source, output, width, height] of targets) {
-    const sourcePath = join(root, "public", "icons", source);
-    const outputPath = join(root, "public", "icons", output);
+    const sourcePath = join(root, "public", source);
+    const outputPath = join(root, "public", output);
     const record = ledger.icons.find((icon) => icon.output === output);
     if (!record) {
       errors.push(`missing generation record for ${output}`);
@@ -47,17 +48,17 @@ if (checkMode) {
     console.error("Run `npm run icons` and commit the regenerated files.");
     process.exit(1);
   }
-  console.log(`gen-icons: ${targets.length} launcher assets match their SVG sources`);
+  console.log(`gen-icons: ${targets.length} brand assets match their SVG sources`);
 } else {
-  await renderTargets(join(root, "public", "icons"), false);
+  await renderTargets(join(root, "public"), false);
   const ledger = {
     icons: targets.map(([source, output, width, height]) => ({
       source,
       output,
       width,
       height,
-      sourceSha256: digest(join(root, "public", "icons", source)),
-      outputSha256: digest(join(root, "public", "icons", output)),
+      sourceSha256: digest(join(root, "public", source)),
+      outputSha256: digest(join(root, "public", output)),
     })),
   };
   mkdirSync(dirname(ledgerPath), { recursive: true });
@@ -66,7 +67,7 @@ if (checkMode) {
 
 async function renderTargets(outputDirectory, quiet) {
   for (const [source, output, width, height] of targets) {
-    const input = join(root, "public", "icons", source);
+    const input = join(root, "public", source);
     if (!existsSync(input)) throw new Error(`gen-icons: missing ${input}`);
     const destination = join(outputDirectory, output);
     mkdirSync(dirname(destination), { recursive: true });

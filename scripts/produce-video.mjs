@@ -54,6 +54,7 @@ Options:
   --quality <N>          x264/x265 CRF value (default 18)
   --label <name>         output filename prefix
   --out-dir <path>       output directory (default renders/videos)
+  --canonical-url <url>  public performance URL base (default https://confluon.com/)
   --chrome <path>        Chrome/Chromium executable
   --no-build             use the existing dist/ directory
   --no-headless          show the capture browser
@@ -102,6 +103,16 @@ function parseContainers(raw) {
     throw new Error("--containers supports mp4 and webm");
   }
   return containers;
+}
+
+function parseCanonicalUrl(raw) {
+  const url = new URL(raw);
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("--canonical-url must use http or https");
+  }
+  url.search = "";
+  url.hash = "";
+  return url.toString();
 }
 
 function findChrome() {
@@ -650,6 +661,11 @@ async function recordFormat(options, format, baseUrl) {
 
     const manifest = {
       capturedAt: new Date().toISOString(),
+      captureEnvironment: {
+        architecture: process.arch,
+        browser: version.Browser ?? null,
+        platform: process.platform,
+      },
       duration: options.duration,
       format,
       fps: options.fps,
@@ -658,7 +674,7 @@ async function recordFormat(options, format, baseUrl) {
         minimum: result.fpsMinimum,
       },
       seed: options.seed,
-      sourceUrl: captureUrl(baseUrl, options.seed),
+      sourceUrl: captureUrl(options.canonicalUrl, options.seed),
       settings: prepared.settings,
       particles: prepared.particles,
       renderer: prepared.renderer,
@@ -709,6 +725,9 @@ const quality = boundedNumber("--quality", 18, 0, 51, true);
 const formats = parseFormats(value("--formats", "landscape"));
 const containers = parseContainers(value("--containers", "mp4"));
 const outDir = resolve(value("--out-dir", "renders/videos"));
+const canonicalUrl = parseCanonicalUrl(
+  value("--canonical-url", "https://confluon.com/"),
+);
 const defaultLabel = `confluon-${seed.toString(16).toUpperCase().padStart(8, "0")}`;
 const label = value("--label", defaultLabel);
 if (!/^[a-z0-9_.-]+$/i.test(label)) {
@@ -733,6 +752,7 @@ if (!existsSync("dist/index.html")) {
 
 const options = {
   captureBitrate: boundedNumber("--bitrate", 36_000_000, 1_000_000, 200_000_000, true),
+  canonicalUrl,
   chrome,
   codec: value("--codec", "h264"),
   containers,

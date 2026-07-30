@@ -5,6 +5,9 @@ edition = "2021"
 license = "Apache-2.0"
 description = "The deterministic swarm engine behind Confluon"
 repository = "https://github.com/tre-systems/confluon"
+homepage = "https://confluon.com/"
+readme = "README.md"
+keywords = ["artificial-life", "generative-music", "wasm", "web-audio"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
