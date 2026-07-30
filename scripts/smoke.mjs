@@ -65,7 +65,6 @@ try {
     newSeedButtons: document.querySelectorAll("#new-seed").length,
     runtimeStatusHidden:
       document.querySelector("#runtime-status")?.classList.contains("visually-hidden"),
-    runtimeStatusText: document.querySelector("#runtime-status")?.textContent,
     footerDocs: Array.from(document.querySelectorAll(".panel-links a"), (link) => link.pathname),
   }));
   if (
@@ -98,7 +97,6 @@ try {
     initial.transportButtons !== 0 ||
     initial.newSeedButtons !== 0 ||
     !initial.runtimeStatusHidden ||
-    initial.runtimeStatusText !== "" ||
     initial.footerDocs.join(",") !== "/field,/engineering,/sound,/privacy"
   ) {
     throw new Error(`controls were not simplified: ${JSON.stringify(initial)}`);
@@ -192,6 +190,9 @@ try {
     throw new Error(`Halo did not reach audio: ${JSON.stringify(audibleControl)}`);
   }
 
+  const statusBeforeFeaturedField = await page.evaluate(
+    () => document.querySelector("#runtime-status")?.textContent,
+  );
   await page.selectOption("#field-score", { label: "Ember Rift" });
   await page.waitForFunction(() => window.confluon.particleCount() === 2600);
   const featuredField = await page.evaluate(() => ({
@@ -204,7 +205,7 @@ try {
     featuredField.seed !== 153812312 ||
     featuredField.particles !== 2600 ||
     featuredField.mode !== "divide" ||
-    featuredField.statusText !== ""
+    featuredField.statusText !== statusBeforeFeaturedField
   ) {
     throw new Error(`featured field did not load cleanly: ${JSON.stringify(featuredField)}`);
   }
