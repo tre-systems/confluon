@@ -98,6 +98,10 @@ try {
   }
 
   const touchClient = await context.newCDPSession(page);
+  await touchClient.send("Emulation.setTouchEmulationEnabled", {
+    enabled: true,
+    maxTouchPoints: 1,
+  });
   const touchTap = async (id) => {
     await touchClient.send("Input.dispatchTouchEvent", {
       type: "touchStart",
