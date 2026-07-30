@@ -187,6 +187,7 @@ audio.update(metrics, engine.formations());</code></pre>
           Catch-up stops at two steps per display frame. Under sustained load the instrument
           slows instead of building an endless backlog. <strong>Flow</strong> scales simulation
           time before it enters the accumulator; it does not change display cadence.
+        </p>
         <p>
           Pointer behaviour is sampled on those same fixed steps. A poke leaves a short decaying
           alarm envelope, so even a tap shorter than one step changes the field. Mouse hover
