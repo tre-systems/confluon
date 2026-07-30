@@ -102,7 +102,9 @@ try {
 
   const beforeDoubleTap = await page.evaluate(() => window.confluon.particleCount());
   await page.touchscreen.tap(900, 560);
-  await page.waitForTimeout(120);
+  // Leave headroom for software rendering on slower CI runners while still
+  // exercising the app's real 330 ms double-tap window with trusted input.
+  await page.waitForTimeout(40);
   await page.touchscreen.tap(900, 560);
   await page.waitForTimeout(120);
   const afterDoubleTap = await page.evaluate(() => window.confluon.particleCount());
