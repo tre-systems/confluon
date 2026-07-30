@@ -536,7 +536,7 @@ async function recordFormat(options, format, baseUrl) {
         }
         if (!window.confluon) throw new Error("Confluon did not become ready");
         const style = document.createElement("style");
-        style.textContent = "#welcome,#controls,#gesture-hint,#runtime-status{display:none!important}#instrument{min-height:0!important}body{cursor:none!important;overflow:hidden!important}";
+        style.textContent = "#controls,#runtime-status{display:none!important}#instrument{min-height:0!important}body{cursor:none!important;overflow:hidden!important}";
         document.head.appendChild(style);
         const result = await window.confluon.prepareCapture();
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));

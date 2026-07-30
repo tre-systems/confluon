@@ -12,6 +12,8 @@ const COLONY_COUNT: usize = 24;
 const SENSE_RADIUS: f32 = 0.24;
 const CROSS_MOTION_BOOST: f32 = 2.5;
 const POINTER_REACH: f32 = 0.42;
+const POINTER_CORE_RADIUS: f32 = 0.075;
+const POINTER_RESPONSE: [f32; SPECIES_COUNT] = [1.0, 0.88, 1.12];
 const GRID_SIDE: usize = 8;
 const MAX_FORMATION_VOICES: usize = 8;
 
@@ -408,8 +410,11 @@ impl Simulation {
                 let distance_sq = dx * dx + dy * dy;
                 let distance = distance_sq.sqrt().max(0.035);
                 let falloff = (-distance_sq / POINTER_REACH.powi(2)).exp();
-                let radial = pointer_strength * 0.030 * falloff / distance;
-                let tangential = pointer_twist * 0.025 * falloff / distance;
+                let core = (-distance_sq / POINTER_CORE_RADIUS.powi(2)).exp();
+                let response = POINTER_RESPONSE[particle.species as usize];
+                let radial_profile = pointer_radial_profile(pointer_strength, falloff, core);
+                let radial = pointer_strength * radial_profile * response / distance;
+                let tangential = pointer_twist * 0.090 * falloff * response / distance;
                 scratch.forces[index].0 += dx * radial - dy * tangential;
                 scratch.forces[index].1 += dy * radial + dx * tangential;
             }
@@ -690,6 +695,17 @@ fn torus_delta(to_x: f32, to_y: f32, from_x: f32, from_y: f32) -> (f32, f32) {
     (dx, dy)
 }
 
+fn pointer_radial_profile(strength: f32, falloff: f32, core: f32) -> f32 {
+    if strength >= 0.0 {
+        // Gather and passive hover draw organisms near without collapsing
+        // their membranes onto the pointer.
+        0.110 * falloff - 0.200 * core
+    } else {
+        // A poke or Divide gesture is an unambiguous startle.
+        0.260 * falloff
+    }
+}
+
 fn cell_coordinate(value: f32) -> usize {
     (((wrap(value) + 1.0) * 0.5 * GRID_SIDE as f32).floor() as usize).min(GRID_SIDE - 1)
 }
@@ -851,6 +867,22 @@ mod tests {
             twisted.step(1.0 / 90.0, 0.2, 0.1, 0.0, 1.0, false);
         }
         assert_ne!(idle.snapshot(), twisted.snapshot());
+    }
+
+    #[test]
+    fn gather_keeps_a_protected_inner_space() {
+        let profile_at = |distance: f32| {
+            pointer_radial_profile(
+                1.0,
+                (-distance * distance / POINTER_REACH.powi(2)).exp(),
+                (-distance * distance / POINTER_CORE_RADIUS.powi(2)).exp(),
+            )
+        };
+        let outer = profile_at(0.20);
+        let inner = profile_at(0.02);
+
+        assert!(outer > 0.0, "matter outside the core should approach");
+        assert!(inner < 0.0, "matter inside the core should withdraw");
     }
 
     #[test]

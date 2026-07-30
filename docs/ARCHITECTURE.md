@@ -76,9 +76,15 @@ particle count, fixed timestep, performance settings, and gesture stream reprodu
 take. Browser settings are encoded in the URL; future export work should save those
 values as `instrument.json` alongside audio/video output.
 
-Gather and Divide are opposite signed local radial forces. Orbit combines a small
-radial bias with a tangential force and Gaussian distance falloff. Ecology scales the
-existing cross-population energy derivative rather than adding a visual-only effect.
+Pointer input has a deterministic short-lived alarm envelope. A poke persists beyond
+release so it cannot disappear between fixed steps; fast hover movement also alarms
+nearby matter, while a still mouse or hovering pen becomes a weak attractive
+presence. Positive radial forces contain a repulsive inner core, giving Gather and
+passive attention a stand-off distance rather than a singular collapse. Divide is
+fully repulsive. Orbit combines a small radial bias with a tangential force and
+Gaussian distance falloff. The three populations have slightly different response
+gains. Ecology scales the existing cross-population energy derivative rather than
+adding a visual-only effect.
 
 ## Audio graph
 
@@ -89,6 +95,7 @@ eight formation voices (paired oscillators -> low-pass -> gain -> panner) ----->
 sub oscillator -> low-pass ----------------------------------------------------> dry
 filtered stereo noise ---------------------------------------------------------> dry
 sparse scale tones ------------------------------------------------------------> dry
+control confirmation oscillator -> band-pass -> gain/panner ------------------> dry
 dry -> delay -> filtered feedback -> wet --------------------------------------> master
 dry -> generated impulse response (early reflections + darkening tail) -> wet -> master
 dry ---------------------------------------------------------------------------> master
@@ -96,12 +103,14 @@ master -> subsonic high-pass -> tape saturator -> tone low-pass -> compressor
        -> safety limiter -> analyser -> output (optional recorder worklet tap)
 ```
 
-Audio starts only after an explicit user gesture and is re-resumed after browser or
-device suspension. Parameter changes are smoothed with `AudioParam.setTargetAtTime`;
-transitions create bounded resonant voices, while a slow metric-derived scheduler adds
-space between longer tones. The Tone setting changes the resonator and noise spectral
-tilt while preserving the same metric mapping. The analyser exposes RMS and peak
-output for smoke tests.
+Audio starts on the first user gesture and is re-resumed after browser or device
+suspension. Parameter changes are smoothed with `AudioParam.setTargetAtTime`;
+transitions create bounded resonant voices, while a slow metric-derived scheduler
+adds space between longer tones. Pointer pressure, speed, and position continuously
+modulate brightness, air, and field pan. Flow affects note spacing; Halo and Memory
+shape shimmer, delay, feedback, and room depth; Tone changes the resonator and noise
+spectral tilt. A restrained confirmation voice makes slider and gesture-mode changes
+immediately audible. The analyser exposes RMS and peak output for smoke tests.
 
 The sound is tied to the image in three ways. Each of the up-to-eight visible
 formations owns a sustained voice whose stereo pan tracks the formation's on-screen

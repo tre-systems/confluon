@@ -3,6 +3,18 @@ const SCALE = [0, 2, 5, 7, 9, 12, 14, 17];
 const ROOT_STEPS = [0, 2, 5, 7, 9, 12];
 const MASTER_LEVEL = 0.52;
 const FORMATION_VOICES = 8;
+const CONTROL_STEPS = {
+  ecology: 2,
+  flow: 5,
+  gesture: 7,
+  glow: 9,
+  memory: 12,
+  tone: 14,
+  population: 17,
+  "gesture-gather": 5,
+  "gesture-orbit": 9,
+  "gesture-divide": 2,
+};
 
 /**
  * The Confluon audio engine. Everything is synthesized from native Web Audio
@@ -28,6 +40,24 @@ export class ConfluonAudio {
     this.nextNoteTime = Infinity;
     this.currentRoot = 48;
     this.latestMetrics = [0.5, 0, 0, 0.5, 1, 0, 0];
+    this.performance = {
+      ecology: 1,
+      flow: 1,
+      gesture: 1,
+      glow: 1,
+      memory: 0.42,
+    };
+    this.interaction = {
+      influencing: false,
+      active: false,
+      present: false,
+      strength: 0,
+      twist: 0,
+      impulse: 0,
+      motion: 0,
+      pan: 0,
+    };
+    this.lastControlCue = null;
     this.recorder = null;
   }
 
@@ -146,6 +176,25 @@ export class ConfluonAudio {
     this.noiseSource.connect(this.noiseFilter).connect(this.noiseGain).connect(this.dry);
     this.noiseSource.start();
 
+    // One restrained confirmation voice makes controls feel connected to the
+    // instrument without turning every slider movement into a melody.
+    this.controlOscillator = context.createOscillator();
+    this.controlOscillator.type = "sine";
+    this.controlOscillator.frequency.value = 180;
+    this.controlFilter = context.createBiquadFilter();
+    this.controlFilter.type = "bandpass";
+    this.controlFilter.frequency.value = 720;
+    this.controlFilter.Q.value = 2.2;
+    this.controlGain = context.createGain();
+    this.controlGain.gain.value = 0.0001;
+    this.controlPan = context.createStereoPanner();
+    this.controlOscillator
+      .connect(this.controlFilter)
+      .connect(this.controlGain)
+      .connect(this.controlPan)
+      .connect(this.dry);
+    this.controlOscillator.start();
+
     this.delaySend = context.createGain();
     this.delaySend.gain.value = 0.24;
     this.delay = context.createDelay(2.5);
@@ -233,7 +282,11 @@ export class ConfluonAudio {
 
     await context.resume();
     if (context.state !== "running") throw new Error(`Audio context remained ${context.state}`);
-    this.master.gain.setTargetAtTime(this.targetLevel(), context.currentTime, 0.36);
+    this.master.gain.setTargetAtTime(
+      this.paused ? 0.0001 : this.targetLevel(),
+      context.currentTime,
+      0.36,
+    );
     this.nextNoteTime = context.currentTime + 0.35;
   }
 
@@ -265,6 +318,15 @@ export class ConfluonAudio {
     this.latestMetrics = Array.from(metrics);
     const [energy, coherence, activity, density, formationCount, , encounters = 0] = metrics;
     const now = this.context.currentTime;
+    const contact = this.interaction;
+    const contactPressure = Math.min(
+      1,
+      Math.abs(contact.strength) / 2.4 + Math.abs(contact.twist) / 1.18,
+    );
+    const contactMotion = Math.min(1, contact.motion / 4);
+    const contactPresence = contact.influencing ? Math.min(1, 0.25 + contactPressure) : 0;
+    const halo = Math.max(0, Math.min(1, (this.performance.glow - 0.45) / 1.1));
+    const memory = Math.max(0, Math.min(1, this.performance.memory));
     const formation = Math.max(0, Math.round(formationCount) - 1);
     const rootStep = ROOT_STEPS[formation % ROOT_STEPS.length];
     const targetRoot = 45 * Math.pow(2, rootStep / 12) * (0.985 + energy * 0.03);
@@ -272,7 +334,11 @@ export class ConfluonAudio {
 
     this.voices.forEach((voice, index) => {
       voice.oscillator.frequency.setTargetAtTime(this.currentRoot * PARTIALS[index], now, 0.65 + index * 0.1);
-      voice.oscillator.detune.setTargetAtTime((index - 2.5) * (2.1 + encounters * 0.85), now, 0.8);
+      voice.oscillator.detune.setTargetAtTime(
+        (index - 2.5) * (2.1 + encounters * 0.85 + contactPressure * 0.18),
+        now,
+        0.8,
+      );
       const hierarchy = 1 / Math.pow(index + 1, 0.62);
       const spectralTilt = 0.78 + this.tone * (0.3 + index * 0.055);
       const voiceLevel =
@@ -288,12 +354,23 @@ export class ConfluonAudio {
     this.subGain.gain.setTargetAtTime(0.026 + density * 0.032 + coherence * 0.018, now, 0.6);
     const toneScale = 0.62 + this.tone * 0.86;
     this.padFilter.frequency.setTargetAtTime(
-      (520 + density * 1650 + activity * 1100 + encounters * 620) * toneScale,
+      (520 +
+        density * 1650 +
+        activity * 1100 +
+        encounters * 620 +
+        contactPressure * 720 +
+        contactMotion * 280) *
+        toneScale,
       now,
       0.32,
     );
     this.padFilter.Q.setTargetAtTime(0.8 + energy * 2.4, now, 0.4);
-    this.fieldPan.pan.setTargetAtTime(Math.sin(now * 0.043) * (0.14 + coherence * 0.24), now, 0.9);
+    const ambientPan = Math.sin(now * 0.043) * (0.14 + coherence * 0.24);
+    this.fieldPan.pan.setTargetAtTime(
+      ambientPan * (1 - contactPresence * 0.28) + contact.pan * contactPresence * 0.28,
+      now,
+      0.32,
+    );
     this.masterFilter.frequency.setTargetAtTime(1400 + this.tone * 3600 + activity * 900, now, 0.5);
     this.noiseFilter.frequency.setTargetAtTime(
       (260 + density * 1250 + energy * 760) * (0.58 + this.tone * 0.92),
@@ -301,14 +378,30 @@ export class ConfluonAudio {
       0.38,
     );
     this.noiseGain.gain.setTargetAtTime(
-      0.006 + activity * 0.026 * (1 - coherence * 0.42) + encounters * 0.012,
+      0.006 +
+        activity * 0.026 * (1 - coherence * 0.42) +
+        encounters * 0.012 +
+        contactPressure * 0.008 +
+        contactMotion * 0.007,
       now,
       0.28,
     );
-    this.shimmerGain.gain.setTargetAtTime(0.05 + coherence * 0.16 + this.tone * 0.08, now, 0.9);
-    this.delay.delayTime.setTargetAtTime(0.43 + (1 - coherence) * 0.42, now, 0.7);
-    this.feedback.gain.setTargetAtTime(0.23 + activity * 0.2 + encounters * 0.07, now, 0.6);
-    this.reverbGain.gain.setTargetAtTime(0.36 + coherence * 0.2, now, 0.8);
+    this.shimmerGain.gain.setTargetAtTime(
+      0.05 + coherence * 0.16 + this.tone * 0.08 + halo * 0.035 + contactPressure * 0.018,
+      now,
+      0.9,
+    );
+    this.delay.delayTime.setTargetAtTime(0.43 + (1 - coherence) * 0.42 + memory * 0.08, now, 0.7);
+    this.feedback.gain.setTargetAtTime(
+      0.23 + activity * 0.2 + encounters * 0.07 + memory * 0.09 + contactMotion * 0.025,
+      now,
+      0.6,
+    );
+    this.reverbGain.gain.setTargetAtTime(
+      0.36 + coherence * 0.2 + halo * 0.07 + memory * 0.04,
+      now,
+      0.8,
+    );
 
     this.updateFormations(formations, now, metrics);
 
@@ -316,7 +409,8 @@ export class ConfluonAudio {
       this.playFieldNote(metrics, formations, now);
       const space =
         1.55 - activity * 0.46 - density * 0.24 - encounters * 0.3 + this.random() * 0.55;
-      this.nextNoteTime = now + Math.max(0.78, space);
+      const flow = 0.88 + this.performance.flow * 0.12;
+      this.nextNoteTime = now + Math.max(0.72, space / flow);
     }
   }
 
@@ -558,6 +652,45 @@ export class ConfluonAudio {
     }
   }
 
+  setPerformance(settings) {
+    this.performance = {
+      ecology: Number(settings.ecology) || 1,
+      flow: Number(settings.flow) || 1,
+      gesture: Number(settings.gesture) || 1,
+      glow: Number(settings.glow) || 1,
+      memory: Number(settings.memory) || 0,
+    };
+  }
+
+  setInteraction(interaction, pan = 0) {
+    this.interaction = {
+      influencing: Boolean(interaction.influencing),
+      active: Boolean(interaction.active),
+      present: Boolean(interaction.present),
+      strength: Number(interaction.strength) || 0,
+      twist: Number(interaction.twist) || 0,
+      impulse: Number(interaction.impulse) || 0,
+      motion: Number(interaction.motion) || 0,
+      pan: clampPan(pan),
+    };
+  }
+
+  cueControl(kind, value = 0.5) {
+    if (!this.context || this.paused || !this.controlOscillator) return;
+    const now = this.context.currentTime;
+    const position = Math.max(0, Math.min(1, Number(value) || 0));
+    const semitones = (CONTROL_STEPS[kind] ?? 7) + (position - 0.5) * 2;
+    const frequency = this.currentRoot * 2 * Math.pow(2, semitones / 12);
+    this.lastControlCue = { kind, position, frequency };
+    this.controlOscillator.frequency.setTargetAtTime(frequency, now, 0.035);
+    this.controlFilter.frequency.setTargetAtTime(frequency * (3.2 + this.tone * 1.8), now, 0.04);
+    this.controlPan.pan.setTargetAtTime((position - 0.5) * 0.5, now, 0.04);
+    this.controlGain.gain.cancelScheduledValues(now);
+    this.controlGain.gain.setValueAtTime(Math.max(0.0001, this.controlGain.gain.value), now);
+    this.controlGain.gain.linearRampToValueAtTime(0.014, now + 0.018);
+    this.controlGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+  }
+
   setLevel(level) {
     this.level = Math.max(0, Math.min(1, level));
     if (this.context && !this.paused) {
@@ -603,6 +736,15 @@ export class ConfluonAudio {
       peak,
       level: this.level,
       paused: this.paused,
+    };
+  }
+
+  diagnostics() {
+    return {
+      state: this.state(),
+      performance: { ...this.performance },
+      interaction: { ...this.interaction },
+      lastControlCue: this.lastControlCue ? { ...this.lastControlCue } : null,
     };
   }
 }

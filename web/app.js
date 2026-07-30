@@ -10,17 +10,24 @@ import {
 const FIXED_STEP = 1 / 30;
 const IDLE_CONTROLS_MS = 9000;
 const GESTURE_MODES = new Set(["gather", "orbit", "divide"]);
+const SOUND_START_EVENTS = [
+  "pointerdown",
+  "pointerup",
+  "touchend",
+  "mousedown",
+  "click",
+  "keydown",
+  "wheel",
+];
 const settings = readPerformanceSettings();
 
 const elements = {
   instrument: document.querySelector("#instrument"),
   field: document.querySelector("#field"),
   traces: document.querySelector("#traces"),
-  welcome: document.querySelector("#welcome"),
-  begin: document.querySelector("#begin"),
   controls: document.querySelector("#controls"),
   controlsToggle: document.querySelector("#controls-toggle"),
-  gestureHint: document.querySelector("#gesture-hint"),
+  fieldScore: document.querySelector("#field-score"),
   newSeed: document.querySelector("#new-seed"),
   settle: document.querySelector("#settle"),
   pause: document.querySelector("#pause"),
@@ -28,7 +35,6 @@ const elements = {
   record: document.querySelector("#record"),
   recordTime: document.querySelector("#record-time"),
   shareLink: document.querySelector("#share-link"),
-  featuredFields: Array.from(document.querySelectorAll("[data-featured-field]")),
   population: document.querySelector("#population"),
   populationLabel: document.querySelector("#population-label"),
   ecology: document.querySelector("#ecology"),
@@ -45,11 +51,6 @@ const elements = {
   toneLabel: document.querySelector("#tone-label"),
   gestureModes: Array.from(document.querySelectorAll("[data-gesture]")),
   seed: document.querySelector("#seed-value"),
-  energy: document.querySelector("#energy-value"),
-  coherence: document.querySelector("#coherence-value"),
-  activity: document.querySelector("#activity-value"),
-  encounter: document.querySelector("#encounter-value"),
-  renderer: document.querySelector("#renderer-value"),
   audioState: document.querySelector("#audio-state"),
   runtimeStatus: document.querySelector("#runtime-status"),
 };
@@ -63,10 +64,15 @@ const state = {
   previousTransition: 0,
   pointer: {
     active: false,
+    present: false,
+    type: "mouse",
     x: 0,
     y: 0,
-    strength: 0,
-    twist: 0,
+    impulse: 0,
+    motion: 0,
+    lastMoveAt: 0,
+    lastX: 0,
+    lastY: 0,
     mode: settings.mode,
     downAt: 0,
     downX: 0,
@@ -97,7 +103,6 @@ try {
   });
   audio = new ConfluonAudio(seed);
   applyPerformanceSettings(false);
-  elements.renderer.textContent = renderer.kind;
   setRuntimeTag("renderer", renderer.kind.toLowerCase());
   elements.seed.textContent = formatSeed(seed);
   installControls();
@@ -106,8 +111,6 @@ try {
 } catch (error) {
   console.error(error);
   captureException(error, { stage: "instrument_initialization" });
-  elements.begin.querySelector("span").textContent = "UNAVAILABLE";
-  elements.begin.disabled = true;
   elements.runtimeStatus.textContent = "This browser could not start the instrument.";
   elements.runtimeStatus.classList.add("error");
 }
@@ -117,7 +120,6 @@ async function recoverFromRendererLoss(info) {
   elements.runtimeStatus.textContent = "Graphics device changed. Continuing with Canvas.";
   try {
     renderer = await createRenderer(elements.field, elements.traces, { forceCanvas: true });
-    elements.renderer.textContent = renderer.kind;
     setRuntimeTag("renderer", renderer.kind.toLowerCase());
   } catch (error) {
     captureException(error, {
@@ -130,26 +132,18 @@ async function recoverFromRendererLoss(info) {
 }
 
 function installControls() {
-  elements.begin.addEventListener("click", startExperience);
+  SOUND_START_EVENTS.forEach((eventName) => {
+    window.addEventListener(eventName, startExperience, { capture: true, passive: true });
+  });
   elements.controlsToggle.addEventListener("click", () => {
     setControlsOpen(elements.controls.classList.contains("collapsed"));
   });
   elements.shareLink.textContent = shareButtonLabel();
   elements.shareLink.addEventListener("click", sharePerformance);
-  elements.featuredFields.forEach((link) => {
-    link.addEventListener("click", (event) => {
-      if (
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey
-      ) {
-        return;
-      }
-      event.preventDefault();
-      loadFeaturedField(link);
-    });
+  elements.fieldScore.addEventListener("change", () => {
+    if (!elements.fieldScore.value) return;
+    const name = elements.fieldScore.selectedOptions[0]?.textContent.trim() || "field";
+    loadFieldScore(elements.fieldScore.value, name);
   });
 
   document.addEventListener("pointerdown", (event) => {
@@ -182,14 +176,21 @@ function installControls() {
     control.addEventListener("input", () => {
       readSettingsFromControls();
       applyPerformanceSettings(true);
+      audio.cueControl(control.id, Number(control.value) / Number(control.max));
     });
   });
 
+  elements.field.addEventListener("pointerenter", (event) => {
+    if (event.pointerType === "touch") return;
+    updatePointerPosition(event, false);
+    state.pointer.present = true;
+  });
+
   elements.field.addEventListener("pointerdown", (event) => {
-    const point = eventPoint(event);
+    const point = updatePointerPosition(event, false);
     state.pointer.active = true;
-    state.pointer.x = point.x;
-    state.pointer.y = point.y;
+    state.pointer.present = true;
+    state.pointer.impulse = 1;
     state.pointer.downX = point.x;
     state.pointer.downY = point.y;
     state.pointer.downAt = performance.now();
@@ -198,18 +199,18 @@ function installControls() {
   });
 
   elements.field.addEventListener("pointermove", (event) => {
-    if (!state.pointer.active) return;
-    const point = eventPoint(event);
-    state.pointer.x = point.x;
-    state.pointer.y = point.y;
-    configurePointerGesture(event);
+    if (event.pointerType === "touch" && !state.pointer.active) return;
+    updatePointerPosition(event, true);
+    state.pointer.present = true;
+    if (state.pointer.active) configurePointerGesture(event);
   });
 
   elements.field.addEventListener("pointerup", (event) => {
-    const point = eventPoint(event);
+    const point = updatePointerPosition(event, true);
     const duration = performance.now() - state.pointer.downAt;
     const travel = Math.hypot(point.x - state.pointer.downX, point.y - state.pointer.downY);
     state.pointer.active = false;
+    state.pointer.present = event.pointerType !== "touch" && point.inside;
     elements.instrument.removeAttribute("data-active-gesture");
     if (duration > 90 || travel > 0.025) {
       const strikeStrength =
@@ -230,8 +231,14 @@ function installControls() {
     }
   });
 
+  elements.field.addEventListener("pointerleave", (event) => {
+    if (event.pointerType === "touch" || !state.pointer.active) {
+      state.pointer.present = false;
+    }
+  });
   elements.field.addEventListener("pointercancel", () => {
     state.pointer.active = false;
+    state.pointer.present = false;
     elements.instrument.removeAttribute("data-active-gesture");
   });
   elements.field.addEventListener("dblclick", (event) => {
@@ -262,10 +269,12 @@ function installControls() {
     settings.population = clampPopulation(Number(elements.population.value));
     engine = new Engine(seed, settings.population);
     engine.set_ecology(settings.ecology);
+    audio.setPerformance(settings);
     resetVisualSmoothing();
     renderer.resetTrails();
     updateSettingLabels();
     syncSettingsUrl();
+    audio.cueControl("population", settings.population / 4096);
   });
   elements.volume.addEventListener("input", () => {
     settings.level = Number(elements.volume.value) / 100;
@@ -315,18 +324,72 @@ function installControls() {
 function configurePointerGesture(event) {
   const mode = event.altKey ? "divide" : event.shiftKey ? "orbit" : state.gestureMode;
   state.pointer.mode = mode;
-  const amount = settings.gesture;
-  if (mode === "divide") {
-    state.pointer.strength = -1.22 * amount;
-    state.pointer.twist = -0.08 * amount;
-  } else if (mode === "orbit") {
-    state.pointer.strength = 0.12 * amount;
-    state.pointer.twist = 1.18 * amount;
-  } else {
-    state.pointer.strength = 1.0 * amount;
-    state.pointer.twist = 0;
-  }
   elements.instrument.dataset.activeGesture = mode;
+}
+
+function pointerInteraction() {
+  const pointer = state.pointer;
+  const amount = settings.gesture;
+  const hovering = pointer.present && pointer.type !== "touch";
+  let strength = hovering ? 0.24 * amount : 0;
+  let twist = 0;
+
+  if (pointer.active && pointer.mode === "divide") {
+    strength = -1.22 * amount;
+    twist = -0.08 * amount;
+  } else if (pointer.active && pointer.mode === "orbit") {
+    strength = 0.12 * amount;
+    twist = 1.18 * amount;
+  } else if (pointer.active) {
+    strength = 1.0 * amount;
+  }
+
+  // Organisms recoil from a sudden poke or fast approach, then become
+  // curious about a held finger or still cursor. The impulse persists after
+  // release so a short tap cannot vanish between fixed simulation steps.
+  const movementAlarm = hovering || pointer.active ? Math.min(0.9, pointer.motion * 0.22) : 0;
+  strength -= (pointer.impulse * 2.4 + movementAlarm) * amount;
+
+  return {
+    strength,
+    twist,
+    influencing:
+      pointer.active ||
+      hovering ||
+      pointer.impulse > 0.008 ||
+      (pointer.present && pointer.motion > 0.008),
+  };
+}
+
+function decayPointerInteraction(dt) {
+  const pointer = state.pointer;
+  pointer.impulse *= Math.exp(-dt / 0.18);
+  pointer.motion *= Math.exp(-dt / 0.14);
+  if (pointer.impulse < 0.008) pointer.impulse = 0;
+  if (pointer.motion < 0.008) pointer.motion = 0;
+}
+
+function updatePointerPosition(event, trackMotion) {
+  const point = eventPoint(event);
+  const pointer = state.pointer;
+  const now = event.timeStamp;
+
+  if (trackMotion && pointer.lastMoveAt > 0) {
+    const elapsed = Math.max(0.008, Math.min(0.08, (now - pointer.lastMoveAt) / 1000));
+    const distance = Math.hypot(point.x - pointer.lastX, point.y - pointer.lastY);
+    const speed = Math.min(4, distance / elapsed);
+    pointer.motion = pointer.motion * 0.35 + speed * 0.65;
+  } else {
+    pointer.motion *= 0.5;
+  }
+
+  pointer.x = point.x;
+  pointer.y = point.y;
+  pointer.lastX = point.x;
+  pointer.lastY = point.y;
+  pointer.lastMoveAt = now;
+  pointer.type = event.pointerType || "mouse";
+  return point;
 }
 
 function setGestureMode(mode, updateUrl = true) {
@@ -337,7 +400,10 @@ function setGestureMode(mode, updateUrl = true) {
   elements.gestureModes.forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.gesture === mode));
   });
-  if (updateUrl) syncSettingsUrl();
+  if (updateUrl) {
+    syncSettingsUrl();
+    audio.cueControl(`gesture-${mode}`, ["gather", "orbit", "divide"].indexOf(mode) / 2);
+  }
 }
 
 function clampPopulation(value) {
@@ -372,6 +438,7 @@ function applyPerformanceSettings(updateUrl) {
   });
   audio.setTone(settings.tone);
   audio.setLevel(settings.level);
+  audio.setPerformance(settings);
   setGestureMode(settings.mode, false);
   if (updateUrl) syncSettingsUrl();
 }
@@ -430,25 +497,29 @@ function settingWord(value, [low, high], [below, middle, above]) {
 }
 
 async function startExperience() {
+  if (state.started) {
+    await resumeSound();
+    return;
+  }
   if (state.starting) return;
   state.starting = true;
-  elements.begin.querySelector("span").textContent = "WAKING";
   try {
     await audio.start();
     audio.setLevel(Number(elements.volume.value) / 100);
     audio.wake(engine.metrics());
     state.started = true;
     setAudioState();
-    elements.welcome.classList.add("dismissed");
-    window.setTimeout(() => {
-      elements.welcome.hidden = true;
-      elements.gestureHint.classList.add("visible");
-      window.setTimeout(() => elements.gestureHint.classList.remove("visible"), 5800);
-    }, 1100);
+    SOUND_START_EVENTS.forEach((eventName) => {
+      window.removeEventListener(eventName, startExperience, { capture: true });
+    });
   } catch (error) {
+    if (["suspended", "interrupted"].includes(audio.state())) {
+      elements.audioState.dataset.state = "waiting";
+      elements.audioState.textContent = "sound waiting";
+      return;
+    }
     console.error(error);
     captureException(error, { stage: "audio_start" });
-    elements.begin.querySelector("span").textContent = "TRY AGAIN";
     elements.audioState.dataset.state = "error";
     elements.audioState.textContent = "sound unavailable";
     elements.runtimeStatus.textContent = "Sound did not start. Check this tab’s audio permission and try again.";
@@ -509,14 +580,16 @@ function frame(milliseconds) {
   if (state.running) {
     let steps = 0;
     while (accumulator >= FIXED_STEP && steps < 2) {
+      const interaction = pointerInteraction();
       engine.step(
         FIXED_STEP,
         state.pointer.x,
         state.pointer.y,
-        state.pointer.active ? state.pointer.strength : 0,
-        state.pointer.active ? state.pointer.twist : 0,
+        interaction.influencing ? interaction.strength : 0,
+        interaction.influencing ? interaction.twist : 0,
         state.settle,
       );
+      decayPointerInteraction(FIXED_STEP);
       accumulator -= FIXED_STEP;
       steps += 1;
     }
@@ -528,6 +601,17 @@ function frame(milliseconds) {
   const metrics = engine.metrics();
   const visualState = smoothVisualState(snapshot, metrics, elapsed);
   renderer.render(visualState.snapshot, visualState.metrics, time);
+  const audibleInteraction = pointerInteraction();
+  audio.setInteraction(
+    {
+      ...audibleInteraction,
+      active: state.pointer.active,
+      present: state.pointer.present,
+      impulse: state.pointer.impulse,
+      motion: state.pointer.motion,
+    },
+    state.pointer.x,
+  );
   audio.update(metrics, engine.formations());
   if (metrics[5] > 0.24 && state.previousTransition <= 0.24 && state.running) {
     audio.strike(metrics[5], metrics[0]);
@@ -538,10 +622,6 @@ function frame(milliseconds) {
     if (audio.isRecording()) {
       elements.recordTime.textContent = formatRecordTime(audio.recordingSeconds());
     }
-    elements.energy.textContent = metrics[0].toFixed(2);
-    elements.coherence.textContent = metrics[1].toFixed(2);
-    elements.activity.textContent = metrics[2].toFixed(2);
-    elements.encounter.textContent = metrics[6].toFixed(2);
     elements.instrument.dataset.particles = String(engine.particle_count());
     setAudioState();
     lastReadout = milliseconds;
@@ -619,12 +699,13 @@ function newField() {
   const url = new URL(window.location.href);
   url.searchParams.set("seed", seed.toString());
   window.history.replaceState({}, "", url);
+  elements.fieldScore.value = "";
   elements.seed.textContent = formatSeed(seed);
   audio.strike(0.72, 0.42);
 }
 
-function loadFeaturedField(link) {
-  const featuredUrl = new URL(link.href, window.location.href);
+function loadFieldScore(source, name) {
+  const featuredUrl = new URL(source, window.location.href);
   const featuredSeed = Number(featuredUrl.searchParams.get("seed"));
   if (!Number.isInteger(featuredSeed) || featuredSeed <= 0 || featuredSeed > 0xffffffff) return;
 
@@ -637,15 +718,14 @@ function loadFeaturedField(link) {
   applyPerformanceSettings(false);
   window.history.replaceState({}, "", `${featuredUrl.pathname}${featuredUrl.search}`);
   elements.seed.textContent = formatSeed(seed);
-  elements.runtimeStatus.textContent = `Entered ${link.dataset.featuredField}, seed ${formatSeed(seed)}.`;
-  link.closest("details")?.removeAttribute("open");
+  elements.runtimeStatus.textContent = `Entered ${name}, seed ${formatSeed(seed)}.`;
   setControlsOpen(false);
   if (state.started) audio.strike(0.7, engine.metrics()[0]);
 }
 
 async function toggleRecording() {
   if (!state.started) {
-    elements.runtimeStatus.textContent = "Enter with sound on before recording.";
+    elements.runtimeStatus.textContent = "Touch the field once to start sound before recording.";
     return;
   }
   if (audio.isRecording()) {
@@ -717,11 +797,20 @@ function exposeDiagnostics() {
     captureAudioStream: () => audio.captureStream(),
     audioState: () => audio.state(),
     audioMeter: () => audio.meter(),
+    audioResponse: () => audio.diagnostics(),
     renderer: () => renderer.kind,
     metrics: () => Array.from(engine.metrics()),
     particleCount: () => engine.particle_count(),
     fps: () => measuredFps,
     gestureMode: () => state.gestureMode,
+    interaction: () => ({
+      active: state.pointer.active,
+      present: state.pointer.present,
+      type: state.pointer.type,
+      impulse: state.pointer.impulse,
+      motion: state.pointer.motion,
+      ...pointerInteraction(),
+    }),
     seed: () => seed,
     settings: () => ({ ...settings }),
   });
@@ -735,14 +824,15 @@ async function prepareCapture() {
   state.running = false;
   state.settle = false;
   state.pointer.active = false;
+  state.pointer.present = false;
+  state.pointer.impulse = 0;
+  state.pointer.motion = 0;
   state.previousTransition = 0;
   accumulator = 0;
   engine.reset(seed);
   resetVisualSmoothing();
   renderer.resetTrails();
   audio.reseed(seed);
-  elements.welcome.hidden = true;
-  elements.gestureHint.classList.remove("visible");
   setControlsOpen(false);
   // Let the master reach silence before MediaRecorder starts. beginCapture()
   // then opens it with the normal slow attack on the first recorded frame.
@@ -771,6 +861,11 @@ function eventPoint(event) {
   return {
     x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
     y: 1 - ((event.clientY - rect.top) / rect.height) * 2,
+    inside:
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom,
   };
 }
 

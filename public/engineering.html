@@ -167,8 +167,10 @@ impl Engine {
 
 let steps = 0;
 while (accumulator &gt;= FIXED_STEP &amp;&amp; steps &lt; 2) {
+  const interaction = pointerInteraction();
   engine.step(FIXED_STEP, pointer.x, pointer.y,
-              pointer.strength, pointer.twist, settle);
+              interaction.strength, interaction.twist, settle);
+  decayPointerInteraction(FIXED_STEP);
   accumulator -= FIXED_STEP;
   steps += 1;
 }
@@ -180,6 +182,12 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
           Catch-up stops at two steps per display frame. Under sustained load the instrument
           slows instead of building an endless backlog. <strong>Flow</strong> scales simulation
           time before it enters the accumulator; it does not change display cadence.
+        </p>
+        <p>
+          Pointer behaviour is sampled on those same fixed steps. A poke leaves a short decaying
+          alarm envelope, so even a tap shorter than one step changes the field. Mouse hover
+          adds a weaker presence; movement speed decides whether nearby organisms recoil or
+          investigate.
         </p>
       </section>
 
@@ -295,10 +303,9 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
           decides the musical targets; the browser's audio thread renders them.
         </p>
         <p>
-          Audio starts only after <strong>Enter — Sound on</strong> because browsers require a
-          user gesture. Visibility and pointer/keyboard events attempt to resume suspended audio,
-          which is especially important on mobile devices that interrupt a context when the app
-          loses focus.
+          The first click, touch, key press, or wheel gesture starts audio. Visibility and
+          pointer/keyboard events also attempt to resume a suspended context, which matters on
+          mobile devices that interrupt sound when the app loses focus.
         </p>
         <p>
           The limiter feeds both the speakers and a

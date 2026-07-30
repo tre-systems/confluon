@@ -35,8 +35,10 @@ and music are two views of one evolving state.
   and an output meter.
 - Lossless recording: a Record control taps the master bus through an AudioWorklet
   and saves the take as a 32-bit float stereo WAV for release work.
-- Touch-friendly Gather, Orbit, and Divide gestures, plus seeding, settling, pausing,
-  and resetting. Gesture strikes sound from where they happen in the image.
+- Pointer-aware organisms that startle at a poke or fast approach, investigate a
+  still cursor, and keep a protected inner distance. Touch-friendly Gather, Orbit,
+  and Divide gestures add deliberate sculpting, alongside seeding, settling,
+  pausing, and resetting.
 - Shareable performance settings for ecology, flow, touch strength, halo, visual
   memory, tone, population, and level. Share opens the native device sheet when
   available and otherwise copies the complete URL.
@@ -63,9 +65,9 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite and choose **Enter — Sound on**. Browsers require
-that explicit gesture before starting WebAudio. The control icon in the top-left
-opens the performance controls and fades away when left alone.
+Open the local URL printed by Vite. The field appears immediately; the first click,
+touch, key press, or wheel gesture starts WebAudio. The control icon in the top-left
+opens the compact performance controls and fades away when left alone.
 
 Run the complete verification gate with:
 
@@ -140,8 +142,10 @@ See [Privacy](https://confluon.com/privacy) for the user-facing data boundary.
 
 ## Performance map
 
-- Choose **Gather**, **Orbit**, or **Divide**, then press and drag to sculpt the local
-  field. The modes work with mouse, pen, and touch.
+- Move a mouse or hovering pen through the field: nearby organisms notice it without
+  needing a click. Fast movement alarms them; a still pointer draws their attention.
+- Poke or click to make nearby organisms recoil. Hold or drag and the response moves
+  from startle into the selected **Gather**, **Orbit**, or **Divide** gesture.
 - Shift + drag: momentarily orbit without changing the selected mode.
 - Option/Alt + drag: momentarily divide and open a cavity.
 - Double click/tap: seed a compact 50-particle colony at the pointer.

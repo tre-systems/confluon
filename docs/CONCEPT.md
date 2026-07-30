@@ -37,12 +37,18 @@ signals:
   where it appeared;
 - cross-population encounter pressure brightens the field, widens its tuning, and
   shortens the space between sparse tones.
+- pointer pressure and speed open the shared spectrum, add a little air, and pull
+  the field sound towards the contact position.
 
 The visual image and the audio mix read the same deterministic simulation snapshot.
 
 ## Performance gestures
 
-- Press and drag: herd the swarm toward the pointer.
+- A mouse or hovering pen is a quiet presence. Fast movement alarms nearby organisms;
+  a still pointer attracts attention without letting matter collapse onto it.
+- A poke or click produces a short startle response that survives a quick release.
+- Press and drag: after the initial startle, herd the swarm towards a protected space
+  around the pointer.
 - Orbit drag: apply a local tangential field that winds nearby cells around the
   gesture without pulling the entire world into it.
 - Option/Alt + drag: repel and open a cavity.
@@ -59,6 +65,8 @@ The visual image and the audio mix read the same deterministic simulation snapsh
 - Flow changes deterministic simulation time without changing display cadence.
 - Touch changes the strength of all direct gestures.
 - Halo and Memory shape the rendered field and motion history.
+- Halo and Memory also shape shimmer, delay, and room depth, keeping those controls
+  meaningful to both sides of the instrument.
 - Tone tilts the shared WebAudio spectrum between dark and bright.
 - Life sets the particle population, from a sparse 600 to a teeming 4,096.
 - Record captures the master output to a 32-bit float WAV until pressed again.

@@ -25,11 +25,8 @@ try {
     ],
   });
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  const page = await context.newPage();
-  page.on("pageerror", (error) => browserErrors.push(error.message));
-  page.on("console", (message) => {
-    if (message.type() === "error") browserErrors.push(message.text());
-  });
+  let page = await context.newPage();
+  watchPage(page, browserErrors);
 
   const response = await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
   if (!response?.ok()) throw new Error(`root returned ${response?.status()}`);
@@ -45,6 +42,8 @@ try {
     feedbackHidden: document.querySelector("#feedback-button")?.hidden,
     supportHref: document.querySelector(".panel-support a")?.href,
     manifestHref: document.querySelector('link[rel="manifest"]')?.href,
+    marketingOverlay: Boolean(document.querySelector("#welcome, #gesture-hint")),
+    controlsCollapsed: document.querySelector("#controls")?.classList.contains("collapsed"),
   }));
   if (initial.title !== "Confluon") throw new Error(`unexpected title: ${initial.title}`);
   if (!["WEBGPU", "CANVAS"].includes(initial.renderer)) {
@@ -59,15 +58,59 @@ try {
   if (!initial.manifestHref?.endsWith("/site.webmanifest")) {
     throw new Error("PWA manifest link is missing");
   }
+  if (initial.marketingOverlay || !initial.controlsCollapsed) {
+    throw new Error(`instrument did not open directly onto the field: ${JSON.stringify(initial)}`);
+  }
 
-  await page.click("#begin");
+  await page.mouse.click(640, 400);
   await page.waitForFunction(
     () => ["running", "suspended"].includes(window.confluon.audioState()),
     null,
     { timeout: 15_000 },
   );
+  await page.waitForTimeout(750);
+
+  await page.mouse.move(1120, 650);
+  await page.mouse.move(180, 130);
+  const fastHover = await page.evaluate(() => window.confluon.interaction());
+  if (!fastHover.present || !fastHover.influencing || fastHover.strength >= 0) {
+    throw new Error(`fast hover did not alarm the field: ${JSON.stringify(fastHover)}`);
+  }
+
+  await page.mouse.move(640, 400);
+  await page.mouse.down();
+  const poke = await page.evaluate(() => window.confluon.interaction());
+  await page.waitForTimeout(40);
+  const audiblePoke = await page.evaluate(() => window.confluon.audioResponse().interaction);
+  await page.mouse.up();
+  await page.waitForTimeout(45);
+  const releasedPoke = await page.evaluate(() => window.confluon.interaction());
+  if (!poke.active || poke.impulse < 0.9 || poke.strength >= -0.5) {
+    throw new Error(`pointer poke did not startle the field: ${JSON.stringify(poke)}`);
+  }
+  if (!releasedPoke.influencing || releasedPoke.impulse <= 0) {
+    throw new Error(`pointer poke vanished on release: ${JSON.stringify(releasedPoke)}`);
+  }
+  if (!audiblePoke.influencing || Math.abs(audiblePoke.strength) < 0.1) {
+    throw new Error(`pointer poke did not reach audio: ${JSON.stringify(audiblePoke)}`);
+  }
+
   await page.click("#controls-toggle");
   await page.waitForTimeout(500);
+  const audibleControl = await page.evaluate(() => {
+    const tuning = document.querySelector(".tuning");
+    const halo = document.querySelector("#glow");
+    tuning.open = true;
+    halo.value = "140";
+    halo.dispatchEvent(new Event("input", { bubbles: true }));
+    return window.confluon.audioResponse();
+  });
+  if (
+    audibleControl.performance.glow !== 1.4 ||
+    audibleControl.lastControlCue?.kind !== "glow"
+  ) {
+    throw new Error(`Halo did not reach audio: ${JSON.stringify(audibleControl)}`);
+  }
 
   const manifestResponse = await context.request.get(new URL("/site.webmanifest", baseUrl).href);
   if (!manifestResponse.ok()) throw new Error(`manifest returned ${manifestResponse.status()}`);
@@ -116,6 +159,9 @@ try {
     throw new Error(`service worker is ${serviceWorkerState}`);
   }
 
+  await page.close();
+  page = await context.newPage();
+  watchPage(page, browserErrors);
   await page.goto(new URL("/?renderer=canvas-locked&seed=424242", baseUrl).href, {
     waitUntil: "domcontentloaded",
   });
@@ -147,11 +193,18 @@ try {
   }
 
   console.log(
-    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, audio started, offline PWA/privacy/404 healthy`,
+    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, pointer/audio response, musical controls, offline PWA/privacy/404 healthy`,
   );
 } finally {
   await browser?.close();
   if (server) await new Promise((resolveClose) => server.close(resolveClose));
+}
+
+function watchPage(page, browserErrors) {
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") browserErrors.push(message.text());
+  });
 }
 
 function parseArguments(args) {
