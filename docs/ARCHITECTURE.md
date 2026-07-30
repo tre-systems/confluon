@@ -21,8 +21,7 @@ parts:
    membranes are made by the particles and their measured field. A cached-sprite
    Canvas 2D fallback keeps the instrument usable when WebGPU is unavailable.
 3. `web/audio.js` maps the same metrics and formation summaries onto a slow,
-   layered WebAudio graph, and can record the master output to WAV through an
-   `AudioWorklet` tap (`public/recorder.js`).
+   layered WebAudio graph and exposes the mastered output to production capture.
 
 `web/app.js` is the thin frame coordinator. Simulation state does not live in the
 renderer or audio layer. For display, it applies a short frame-rate-independent
@@ -100,7 +99,7 @@ dry -> delay -> filtered feedback -> wet -------------------------------------->
 dry -> generated impulse response (early reflections + darkening tail) -> wet -> master
 dry ---------------------------------------------------------------------------> master
 master -> subsonic high-pass -> tape saturator -> tone low-pass -> compressor
-       -> safety limiter -> analyser -> output (optional recorder worklet tap)
+       -> safety limiter -> analyser -> output + production capture tap
 ```
 
 Audio starts on the first user gesture and is re-resumed after browser or device
@@ -119,12 +118,6 @@ from its species; a new formation rings a soft emergence bell from its own posit
 Sparse field tones speak from a currently visible formation, and gesture strikes pan
 to the pointer position. A single 0.1 Hz breath oscillator moves the pad filter,
 sub level, and master brightness together so the whole mix breathes as one.
-
-The Record control taps the limiter output through an `AudioWorklet`
-(`public/recorder.js`), accumulates 32-bit float stereo blocks, and downloads the
-take as a WAV named after the seed and duration. The seed and URL-encoded settings
-reproduce its starting state; a performed take additionally needs a timed gesture
-stream.
 
 The Share control first synchronises the full seed and settings into the URL. It then
 uses the browser's native Web Share API when available and falls back to clipboard

@@ -78,11 +78,11 @@
         <h2><span class="num" aria-hidden="true">01</span>The whole system at a glance</h2>
         <p>
           The production site is a static application. There is no server-side simulation,
-          streaming service, or account state. A browser downloads HTML, JavaScript, a small
-          WebAssembly module, and an AudioWorklet used only when recording.
+          streaming service, or account state. A browser downloads HTML, JavaScript, and a
+          small WebAssembly module.
         </p>
         <figure class="diagram">
-          <svg viewBox="0 0 860 330" role="img" aria-label="Architecture diagram showing app input driving a Rust WASM engine whose state feeds WebGPU, WebAudio, and recording.">
+          <svg viewBox="0 0 860 330" role="img" aria-label="Architecture diagram showing app input driving a Rust WASM engine whose state feeds WebGPU, WebAudio, and production capture.">
             <defs>
               <marker id="eng-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
                 <path d="M0 0L7 3L0 6Z" fill="rgba(188,234,213,.55)" />
@@ -106,7 +106,7 @@
             <text class="d-copy" x="734" y="203">the image</text>
             <rect class="d-box d-sound" x="642" y="235" width="184" height="62" rx="13" />
             <text class="d-title" x="734" y="261">WebAudio</text>
-            <text class="d-copy" x="734" y="281">sound · WAV · video tap</text>
+            <text class="d-copy" x="734" y="281">sound · production tap</text>
             <path class="d-line" d="M411 243V289H556" marker-end="url(#eng-arrow)" />
             <rect class="d-box" x="558" y="271" width="68" height="38" rx="10" />
             <text class="d-title" x="592" y="295">API</text>

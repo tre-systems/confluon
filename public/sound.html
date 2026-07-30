@@ -6,7 +6,7 @@
     <title>Confluon: how a swarm becomes music</title>
     <meta
       name="description"
-      content="How Confluon turns one deterministic particle field into a live WebAudio composition, spatial voices, and synchronized recording."
+      content="How Confluon turns one deterministic particle field into a live WebAudio composition, spatial voices, and synchronized video."
     />
     <link rel="canonical" href="https://confluon.com/sound" />
     <meta property="og:type" content="article" />
@@ -327,15 +327,9 @@
       </section>
 
       <section>
-        <h2><span class="num" aria-hidden="true">10</span>Recording the same master you hear</h2>
+        <h2><span class="num" aria-hidden="true">10</span>Rendering the same master you hear</h2>
         <p>
-          The live <strong>Record</strong> control taps the graph after the safety limiter with
-          an <code>AudioWorklet</code>. It collects stereo 32-bit floating-point blocks and
-          writes a lossless WAV named with the seed and duration. The recorder is a silent
-          parallel tap, so it does not colour playback.
-        </p>
-        <p>
-          Video production uses another post-limiter tap as a
+          Video production uses a post-limiter tap as a
           <code>MediaStreamAudioDestinationNode</code>. That mastered stream and the WebGPU
           canvas stream enter one <code>MediaRecorder</code>, so picture and sound share the
           browser clock. The local production tool can then deliver H.264/AAC MP4, VP9/Opus

@@ -29,11 +29,7 @@ const elements = {
   controlsToggle: document.querySelector("#controls-toggle"),
   fieldScore: document.querySelector("#field-score"),
   newSeed: document.querySelector("#new-seed"),
-  settle: document.querySelector("#settle"),
-  pause: document.querySelector("#pause"),
   volume: document.querySelector("#volume"),
-  record: document.querySelector("#record"),
-  recordTime: document.querySelector("#record-time"),
   shareLink: document.querySelector("#share-link"),
   population: document.querySelector("#population"),
   populationLabel: document.querySelector("#population-label"),
@@ -253,23 +249,11 @@ function installControls() {
 
   elements.newSeed.addEventListener("click", newField);
 
-  const settleOn = (event) => {
-    event.preventDefault();
-    state.settle = true;
-    elements.settle.classList.add("active");
-  };
   const settleOff = () => {
     if (!state.settle) return;
     state.settle = false;
-    elements.settle.classList.remove("active");
     audio.strike(0.58, engine.metrics()[0]);
   };
-  elements.settle.addEventListener("pointerdown", settleOn);
-  window.addEventListener("pointerup", settleOff);
-  elements.settle.addEventListener("pointercancel", settleOff);
-
-  elements.pause.addEventListener("click", togglePause);
-  elements.record.addEventListener("click", toggleRecording);
   elements.population.addEventListener("change", () => {
     settings.population = clampPopulation(Number(elements.population.value));
     engine = new Engine(seed, settings.population);
@@ -284,6 +268,7 @@ function installControls() {
   elements.volume.addEventListener("input", () => {
     settings.level = Number(elements.volume.value) / 100;
     audio.setLevel(settings.level);
+    updateRangeProgress(elements.volume);
     syncSettingsUrl();
   });
 
@@ -300,7 +285,6 @@ function installControls() {
       audio.strike(0.62, 0.5);
     } else if (event.code === "KeyS") {
       state.settle = true;
-      elements.settle.classList.add("active");
     } else if (event.code === "KeyG") {
       setGestureMode("gather");
     } else if (event.code === "KeyO") {
@@ -495,10 +479,27 @@ function updateSettingLabels() {
   ].forEach(([control, label]) => {
     control.setAttribute("aria-valuetext", label.textContent.toLowerCase());
   });
+  [
+    elements.volume,
+    elements.ecology,
+    elements.flow,
+    elements.gesture,
+    elements.glow,
+    elements.memory,
+    elements.tone,
+    elements.population,
+  ].forEach(updateRangeProgress);
 }
 
 function settingWord(value, [low, high], [below, middle, above]) {
   return value < low ? below : value > high ? above : middle;
+}
+
+function updateRangeProgress(control) {
+  const minimum = Number(control.min);
+  const maximum = Number(control.max);
+  const progress = ((Number(control.value) - minimum) / (maximum - minimum)) * 100;
+  control.style.setProperty("--range-fill", `${progress}%`);
 }
 
 async function startExperience() {
@@ -624,9 +625,6 @@ function frame(milliseconds) {
   state.previousTransition = metrics[5];
 
   if (milliseconds - lastReadout > 160) {
-    if (audio.isRecording()) {
-      elements.recordTime.textContent = formatRecordTime(audio.recordingSeconds());
-    }
     elements.instrument.dataset.particles = String(engine.particle_count());
     setAudioState();
     lastReadout = milliseconds;
@@ -728,59 +726,8 @@ function loadFieldScore(source, name) {
   if (state.started) audio.strike(0.7, engine.metrics()[0]);
 }
 
-async function toggleRecording() {
-  if (!state.started) {
-    elements.runtimeStatus.textContent = "Touch the field once to start sound before recording.";
-    return;
-  }
-  if (audio.isRecording()) {
-    elements.record.disabled = true;
-    try {
-      const take = await audio.stopRecording();
-      if (take) downloadTake(take.blob, take.duration);
-    } finally {
-      elements.record.disabled = false;
-      elements.record.classList.remove("active");
-      elements.recordTime.hidden = true;
-    }
-    return;
-  }
-  try {
-    const started = await audio.startRecording();
-    if (started) {
-      elements.record.classList.add("active");
-      elements.recordTime.hidden = false;
-    }
-  } catch (error) {
-    console.error("Could not start recording", error);
-    captureException(error, { stage: "recording_start" });
-    elements.runtimeStatus.textContent = "Recording is unavailable in this browser.";
-  }
-}
-
-function downloadTake(blob, duration) {
-  const seconds = Math.round(duration);
-  const name = `confluon-${formatSeed(seed)}-${seconds}s.wav`;
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = name;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(link.href), 4000);
-  elements.runtimeStatus.textContent = `Saved ${name} (32-bit float WAV).`;
-}
-
-function formatRecordTime(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = Math.floor(totalSeconds % 60);
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
-
 function togglePause() {
   state.running = !state.running;
-  elements.pause.textContent = state.running ? "Pause" : "Resume";
-  elements.pause.classList.toggle("active", !state.running);
   audio.setPaused(!state.running);
 }
 

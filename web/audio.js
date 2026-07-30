@@ -58,7 +58,6 @@ export class ConfluonAudio {
       pan: 0,
     };
     this.lastControlCue = null;
-    this.recorder = null;
   }
 
   async start() {
@@ -577,58 +576,6 @@ export class ConfluonAudio {
     oscillator.stop(now + 3.5);
   }
 
-  async startRecording() {
-    if (!this.context || this.recorder) return false;
-    await this.context.audioWorklet.addModule("/recorder.js");
-    const node = new AudioWorkletNode(this.context, "confluon-recorder", {
-      numberOfInputs: 1,
-      numberOfOutputs: 1,
-      outputChannelCount: [2],
-      channelCount: 2,
-      channelCountMode: "explicit",
-    });
-    const chunks = [];
-    node.port.onmessage = (event) => {
-      chunks.push(event.data);
-    };
-    // A silent tap: the worklet must reach the destination to be pulled by the
-    // rendering graph, but contributes no sound.
-    const silent = this.context.createGain();
-    silent.gain.value = 0;
-    this.limiter.connect(node);
-    node.connect(silent).connect(this.context.destination);
-    this.recorder = { node, silent, chunks, startedAt: this.context.currentTime };
-    node.port.postMessage("start");
-    return true;
-  }
-
-  stopRecording() {
-    if (!this.context || !this.recorder) return null;
-    const { node, silent, chunks, startedAt } = this.recorder;
-    node.port.postMessage("stop");
-    this.recorder = null;
-    const duration = this.context.currentTime - startedAt;
-    const finish = () => {
-      this.limiter.disconnect(node);
-      node.disconnect();
-      silent.disconnect();
-      return encodeWav(chunks, this.context.sampleRate);
-    };
-    // Give the final worklet chunk a moment to arrive before assembly.
-    return new Promise((resolve) => {
-      window.setTimeout(() => resolve({ blob: finish(), duration }), 120);
-    });
-  }
-
-  recordingSeconds() {
-    if (!this.context || !this.recorder) return 0;
-    return this.context.currentTime - this.recorder.startedAt;
-  }
-
-  isRecording() {
-    return Boolean(this.recorder);
-  }
-
   captureStream() {
     return this.captureDestination?.stream ?? null;
   }
@@ -833,44 +780,6 @@ function makeImpulseResponse(context, seed, seconds) {
     }
   }
   return response;
-}
-
-function encodeWav(chunks, sampleRate) {
-  let frames = 0;
-  for (const chunk of chunks) frames += chunk.left.length;
-  const bytesPerSample = 4;
-  const blockAlign = bytesPerSample * 2;
-  const dataSize = frames * blockAlign;
-  const buffer = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(buffer);
-  const writeString = (offset, text) => {
-    for (let index = 0; index < text.length; index += 1) {
-      view.setUint8(offset + index, text.charCodeAt(index));
-    }
-  };
-  writeString(0, "RIFF");
-  view.setUint32(4, 36 + dataSize, true);
-  writeString(8, "WAVE");
-  writeString(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 3, true); // IEEE float
-  view.setUint16(22, 2, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * blockAlign, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, 32, true);
-  writeString(36, "data");
-  view.setUint32(40, dataSize, true);
-  let offset = 44;
-  for (const chunk of chunks) {
-    const { left, right } = chunk;
-    for (let index = 0; index < left.length; index += 1) {
-      view.setFloat32(offset, left[index], true);
-      view.setFloat32(offset + 4, right[index] ?? left[index], true);
-      offset += 8;
-    }
-  }
-  return new Blob([buffer], { type: "audio/wav" });
 }
 
 function seededRandom(seed) {

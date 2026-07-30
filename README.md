@@ -33,12 +33,9 @@ and music are two views of one evolving state.
   sub foundation, filtered air, shimmer, sparse scale-locked tones, delay, a
   generated early-reflection reverb, tape-style saturation, compression, limiting,
   and an output meter.
-- Lossless recording: a Record control taps the master bus through an AudioWorklet
-  and saves the take as a 32-bit float stereo WAV for release work.
 - Pointer-aware organisms that startle at a poke or fast approach, investigate a
   still cursor, and keep a protected inner distance. Touch-friendly Gather, Orbit,
-  and Divide gestures add deliberate sculpting, alongside seeding, settling,
-  pausing, and resetting.
+  and Divide gestures add deliberate sculpting, alongside seeding and resetting.
 - Shareable performance settings for ecology, flow, touch strength, halo, visual
   memory, tone, population, and level. Share opens the native device sheet when
   available and otherwise copies the complete URL.
@@ -149,8 +146,8 @@ See [Privacy](https://confluon.com/privacy) for the user-facing data boundary.
 - Shift + drag: momentarily orbit without changing the selected mode.
 - Option/Alt + drag: momentarily divide and open a cavity.
 - Double click/tap: seed a compact 50-particle colony at the pointer.
-- Hold `S` or **Hold to settle**: move toward a quieter common state.
-- Release Settle: return to local negotiation, often provoking a transition.
+- Hold `S`: move toward a quieter common state; release it to return to local
+  negotiation, often provoking a transition.
 - `R`: rebuild the displayed seed.
 - `Space`: pause or resume.
 - `G`, `O`, `D`: select Gather, Orbit, or Divide.

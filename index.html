@@ -103,51 +103,46 @@
             </div>
           </div>
 
-          <div class="actions">
-            <button id="settle" class="hold-button" type="button">Settle</button>
-            <button id="pause" type="button">Pause</button>
-            <button id="record" class="record-button" type="button">
-              Record <output id="record-time" aria-live="off" hidden>0:00</output>
-            </button>
-          </div>
-
           <label class="volume-control">
             <span>Level</span>
             <input id="volume" type="range" min="0" max="100" value="74" />
           </label>
 
-          <details class="tuning">
-            <summary>
-              <span>Tune</span>
-              <span class="disclosure" aria-hidden="true"></span>
-            </summary>
+          <section class="tuning" aria-labelledby="tuning-heading">
+            <h3 id="tuning-heading">Tune</h3>
             <section class="settings-grid" aria-label="Performance settings">
               <label class="setting-control">
-                <span>Ecology <output id="ecology-label" aria-live="off">BALANCED</output></span>
+                <span>Ecology</span>
                 <input id="ecology" aria-label="Ecology" type="range" min="25" max="180" value="100" />
+                <output id="ecology-label" aria-live="off">BALANCED</output>
               </label>
               <label class="setting-control">
-                <span>Flow <output id="flow-label" aria-live="off">NATURAL</output></span>
+                <span>Flow</span>
                 <input id="flow" aria-label="Flow" type="range" min="50" max="180" value="100" />
+                <output id="flow-label" aria-live="off">NATURAL</output>
               </label>
               <label class="setting-control">
-                <span>Touch <output id="gesture-label" aria-live="off">FIRM</output></span>
+                <span>Touch</span>
                 <input id="gesture" aria-label="Touch strength" type="range" min="50" max="180" value="100" />
+                <output id="gesture-label" aria-live="off">FIRM</output>
               </label>
               <label class="setting-control">
-                <span>Halo <output id="glow-label" aria-live="off">SOFT</output></span>
+                <span>Halo</span>
                 <input id="glow" aria-label="Halo" type="range" min="45" max="155" value="100" />
+                <output id="glow-label" aria-live="off">SOFT</output>
               </label>
               <label class="setting-control">
-                <span>Memory <output id="memory-label" aria-live="off">BRIEF</output></span>
+                <span>Memory</span>
                 <input id="memory" aria-label="Visual memory" type="range" min="0" max="100" value="42" />
+                <output id="memory-label" aria-live="off">BRIEF</output>
               </label>
               <label class="setting-control">
-                <span>Tone <output id="tone-label" aria-live="off">WARM</output></span>
+                <span>Tone</span>
                 <input id="tone" aria-label="Tone" type="range" min="0" max="100" value="55" />
+                <output id="tone-label" aria-live="off">WARM</output>
               </label>
               <label class="setting-control">
-                <span>Life <output id="population-label" aria-live="off">FULL</output></span>
+                <span>Life</span>
                 <input
                   id="population"
                   aria-label="Particle population"
@@ -157,9 +152,10 @@
                   step="8"
                   value="2000"
                 />
+                <output id="population-label" aria-live="off">FULL</output>
               </label>
             </section>
-          </details>
+          </section>
 
           <p class="interaction-help">
             Move to stir · poke to startle · drag to use the selected gesture

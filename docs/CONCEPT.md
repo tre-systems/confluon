@@ -53,8 +53,8 @@ The visual image and the audio mix read the same deterministic simulation snapsh
   gesture without pulling the entire world into it.
 - Option/Alt + drag: repel and open a cavity.
 - Double click/tap: seed a new local population.
-- Hold `S` or the Settle button: constrain the system toward a quieter common state.
-- Release Settle: return to local negotiation, often causing a phase transition.
+- Hold `S`: constrain the system toward a quieter common state; release it to return
+  to local negotiation, often causing a phase transition.
 - `R`: regenerate from the displayed seed.
 - `Space`: pause or resume.
 - `G`, `O`, `D`: select the touch-friendly Gather, Orbit, or Divide mode.
@@ -69,7 +69,6 @@ The visual image and the audio mix read the same deterministic simulation snapsh
   meaningful to both sides of the instrument.
 - Tone tilts the shared WebAudio spectrum between dark and bright.
 - Life sets the particle population, from a sparse 600 to a teeming 4,096.
-- Record captures the master output to a 32-bit float WAV until pressed again.
 
 The settings and selected gesture are encoded in the URL with the seed. They are
 therefore part of a reproducible performance state rather than hidden preferences.

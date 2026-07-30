@@ -47,6 +47,10 @@ try {
     manifestHref: document.querySelector('link[rel="manifest"]')?.href,
     marketingOverlay: Boolean(document.querySelector("#welcome, #gesture-hint")),
     controlsCollapsed: document.querySelector("#controls")?.classList.contains("collapsed"),
+    tuningPermanent:
+      document.querySelector(".tuning")?.tagName === "SECTION" &&
+      !document.querySelector(".tuning summary"),
+    transportButtons: document.querySelectorAll("#settle, #pause, #record").length,
   }));
   if (initial.title !== "Confluon") throw new Error(`unexpected title: ${initial.title}`);
   if (!["WEBGPU", "CANVAS"].includes(initial.renderer)) {
@@ -63,6 +67,9 @@ try {
   }
   if (initial.marketingOverlay || !initial.controlsCollapsed) {
     throw new Error(`instrument did not open directly onto the field: ${JSON.stringify(initial)}`);
+  }
+  if (!initial.tuningPermanent || initial.transportButtons !== 0) {
+    throw new Error(`controls were not simplified: ${JSON.stringify(initial)}`);
   }
 
   await page.mouse.click(640, 400);
@@ -103,7 +110,8 @@ try {
   // A software-rendered CI swarm can delay separately issued input commands
   // beyond the gesture window. Quiesce simulation, not event handling, so the
   // trusted taps represent a human double-tap even on a heavily loaded runner.
-  await page.evaluate(() => document.querySelector("#pause").click());
+  await page.keyboard.press("Space");
+  await page.waitForFunction(() => window.confluon.audioMeter().paused);
   const beforeDoubleTap = await page.evaluate(() => window.confluon.particleCount());
   await page.touchscreen.tap(900, 560);
   await page.touchscreen.tap(900, 560);
@@ -114,14 +122,13 @@ try {
       `native double-tap seeded ${afterDoubleTap - beforeDoubleTap} particles, expected 50`,
     );
   }
-  await page.evaluate(() => document.querySelector("#pause").click());
+  await page.keyboard.press("Space");
+  await page.waitForFunction(() => !window.confluon.audioMeter().paused);
 
   await page.click("#controls-toggle");
   await page.waitForTimeout(500);
   const audibleControl = await page.evaluate(() => {
-    const tuning = document.querySelector(".tuning");
     const halo = document.querySelector("#glow");
-    tuning.open = true;
     halo.value = "140";
     halo.dispatchEvent(new Event("input", { bubbles: true }));
     return window.confluon.audioResponse();
