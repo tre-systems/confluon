@@ -81,6 +81,7 @@ const state = {
   lastTapAt: -Infinity,
   lastTapX: 0,
   lastTapY: 0,
+  lastPointerSpawnAt: -Infinity,
 };
 
 let seed = readSeed();
@@ -223,6 +224,7 @@ function installControls() {
       if (now - state.lastTapAt < 330 && closeToLastTap) {
         spawn(point.x, point.y);
         state.lastTapAt = -Infinity;
+        state.lastPointerSpawnAt = now;
       } else {
         state.lastTapAt = now;
         state.lastTapX = point.x;
@@ -242,6 +244,9 @@ function installControls() {
     elements.instrument.removeAttribute("data-active-gesture");
   });
   elements.field.addEventListener("dblclick", (event) => {
+    // Chromium emits a compatibility dblclick after a native double-tap.
+    // The pointer path above has already seeded that gesture.
+    if (performance.now() - state.lastPointerSpawnAt < 450) return;
     const point = eventPoint(event);
     spawn(point.x, point.y);
   });
@@ -827,6 +832,8 @@ async function prepareCapture() {
   state.pointer.present = false;
   state.pointer.impulse = 0;
   state.pointer.motion = 0;
+  state.lastTapAt = -Infinity;
+  state.lastPointerSpawnAt = -Infinity;
   state.previousTransition = 0;
   accumulator = 0;
   engine.reset(seed);

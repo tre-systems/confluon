@@ -97,6 +97,30 @@ try {
     throw new Error(`pointer poke did not reach audio: ${JSON.stringify(audiblePoke)}`);
   }
 
+  const touchClient = await context.newCDPSession(page);
+  const touchTap = async (id) => {
+    await touchClient.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: 900, y: 560, radiusX: 8, radiusY: 8, force: 1, id }],
+    });
+    await page.waitForTimeout(35);
+    await touchClient.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+  };
+  const beforeDoubleTap = await page.evaluate(() => window.confluon.particleCount());
+  await touchTap(1);
+  await page.waitForTimeout(120);
+  await touchTap(2);
+  await page.waitForTimeout(120);
+  const afterDoubleTap = await page.evaluate(() => window.confluon.particleCount());
+  if (afterDoubleTap !== beforeDoubleTap + 50) {
+    throw new Error(
+      `native double-tap seeded ${afterDoubleTap - beforeDoubleTap} particles, expected 50`,
+    );
+  }
+
   await page.click("#controls-toggle");
   await page.waitForTimeout(500);
   const audibleControl = await page.evaluate(() => {
@@ -195,7 +219,7 @@ try {
   }
 
   console.log(
-    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, pointer/audio response, musical controls, offline PWA/privacy/404 healthy`,
+    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, pointer/audio response, 50-particle double-tap, musical controls, offline PWA/privacy/404 healthy`,
   );
 } finally {
   await browser?.close();
