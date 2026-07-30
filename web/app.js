@@ -28,7 +28,6 @@ const elements = {
   controls: document.querySelector("#controls"),
   controlsToggle: document.querySelector("#controls-toggle"),
   fieldScore: document.querySelector("#field-score"),
-  newSeed: document.querySelector("#new-seed"),
   volume: document.querySelector("#volume"),
   shareLink: document.querySelector("#share-link"),
   population: document.querySelector("#population"),
@@ -246,8 +245,6 @@ function installControls() {
     const point = eventPoint(event);
     spawn(point.x, point.y);
   });
-
-  elements.newSeed.addEventListener("click", newField);
 
   const settleOff = () => {
     if (!state.settle) return;
@@ -689,22 +686,6 @@ function smoothWrappedCoordinate(current, target, blend) {
 function spawn(x, y) {
   engine.spawn_at(x, y, 50);
   audio.strike(0.84, engine.metrics()[0], x);
-}
-
-function newField() {
-  const values = new Uint32Array(1);
-  crypto.getRandomValues(values);
-  seed = values[0] || 1;
-  engine.reset(seed);
-  resetVisualSmoothing();
-  renderer.resetTrails();
-  audio.reseed(seed);
-  const url = new URL(window.location.href);
-  url.searchParams.set("seed", seed.toString());
-  window.history.replaceState({}, "", url);
-  elements.fieldScore.value = "";
-  elements.seed.textContent = formatSeed(seed);
-  audio.strike(0.72, 0.42);
 }
 
 function loadFieldScore(source, name) {

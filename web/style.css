@@ -198,7 +198,7 @@ button {
 
 .score-control {
   display: grid;
-  grid-template-columns: 62px minmax(0, 1fr) auto;
+  grid-template-columns: 62px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   margin-top: 14px;
@@ -208,16 +208,14 @@ button {
 .volume-control span,
 .gesture-control > span,
 .setting-control span,
-.tuning h3,
-.panel-foot {
+.tuning h3 {
   color: var(--muted);
   font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
   font-size: 10px;
   letter-spacing: 0.08em;
 }
 
-.score-control select,
-.score-control button {
+.score-control select {
   min-height: 36px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -229,11 +227,6 @@ button {
 .score-control select {
   min-width: 0;
   padding: 4px 8px;
-}
-
-.score-control button {
-  padding: 4px 10px;
-  cursor: pointer;
 }
 
 .gesture-control {
@@ -385,20 +378,44 @@ input[type="range"]::-moz-range-thumb {
   background: #cfe4da;
 }
 
-.panel-foot {
-  display: grid;
-  grid-template-columns: auto 1fr;
+.panel-footer {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding-top: 11px;
+  gap: 8px;
+  padding-top: 12px;
   border-top: 1px solid var(--line);
+}
+
+.performance-row {
+  display: flex;
+  width: 100%;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.seed-readout {
+  color: rgba(174, 177, 174, 0.76);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.seed-readout output {
+  color: rgba(218, 235, 227, 0.88);
+  font-weight: 600;
 }
 
 .panel-links {
   display: flex;
-  justify-self: end;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 2px;
+  justify-content: center;
+  gap: 8px;
 }
 
 .article-link,
@@ -407,20 +424,23 @@ input[type="range"]::-moz-range-thumb {
 .panel-support button {
   display: inline-grid;
   place-items: center;
-  min-height: 28px;
-  padding: 4px 9px;
-  border: 0;
+  min-height: 32px;
+  padding: 5px 13px;
+  border: 1px solid rgba(226, 232, 224, 0.16);
   border-radius: 999px;
   background: transparent;
-  color: rgba(174, 177, 174, 0.72);
+  color: rgba(206, 218, 212, 0.76);
   font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
-  font-size: 10px;
-  letter-spacing: 0.09em;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   line-height: 1;
   text-decoration: none;
   text-transform: uppercase;
   cursor: pointer;
-  transition: color 150ms ease, background 150ms ease;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
 }
 
 .article-link:hover,
@@ -431,6 +451,7 @@ input[type="range"]::-moz-range-thumb {
 .panel-support a:focus-visible,
 .panel-support button:hover,
 .panel-support button:focus-visible {
+  border-color: rgba(226, 232, 224, 0.34);
   background: rgba(226, 232, 224, 0.08);
   color: var(--paper);
   outline: none;
@@ -438,18 +459,21 @@ input[type="range"]::-moz-range-thumb {
 
 .panel-support {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 8px;
 }
 
 .panel-support a,
 .panel-support button {
-  min-height: 30px;
-  padding-inline: 10px;
-  border: 0;
   background: transparent;
-  color: rgba(174, 177, 174, 0.7);
+}
+
+.panel-support .support-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .panel-support button[hidden] {
@@ -492,8 +516,7 @@ input[type="range"]::-moz-range-thumb {
   .score-control label,
   .volume-control span,
   .gesture-control > span,
-  .setting-control span,
-  .panel-foot {
+  .setting-control span {
     font-size: 10px;
   }
 
@@ -523,11 +546,10 @@ input[type="range"]::-moz-range-thumb {
   .panel-support button {
     min-height: 40px;
     padding-inline: 12px;
-    font-size: 10px;
+    font-size: 11px;
   }
 
-  .score-control select,
-  .score-control button {
+  .score-control select {
     min-height: 40px;
     font-size: 11px;
   }
@@ -560,19 +582,16 @@ input[type="range"]::-moz-range-thumb {
     padding-top: 8px;
   }
 
-  .panel-foot {
-    padding-top: 8px;
-  }
-
-  .panel-support {
-    margin-top: 2px;
+  .panel-footer {
+    gap: 4px;
+    padding-top: 6px;
   }
 
   .article-link,
   .share-link,
   .panel-support a,
   .panel-support button {
-    min-height: 34px;
+    min-height: 32px;
   }
 }
 

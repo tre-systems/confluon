@@ -91,7 +91,6 @@
                 Ember Rift
               </option>
             </select>
-            <button id="new-seed" type="button">New</button>
           </div>
 
           <div class="gesture-control">
@@ -161,22 +160,32 @@
             Move to stir · poke to startle · drag to use the selected gesture
           </p>
 
-          <div class="panel-foot">
-            <span>Seed <output id="seed-value">—</output></span>
-            <nav class="panel-links" aria-label="About and sharing">
-              <a class="article-link" href="/field">About</a>
+          <footer class="panel-footer">
+            <div class="performance-row">
+              <span class="seed-readout">Seed <output id="seed-value">—</output></span>
               <button id="share-link" class="share-link" type="button">Share</button>
+            </div>
+
+            <nav class="panel-links" aria-label="Learn about Confluon">
+              <a class="article-link" href="/field">Field</a>
+              <a class="article-link" href="/engineering">Engineering</a>
+              <a class="article-link" href="/sound">Sound</a>
               <a class="article-link" href="/privacy">Privacy</a>
             </nav>
-          </div>
 
-          <nav class="panel-support" aria-label="Feedback and support">
-            <button id="feedback-button" type="button" hidden>Feedback</button>
-            <a href="https://ko-fi.com/robgilks" target="_blank" rel="noopener noreferrer">
-              <span aria-hidden="true">♥</span>
-              Support Confluon
-            </a>
-          </nav>
+            <nav class="panel-support" aria-label="Project actions">
+              <button id="feedback-button" type="button" hidden>Feedback</button>
+              <a
+                class="support-link"
+                href="https://ko-fi.com/robgilks"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span aria-hidden="true">♥</span>
+                Support this project
+              </a>
+            </nav>
+          </footer>
         </div>
       </aside>
 

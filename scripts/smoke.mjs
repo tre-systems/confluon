@@ -51,6 +51,8 @@ try {
       document.querySelector(".tuning")?.tagName === "SECTION" &&
       !document.querySelector(".tuning summary"),
     transportButtons: document.querySelectorAll("#settle, #pause, #record").length,
+    newSeedButtons: document.querySelectorAll("#new-seed").length,
+    footerDocs: Array.from(document.querySelectorAll(".panel-links a"), (link) => link.pathname),
   }));
   if (initial.title !== "Confluon") throw new Error(`unexpected title: ${initial.title}`);
   if (!["WEBGPU", "CANVAS"].includes(initial.renderer)) {
@@ -68,7 +70,12 @@ try {
   if (initial.marketingOverlay || !initial.controlsCollapsed) {
     throw new Error(`instrument did not open directly onto the field: ${JSON.stringify(initial)}`);
   }
-  if (!initial.tuningPermanent || initial.transportButtons !== 0) {
+  if (
+    !initial.tuningPermanent ||
+    initial.transportButtons !== 0 ||
+    initial.newSeedButtons !== 0 ||
+    initial.footerDocs.join(",") !== "/field,/engineering,/sound,/privacy"
+  ) {
     throw new Error(`controls were not simplified: ${JSON.stringify(initial)}`);
   }
 
