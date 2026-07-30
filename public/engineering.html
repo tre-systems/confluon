@@ -97,8 +97,8 @@
             <text class="d-copy" x="411" y="94">particles · metrics · formations</text>
             <path class="d-line" d="M411 130V179" marker-end="url(#eng-arrow)" />
             <rect class="d-box" x="286" y="181" width="250" height="62" rx="13" />
-            <text class="d-title" x="411" y="207">Thin JS coordinator</text>
-            <text class="d-copy" x="411" y="227">fixed step · frame · lifecycle</text>
+            <text class="d-title" x="411" y="207">JS composition root</text>
+            <text class="d-copy" x="411" y="227">commands · frame · lifecycle</text>
             <path class="d-line" d="M536 199H640" marker-end="url(#eng-arrow)" />
             <path class="d-line" d="M536 225H640" marker-end="url(#eng-arrow)" />
             <rect class="d-box d-render" x="642" y="157" width="184" height="62" rx="13" />
@@ -116,9 +116,9 @@
           </figcaption>
         </figure>
         <p>
-          The renderer can be replaced without changing motion, the sound graph can be retuned
-          without changing formations, and the core can be tested without a browser. Image and
-          sound still read the same simulation rather than maintaining their own copies.
+          <code>web/app.js</code> is the browser composition root: it translates input into
+          engine commands, reads one frame of state, then passes that state to image and sound.
+          Either projection can be replaced without creating a second version of the field.
         </p>
       </section>
 
@@ -163,10 +163,13 @@ impl Engine {
         </p>
         <figure class="code">
           <figcaption><span class="lang">js</span><span>web/app.js — fixed-step frame coordination, abridged</span></figcaption>
-          <pre><code>accumulator += elapsed * settings.flow;
+          <pre><code>accumulator = Math.min(
+  accumulator + elapsed * settings.flow,
+  FIXED_STEP * MAX_CATCH_UP_STEPS,
+);
 
 let steps = 0;
-while (accumulator &gt;= FIXED_STEP &amp;&amp; steps &lt; 2) {
+while (accumulator &gt;= FIXED_STEP &amp;&amp; steps &lt; MAX_CATCH_UP_STEPS) {
   const interaction = pointerInteraction();
   engine.step(FIXED_STEP, pointer.x, pointer.y,
               interaction.strength, interaction.twist, settle);
@@ -175,14 +178,15 @@ while (accumulator &gt;= FIXED_STEP &amp;&amp; steps &lt; 2) {
   steps += 1;
 }
 
-renderer.render(engine.snapshot(), engine.metrics(), time);
-audio.update(engine.metrics(), engine.formations());</code></pre>
+const snapshot = engine.snapshot();
+const metrics = engine.metrics();
+renderer.render(snapshot, metrics, time);
+audio.update(metrics, engine.formations());</code></pre>
         </figure>
         <p>
           Catch-up stops at two steps per display frame. Under sustained load the instrument
           slows instead of building an endless backlog. <strong>Flow</strong> scales simulation
           time before it enters the accumulator; it does not change display cadence.
-        </p>
         <p>
           Pointer behaviour is sampled on those same fixed steps. A poke leaves a short decaying
           alarm envelope, so even a tap shorter than one step changes the field. Mouse hover
@@ -236,7 +240,9 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
         <p>
           At the default population, the visual snapshot is 8,000 floats. The renderer uploads
           it once per display frame; audio reads seven metrics and at most 32 formation floats.
-          Neither output needs to inspect particle neighbourhoods.
+          Neither output needs to inspect particle neighbourhoods. Named indexes, strides, and
+          the contract version live in <code>web/simulation-contract.js</code>, rather than
+          being repeated as magic numbers in each consumer.
         </p>
       </section>
 
@@ -321,7 +327,8 @@ audio.update(engine.metrics(), engine.formations());</code></pre>
           Ecology, flow, touch strength, halo, memory, tone, level, population, and selected
           gesture mode use the same mechanism. <strong>Share</strong> ensures the current
           complete settings are present before opening the native device share sheet or falling
-          back to the clipboard.
+          back to the clipboard. Their keys, defaults, and bounds have one schema in
+          <code>web/performance-state.js</code>.
         </p>
         <p>
           Reproduction needs the engine revision, seed, particle count, fixed timestep,
