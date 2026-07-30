@@ -1,173 +1,437 @@
 # Architecture
 
-## System boundary
+Confluon is a local-first generative audiovisual instrument. One deterministic
+simulation is the source of both the image and the music; the renderer and audio
+graph are projections of that state, not independent creative systems.
 
-Confluon is a static web app with no server-side runtime. It has three cooperating
-parts:
+This document is both a system description and the set of patterns new work must
+follow. The short version is:
 
-1. `src/simulation.rs` owns deterministic particle state, the energy-inspired motion
-   rule, performance forces, collective metrics, and per-formation summaries.
-2. `web/renderer.js` uploads the snapshot to WebGPU and runs an HDR pipeline. An
-   instanced additive pass splats each particle's species-specific shell kernel into
-   an `rgba16float` texture at one third display resolution. A ping-pong pair of
-   half-resolution trail textures accumulates motion history with a frame-rate
-   independent exponential fade. A full-screen pass composes the background, trails,
-   and the field mapped through the same growth-response ranges as the simulation
-   into a full-resolution HDR target, followed by an instanced pass that gives each
-   particle a deterministic size, colour, luminosity, pin-point nucleus, and diffuse
-   halo. A quarter-resolution bloom chain (soft-knee extract, separable Gaussian
-   blur) feeds the final pass, which applies ACES tone mapping, a gentle lift,
-   vignette, and animated grain. There are no hulls or inferred nuclei: visible
-   membranes are made by the particles and their measured field. A cached-sprite
-   Canvas 2D fallback keeps the instrument usable when WebGPU is unavailable.
-3. `web/audio.js` maps the same metrics and formation summaries onto a slow,
-   layered WebAudio graph and exposes the mastered output to production capture.
+> Keep deterministic domain state in Rust, keep browser integration at the edges,
+> and pass one explicit, versioned state contract to every projection.
 
-`web/app.js` is the thin frame coordinator. Simulation state does not live in the
-renderer or audio layer. For display, it applies a short frame-rate-independent
-interpolation to particle positions and visual metrics, including a slower release
-for transition brightness. This removes 30 Hz contour stepping and metric flashes
-without feeding smoothed values back into the simulation or audio state.
+## Architectural principles
+
+1. **One authoritative model.** Rust owns every value that can change the swarm's
+   future. JavaScript may issue commands and read snapshots, but renderer, audio,
+   controls, capture, and diagnostics must not maintain competing simulation state.
+2. **Functional core, imperative shell.** Deterministic rules and invariants live in
+   the Rust core. Pure JavaScript modules own codecs and schemas. `web/app.js` is the
+   browser composition root that connects those pieces to DOM, timing, input, audio,
+   GPU, and platform APIs.
+3. **Same-state projections.** A display frame reads one raw metrics snapshot.
+   WebGPU/Canvas and WebAudio both project that state. Visual interpolation may make
+   the 30 Hz simulation look fluid, but interpolated values never feed the engine or
+   audio.
+4. **Explicit contracts over incidental coupling.** The WASM flat-array ABI lives in
+   `web/simulation-contract.js`; URL performance state lives in
+   `web/performance-state.js`; production capture exposes a versioned
+   `window.confluon` API. Do not duplicate ABI indexes or score-handling defaults,
+   limits, mode lists, and query keys elsewhere.
+5. **Bounded real-time work.** The simulation uses a fixed step with bounded catch-up.
+   Rendering, audio control, diagnostics, and input handling must not create an
+   unbounded queue. Under sustained overload, performance time may slow rather than
+   allowing input and audio to lag ever further behind the image.
+6. **Disposable projections, durable score.** GPU textures, visual trails, AudioNodes,
+   meters, and control labels are replaceable presentation state. Seed, engine
+   version, population, settings, fixed-step command stream, and source revision are
+   the durable score.
+7. **Progressive capability.** WebGPU is preferred and Canvas 2D is the supported
+   fallback. Audio starts only from a user gesture. Offline support, native sharing,
+   diagnostics, feedback, and analytics add capability without becoming startup
+   requirements.
+8. **Measure before distributing.** The current main-thread WASM call and native
+   AudioNode graph are deliberate. Add a Worker, `SharedArrayBuffer`, AudioWorklet,
+   frontend framework, or state library only when a measured constraint justifies
+   its synchronisation and maintenance cost.
+
+## System boundary and dependency direction
+
+```text
+URL score + pointer/keyboard commands
+                  |
+                  v
+      web/app.js (composition root)
+          | commands       | queries
+          v                v
+   Rust/WASM Engine ---- flat state contract
+                              |
+                    +---------+---------+
+                    |                   |
+                    v                   v
+             WebGPU / Canvas       WebAudio graph
+               projection            projection
+                    |                   |
+                    +---------+---------+
+                              |
+                         user / capture
+```
+
+Dependencies point inward toward contracts and the engine:
+
+- The engine knows nothing about DOM, rendering, sound, capture, hosting, or
+  monitoring.
+- Renderers and audio never receive an `Engine`; they receive only arrays, settings,
+  and interaction values selected by the composition root.
+- Controls and featured fields update the canonical performance settings object and
+  URL codec, then the composition root applies those values to the relevant adapters.
+- Capture and smoke tests use the public diagnostics API instead of reaching into
+  module-local state.
+- Operational integrations may observe failures and runtime tags, but cannot change
+  the score or block successful instrument startup.
+
+## Module ownership
+
+| Module | Owns | Must not own |
+| --- | --- | --- |
+| `src/simulation.rs` | PRNG, particles, neighbourhood pairs, forces, energy, metrics, formations | Browser time, pixels, audio scheduling, DOM |
+| `src/lib.rs` | Narrow WASM command/query facade | A second model or browser policy |
+| `web/simulation-contract.js` | ABI version, tuple indexes, strides, hard consumer limits | Dynamic engine state |
+| `web/performance-state.js` | URL keys, defaults, bounds, seed/settings parse and encode | DOM controls or side effects |
+| `web/app.js` | Composition, frame clock, input state machine, adapter lifecycle, URL/history side effects, diagnostics facade | Particle rules, shader details, synthesis graph |
+| `web/renderer.js` | WebGPU and Canvas strategies, visual history, presentation interpolation inputs | Commands to the engine, audio state |
+| `web/audio.js` | Audio graph lifecycle, metric/formation mapping, browser-clock scheduling, capture tap | Commands to the engine, visual state |
+| `web/monitoring.js` | Privacy boundary and optional operational diagnostics | Product analytics as simulation input, score data |
+| `scripts/finalize-build.mjs` | Release config, build ID, manifest-derived service-worker precache | Hand-maintained asset lists |
+| `scripts/produce-video.mjs` | Fresh-browser capture orchestration, chunk transfer, encoding and media verification | An alternative simulation or soundtrack |
+
+`web/app.js` is intentionally a composition root and frame coordinator, not a
+general-purpose service layer. It is currently a single application-lifetime module
+because timing, input, capture, and adapter ownership share one lifecycle. Extract
+new code from it in this order:
+
+1. pure schemas/codecs/calculations;
+2. adapters with narrow command/query interfaces;
+3. stateful controllers only when their state and cleanup can be made explicit.
+
+Avoid a global event bus or generic store. Direct calls make frame ordering, audio
+coupling, and determinism easier to inspect. If input, frame-clock, or controls code
+develops an independent lifecycle, extract an `InputController`, `InstrumentClock`,
+or `ControlsView` with `start()`/`dispose()` rather than adding more global state.
+
+## State authorities
+
+Confluon has several kinds of state. Their precedence and durability differ:
+
+1. **Engine state** is authoritative for the swarm and is changed only through
+   commands.
+2. **Performance state** is parsed from the URL into the application settings object.
+   Controls mutate it, adapters are updated explicitly, and the complete state is
+   encoded back into the URL. Featured fields are URLs using this same codec.
+3. **Input envelope state** translates nondeterministic browser events into bounded
+   commands sampled at fixed simulation steps.
+4. **Projection state** includes interpolation buffers, GPU trail textures, AudioNode
+   parameters, scheduler position, and meters. It is safe to reset or replace.
+5. **Operational runtime config** enables diagnostics and analytics at build time. It
+   is not performance state and must never alter the audiovisual result.
+
+The URL codec is the canonical browser representation of a starting score. Unknown
+query parameters such as renderer verification flags are preserved when score state
+is written.
+
+### Adding a performance parameter
+
+A new user-visible parameter is incomplete until all applicable steps are done:
+
+1. add its query key, default, scale, and bounds to
+   `PERFORMANCE_PARAMETER_SCHEMA`;
+2. add a control and label, if it is interactive;
+3. map it explicitly to the engine, renderer, and audio where appropriate;
+4. add URL decode/clamp/round-trip tests;
+5. include it in capture metadata and user-facing documentation;
+6. state whether it changes deterministic engine evolution or only a projection.
+
+Where a concept can sensibly affect image and sound, it should affect both. A
+visual-only or audio-only setting is allowed only when that asymmetry is deliberate
+and documented.
+
+## Commands, queries, and frame order
+
+The WASM facade follows a command/query split.
+
+Commands:
+
+```text
+reset(seed)
+step(dt, pointer_x, pointer_y, pointer_strength, pointer_twist, settle)
+set_ecology(value)
+spawn_at(x, y, count)
+```
+
+Queries:
+
+```text
+snapshot()
+metrics()
+formations()
+particle_count()
+seed()
+```
+
+Only the composition root issues commands. Per display frame it performs this order:
+
+1. calculate bounded elapsed time and fixed-step debt;
+2. sample the current interaction envelope for each due simulation step;
+3. issue at most two `Engine.step` commands;
+4. read raw snapshot, metrics, and formations;
+5. update the renderer from interpolated presentation copies;
+6. update audio from raw metrics, formations, and interaction;
+7. update low-frequency diagnostics/control readouts;
+8. request the next animation frame.
+
+This ordering is part of the architecture. In particular, audio must not read
+smoothed visual metrics, and adapters must not query the engine independently.
+
+## Simulation contract
+
+The engine exposes three flat numeric arrays. Flat records avoid object
+serialisation in the hot path and keep renderer implementations replaceable.
+Consumer code uses the named indexes and strides from
+`web/simulation-contract.js`.
+
+- `snapshot()`: repeated `[x, y, species + energy, speed]`. The integer portion of
+  the packed third value is species `0..2`; its fractional portion is normalised
+  energy.
+- `metrics()`: `[energy, coherence, activity, density, formations, transition,
+  encounters]`.
+- `formations()`: up to eight largest connected same-species formations as
+  `[x, y, size_share, species]`, largest first, with toroidal centroids.
+
+Metrics remain bounded to `0..1` except formation count. `encounters` measures
+cross-population sensing pressure. Array lengths are multiples of their documented
+strides; metrics has exactly seven entries. Any ABI change must:
+
+1. update Rust producers and native tests;
+2. increment `SIMULATION_CONTRACT_VERSION`;
+3. update named JavaScript fields and every adapter;
+4. update capture and browser smoke assertions;
+5. update this document.
+
+Do not pass rich serialised objects through WASM for these per-frame values. If
+profiling shows array allocation/copying is a meaningful share of frame time, the
+next optimisation is stable WASM-owned buffers exposed by pointer and length. Such
+views must be reacquired after WebAssembly memory growth; zero-copy complexity is not
+justified without a measured bottleneck.
+
+## Determinism and reproducibility
+
+The Rust core uses a small internal integer PRNG. There are two useful guarantees:
+
+- **Engine-exact:** the same engine/source revision, seed, population, settings,
+  fixed timestep, and commands at the same step indexes produce the same simulation
+  state. Native tests assert exact same-seed snapshots and compare the neighbour
+  grid against a brute-force oracle.
+- **Performance-equivalent:** rendering and WebAudio are projections of that exact
+  state, but pixels and PCM are not promised bit-identical across GPU drivers,
+  browsers, sample rates, or output devices. Production capture records image and
+  mastered audio from one browser clock and verifies frame cadence and media streams.
+
+The fixed-step accumulator is a real-time delivery policy, not part of the engine.
+Elapsed time is bounded and at most two catch-up steps are retained. A device that
+cannot sustain the requested flow slows performance time instead of building
+unbounded latency. Reproduction should therefore be driven by recorded step-indexed
+commands, not assumed wall-clock event timestamps.
+
+The URL is sufficient to reproduce an untouched or scripted starting score. A truly
+interactive take additionally requires its gesture/command stream. Production
+capture records source revision, seed, settings, environment, cadence, duration, and
+codecs today; recording step-indexed interaction commands is the remaining requirement
+for complete interactive take export.
+
+Pointer input uses a deterministic short-lived alarm envelope so a poke persists
+beyond release and cannot disappear between fixed steps. Fast hover movement alarms
+nearby matter; a still mouse or hovering pen becomes a weak attractive presence.
+Positive radial forces contain a repulsive inner core. Divide is fully repulsive.
+Orbit combines radial and tangential forces with Gaussian distance falloff. Ecology
+scales the existing cross-population energy derivative rather than adding a
+visual-only substitute.
+
+## Rendering strategy
+
+`createRenderer()` is a strategy factory with one adapter shape:
+
+```text
+kind
+render(snapshot, metrics, time)
+setStyle(style)
+resetTrails()
+```
+
+WebGPU uploads the snapshot and runs an HDR pipeline. An instanced additive pass
+splats each particle's species-specific shell kernel into a one-third-resolution
+`rgba16float` field. Half-resolution ping-pong textures accumulate motion history
+with exponential fade. A full-screen pass composes background, trails, and field into
+a full-resolution HDR target; deterministic particle variation adds cores and halos.
+A quarter-resolution bloom chain feeds ACES tone mapping, lift, vignette, and grain.
+Visible membranes are made from current particles and their measured field.
+
+Canvas 2D uses cached deterministic sprites and CPU trails. It is a supported
+fallback, not a second visual design. WebGPU loss is isolated: the composition root
+replaces the projection with Canvas while retaining the engine and score.
+
+Presentation interpolation is frame-rate independent and owns no domain truth. It
+smooths wrapped coordinates, particle attributes, and visual metrics, with asymmetric
+transition release. The raw snapshot still drives audio and future engine state.
+
+## Audio strategy
+
+The native WebAudio graph is self-contained and sample-free:
+
+```text
+six partial oscillators (+ drift LFOs) -> gains/panners -> pad low-pass -> dry
+pad low-pass -> octave waveshaper -> band-pass -> shimmer -----------> reverb
+eight paired formation voices -> filters/gains/panners -> formation bus -> dry
+sub oscillator -> low-pass ------------------------------------------> dry
+filtered stereo noise -----------------------------------------------> dry
+sparse scale tones --------------------------------------------------> dry
+control confirmation oscillator ------------------------------------> dry
+dry -> delay/feedback + generated impulse response ------------------> wet
+dry + wet -> master -> high-pass -> saturator -> tone filter -> compressor
+          -> safety limiter -> analyser -> output + capture tap
+```
+
+The graph is created or resumed inside a user gesture. Continuous parameter changes
+use AudioParam scheduling rather than timer-driven value jumps. Metrics steer
+texture and musical density; formations retain voices by toroidal proximity; pointer
+pressure, movement, and position modulate brightness, air, and pan. Controls provide
+a restrained audible confirmation.
+
+WebAudio intentionally uses its own high-resolution clock for AudioParam ramps and
+sparse note scheduling. It consumes simulation state but does not become simulation
+state. An AudioWorklet would be appropriate for custom sample-level DSP or an
+offline-identical synthesis requirement; it is not needed for the current native
+node graph.
+
+## Lifecycle and failure isolation
+
+The application has one page-lifetime composition root. Resource ownership follows
+these rules:
+
+- Create the engine before adapters; install controls and expose diagnostics only
+  after all required adapters exist.
+- Audio construction is cheap, but graph creation is deferred to a user gesture.
+- A score reset replaces engine state and explicitly resets visual history and audio
+  seed/scheduler state.
+- Renderer loss replaces only the renderer. Simulation and audio continue.
+- Capture preparation is idempotent in intent: silence audio, stop stepping, clear
+  interactions and projection history, reset the engine, then begin from a clean
+  first recorded frame.
+- Optional diagnostics initialise concurrently and never gate startup or error
+  presentation. A fatal bootstrap exception is sent after diagnostics become ready
+  when possible.
+- Monitoring, feedback, analytics, native share, clipboard, service worker, and
+  offline failures degrade their own capability rather than the instrument.
+
+Any future adapter that creates listeners, timers, GPU resources, workers, or audio
+nodes with a shorter lifetime than the page must expose `dispose()` and be disposed
+by its owner before replacement.
 
 ## Production capture
 
-`npm run video` builds and serves the local production artifact, opens a fresh
-Chrome profile at each requested output size, and drives the narrow capture API
-exposed as `window.confluon`. `prepareCapture()` starts and silences the audio graph,
-resets the seeded engine, clears visual history, and returns the active settings;
-`beginCapture()` releases the simulation and master gain on the first recorded
-frame. The canvas stream and a `MediaStreamAudioDestinationNode` tapped after the
-safety limiter are combined in one `MediaRecorder`, keeping picture and mastered
-audio on the same browser clock.
+`npm run video` builds and serves the local production artifact, opens a fresh Chrome
+profile at each requested output size, and drives `window.confluon`. The facade is
+frozen and versioned; capture and smoke tools reject an unsupported API version.
 
-The local script receives chunked WebM data without holding a long capture in
-browser memory. It can retain a verified VP9/Opus WebM and/or transcode an
-H.264/HEVC + AAC MP4 with fast-start metadata. Every aspect-ratio variant is a
-fresh run from the same seed and URL settings and receives a preview plus a JSON
-manifest containing the source revision and probed stream metadata.
+`prepareCapture()` starts and silences audio, resets the seeded engine, clears visual
+history, and returns active score metadata. `beginCapture()` releases simulation and
+master gain on the first recorded frame. Canvas video and a
+`MediaStreamAudioDestinationNode` tapped after the limiter enter one `MediaRecorder`,
+keeping picture and mastered audio on the same browser clock.
 
-## Frame contract
-
-At a fixed timestep the browser calls:
-
-```text
-Engine.step(dt, pointer_x, pointer_y, pointer_strength, pointer_twist, settle)
-```
-
-The engine exposes three flat arrays:
-
-- `snapshot()`: repeated `[x, y, species + energy, speed]` records. The integer
-  portion of the packed third value is the population (`0..2`); its fractional
-  portion is normalised energy.
-- `metrics()`: `[energy, coherence, activity, density, formations, transition,
-  encounters]`.
-- `formations()`: up to eight of the largest connected same-species formations as
-  `[x, y, size_share, species]` records, largest first, with toroidal centroids.
-
-The normalised metrics remain bounded to `0..1` except formation count. `encounters`
-measures cross-population sensing pressure. This small contract keeps the renderer
-replaceable and makes offline reproduction practical.
-
-## Determinism
-
-The Rust core uses a small internal integer PRNG. The same engine version, seed,
-particle count, fixed timestep, performance settings, and gesture stream reproduce a
-take. Browser settings are encoded in the URL; future export work should save those
-values as `instrument.json` alongside audio/video output.
-
-Pointer input has a deterministic short-lived alarm envelope. A poke persists beyond
-release so it cannot disappear between fixed steps; fast hover movement also alarms
-nearby matter, while a still mouse or hovering pen becomes a weak attractive
-presence. Positive radial forces contain a repulsive inner core, giving Gather and
-passive attention a stand-off distance rather than a singular collapse. Divide is
-fully repulsive. Orbit combines a small radial bias with a tangential force and
-Gaussian distance falloff. The three populations have slightly different response
-gains. Ecology scales the existing cross-population energy derivative rather than
-adding a visual-only effect.
-
-## Audio graph
-
-```text
-six partial oscillators (+ per-voice drift LFOs) -> gains/panners -> pad low-pass -> field pan -> dry
-pad low-pass -> octave waveshaper -> band-pass -> shimmer gain ----------------> reverb (wet only)
-eight formation voices (paired oscillators -> low-pass -> gain -> panner) -----> formation bus -> dry
-sub oscillator -> low-pass ----------------------------------------------------> dry
-filtered stereo noise ---------------------------------------------------------> dry
-sparse scale tones ------------------------------------------------------------> dry
-control confirmation oscillator -> band-pass -> gain/panner ------------------> dry
-dry -> delay -> filtered feedback -> wet --------------------------------------> master
-dry -> generated impulse response (early reflections + darkening tail) -> wet -> master
-dry ---------------------------------------------------------------------------> master
-master -> subsonic high-pass -> tape saturator -> tone low-pass -> compressor
-       -> safety limiter -> analyser -> output + production capture tap
-```
-
-Audio starts on the first user gesture and is re-resumed after browser or device
-suspension. Parameter changes are smoothed with `AudioParam.setTargetAtTime`;
-transitions create bounded resonant voices, while a slow metric-derived scheduler
-adds space between longer tones. Pointer pressure, speed, and position continuously
-modulate brightness, air, and field pan. Flow affects note spacing; Halo and Memory
-shape shimmer, delay, feedback, and room depth; Tone changes the resonator and noise
-spectral tilt. A restrained confirmation voice makes slider and gesture-mode changes
-immediately audible. The analyser exposes RMS and peak output for smoke tests.
-
-The sound is tied to the image in three ways. Each of the up-to-eight visible
-formations owns a sustained voice whose stereo pan tracks the formation's on-screen
-position, whose level follows its share of the population, and whose pitch derives
-from its species; a new formation rings a soft emergence bell from its own position.
-Sparse field tones speak from a currently visible formation, and gesture strikes pan
-to the pointer position. A single 0.1 Hz breath oscillator moves the pad filter,
-sub level, and master brightness together so the whole mix breathes as one.
-
-The Share control first synchronises the full seed and settings into the URL. It then
-uses the browser's native Web Share API when available and falls back to clipboard
-copying. Featured fields use the same URL contract: selecting one reconstructs the
-engine, audio seed, renderer history, and controls from explicit query parameters.
+Chunked WebM data is transferred to the local script rather than retained for a long
+capture in browser memory. The script can keep VP9/Opus WebM and/or transcode
+H.264/HEVC plus AAC MP4 with fast-start metadata. Every aspect ratio is a fresh run.
+Each output receives a preview and JSON manifest with source revision, environment,
+score, frame cadence, duration, and probed stream metadata. Renders and local account
+details are never repository inputs.
 
 ## Performance constraints
 
-- The normal field contains 2,000 particles in 24 compact colonies; the Life setting
-  ranges from 600 to the hard cap of 4,096, which also bounds performed seeding.
-- A wrapped 8-by-8 counting-sort grid feeds a per-step pair list: every interacting
-  pair within the sensing radius is found once via a half stencil, then the field,
-  energy, and force accumulations each run linearly over that list, writing both
-  sides of each pair. Scratch buffers are reused across steps, so the hot loop does
-  not allocate. Formation counting and centroids reuse the same pair list through a
-  union-find pass.
-- The browser advances the deterministic simulation at 30 Hz and performs at most
-  two catch-up steps per animation frame; rendering and audio control remain tied to
-  display frames.
-- Particle motion is finite, speed-limited, and wrapped on a torus.
-- Master gain stays conservative and passes through a compressor.
-- Rendering resolution is capped at device pixel ratio 2.
-- The kernel field is rebuilt from the current snapshot each frame and introduces no
-  hidden simulation state.
+- The normal field has 2,000 particles in 24 colonies. Life ranges from 600 to the
+  hard 4,096 cap, which also bounds performed seeding.
+- A wrapped 8-by-8 counting-sort grid creates each interacting pair once through a
+  half stencil. Field, energy, and force accumulation update both particles and run
+  linearly over that pair list. Reused scratch buffers keep the hot step allocation
+  free; formation union-find reuses the same list.
+- Simulation runs at a 30 Hz fixed step. Display and audio control run at display
+  cadence, with at most two retained catch-up steps.
+- Motion is finite, speed-limited, and toroidally wrapped.
+- Render device pixel ratio is capped at two. Field, trail, and bloom passes use
+  intentionally reduced intermediate resolutions.
+- The field texture is rebuilt from the current snapshot and introduces no hidden
+  domain state.
+- Master gain is conservative and ends in compression and safety limiting.
 
-## Hosting and delivery
+Move simulation or rendering into a Worker only after production profiling shows
+main-thread frame or input latency exceeding the budget on supported devices. A
+Worker design must define snapshot ownership, transfer cadence, input step indexing,
+GPU loss handling, and audio synchronisation first. `SharedArrayBuffer` also changes
+cross-origin isolation and deployment requirements.
 
-The production build is served as Cloudflare Workers Static Assets at
-`confluon.com`. The same Worker returns path- and query-preserving 308 redirects
-from `www.confluon.com`, `confluon.tre.systems`, and `geno-5.tre.systems` before
-serving assets through its binding. `wrangler.toml` owns the custom domains, the
-asset binding, clean HTML handling, and a real custom 404 response.
+## Hosting, updates, and operational boundary
 
-Vite fingerprints the JavaScript, CSS, and WASM bundles. The post-build finalizer
-stamps a release-specific runtime configuration and service-worker cache from the
-actual entry manifest. The service worker precaches only the instrument shell and
-article surface, uses network-first navigation, and waits for explicit approval before
-activating a new release. This avoids replacing a running audiovisual performance.
+Vite builds fingerprinted JavaScript, CSS, and WASM. The finalizer derives runtime
+config and the service-worker cache from Vite's actual entry manifest, then the
+artifact verifier checks content and security policy. Avoid manually copying hashed
+assets or maintaining a second precache list.
 
-Production browser diagnostics are a deployment opt-in. Sentry receives scrubbed
-errors and a five-percent performance sample: query strings and fragments, cookies,
-request bodies, authorization headers, and user fields are removed, while replay and
-default PII are disabled. The feedback form requests no name, email, or screenshot and
-its control stays hidden when Sentry is unavailable. Source maps are generated only
-for an authenticated release upload and are removed before deployment. Cloudflare Web
-Analytics is independently opt-in and its beacon is suppressed when the browser sends
-Do Not Track.
+Cloudflare Workers Static Assets serves the production build. The small Worker exists
+only for path/query-preserving canonical-host redirects before delegating to the
+asset binding. Clean HTML routing and a real custom 404 are owned by `wrangler.toml`
+and the assembled artifact.
 
-GitHub Actions audits npm and Rust dependencies, runs the deterministic native tests,
-checks JavaScript and PWA lifecycle logic, verifies the assembled artifact and security
-policy, opens the complete production build in Chromium, deploys only after those
-checks pass, and smoke-tests the public hostname. Cloudflare and Sentry credentials
-remain encrypted GitHub Actions secrets and are not available in the repository.
+The service worker precaches the instrument shell and article surface, uses
+network-first navigation, and waits for explicit approval before activating a new
+release. A release must never replace a running performance underneath the player.
+
+Sentry and Cloudflare Web Analytics are build-time opt-ins. Query strings, fragments,
+cookies, bodies, authorization headers, and user fields are removed from diagnostics;
+replay and default PII are disabled. Feedback asks for no identity or screenshot.
+Source maps exist only for authenticated upload and are removed from deployment.
+Analytics is suppressed for Do Not Track. Operational config must remain optional and
+must not enter shared score URLs or capture metadata.
+
+## Verification architecture
+
+Validation is layered so failures are found at the cheapest reliable boundary:
+
+1. **Rust unit/property-style tests:** exact determinism, finite bounded evolution,
+   conservation, interaction effects, toroidal behaviour, formation records, and
+   neighbour-grid equivalence to brute force.
+2. **Pure JavaScript tests:** performance-state defaults, bounds and URL round trips;
+   PWA update state transitions.
+3. **Static checks:** Rust formatting/clippy, JavaScript parsing, deterministic icon
+   generation, dependency audits.
+4. **Artifact checks:** manifest-derived files, build IDs, service-worker integrity,
+   source-map exclusion, headers, and private-data indicators.
+5. **Browser smoke:** instrument startup, versioned diagnostics API, WebGPU or Canvas
+   drawing, forced Canvas fallback, audio startup and response, pointer gestures,
+   controls, routes, security headers, service worker, and offline shell.
+6. **Release checks:** the complete candidate is smoked before deployment and the
+   public hostname is retried after deployment for edge propagation.
+
+`npm run check` is the required local gate and CI gate. Chromium is the primary
+integration target because it exercises WebGPU and capture. WebKit/mobile Safari and
+Firefox coverage should be added when their supported renderer/audio paths can be
+made stable in CI; responsive layout alone is not a substitute for testing real
+touch, audio-resume, and graphics lifecycle behaviour.
+
+## Technology decisions and reconsideration triggers
+
+| Choice | Why it fits now | Reconsider when |
+| --- | --- | --- |
+| Rust + WASM | Deterministic numeric core, strong invariants, fast reusable pair loop | Cross-boundary copies dominate measured frame cost |
+| Flat typed-array ABI | Compact hot-path interchange, direct GPU upload | Contract becomes sparse/optional or needs independent evolution |
+| Vanilla ESM + DOM | Small single-screen UI, direct lifecycle and low framework weight | Multiple screens/components need independent ownership and testing |
+| WebGPU + Canvas fallback | HDR particle field with a usable progressive fallback | A supported platform needs another maintained renderer |
+| Native WebAudio nodes | Rich procedural graph, precise parameter automation, no sample assets | Custom sample-level DSP or bit-stable offline audio is required |
+| Vite | Modern ESM development, fingerprinted static production artifact and manifest | Build requirements exceed static-client packaging |
+| Playwright scripts | Real browser/API integration and production-artifact smoke | Test count needs fixtures, parallel projects, traces, and richer reporting |
+| Cloudflare static assets + small Worker | Global static delivery and canonical redirects without an application server | Accounts, persistence, collaboration, or authenticated APIs enter scope |
+
+The present tools are appropriate. The near-term engineering opportunity is stronger
+contract testing and profiling, not a rewrite. If the JavaScript state surface keeps
+growing, enable `tsc --checkJs` with JSDoc or migrate boundary modules to TypeScript
+before adding a framework. Keep dependency upgrades—especially Vite major versions
+and browser automation releases—as isolated, fully-smoked changes rather than mixing
+them with audiovisual behaviour changes.

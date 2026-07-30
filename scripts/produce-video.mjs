@@ -535,6 +535,12 @@ async function recordFormat(options, format, baseUrl) {
           await new Promise((resolve) => setTimeout(resolve, 50));
         }
         if (!window.confluon) throw new Error("Confluon did not become ready");
+        if (
+          window.confluon.apiVersion !== 1 ||
+          window.confluon.simulationContractVersion !== 1
+        ) {
+          throw new Error("Unsupported Confluon capture API");
+        }
         const style = document.createElement("style");
         style.textContent = "#controls,#runtime-status{display:none!important}#instrument{min-height:0!important}body{cursor:none!important;overflow:hidden!important}";
         document.head.appendChild(style);

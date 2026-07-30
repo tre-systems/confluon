@@ -37,8 +37,11 @@ try {
   await page.waitForTimeout(750);
 
   const initial = await page.evaluate(() => ({
+    apiVersion: window.confluon.apiVersion,
+    simulationContractVersion: window.confluon.simulationContractVersion,
     title: document.title,
     renderer: window.confluon.renderer(),
+    metricsLength: window.confluon.metrics().length,
     particles: window.confluon.particleCount(),
     canvasWidth: document.querySelector("#field")?.width || 0,
     canvasHeight: document.querySelector("#field")?.height || 0,
@@ -54,6 +57,15 @@ try {
     newSeedButtons: document.querySelectorAll("#new-seed").length,
     footerDocs: Array.from(document.querySelectorAll(".panel-links a"), (link) => link.pathname),
   }));
+  if (
+    initial.apiVersion !== 1 ||
+    initial.simulationContractVersion !== 1 ||
+    initial.metricsLength !== 7
+  ) {
+    throw new Error(
+      `unexpected simulation contract: ${initial.apiVersion}/${initial.simulationContractVersion}/${initial.metricsLength}`,
+    );
+  }
   if (initial.title !== "Confluon") throw new Error(`unexpected title: ${initial.title}`);
   if (!["WEBGPU", "CANVAS"].includes(initial.renderer)) {
     throw new Error(`unexpected renderer: ${initial.renderer}`);

@@ -6,10 +6,26 @@ import {
   initializeMonitoring,
   setRuntimeTag,
 } from "./monitoring.js";
+import {
+  clampPopulation,
+  encodePerformanceState,
+  formatSeed,
+  GESTURE_MODES,
+  isGestureMode,
+  parsePerformanceSettings,
+  parseSeed,
+} from "./performance-state.js";
+import {
+  METRIC_FIELD,
+  PARTICLE_FIELD,
+  PARTICLE_STRIDE,
+  SIMULATION_CONTRACT_VERSION,
+} from "./simulation-contract.js";
 
 const FIXED_STEP = 1 / 30;
+const MAX_CATCH_UP_STEPS = 2;
+const CONFLUON_API_VERSION = 1;
 const IDLE_CONTROLS_MS = 9000;
-const GESTURE_MODES = new Set(["gather", "orbit", "divide"]);
 const SOUND_START_EVENTS = [
   "pointerdown",
   "pointerup",
@@ -19,7 +35,7 @@ const SOUND_START_EVENTS = [
   "keydown",
   "wheel",
 ];
-const settings = readPerformanceSettings();
+const settings = parsePerformanceSettings(window.location.href);
 
 const elements = {
   instrument: document.querySelector("#instrument"),
@@ -88,7 +104,7 @@ let shareFeedbackTimer;
 let visualSnapshot;
 let visualMetrics;
 
-await initializeMonitoring();
+const monitoringReady = initializeMonitoring();
 
 try {
   await init();
@@ -99,16 +115,18 @@ try {
   });
   audio = new ConfluonAudio(seed);
   applyPerformanceSettings(false);
-  setRuntimeTag("renderer", renderer.kind.toLowerCase());
   elements.seed.textContent = formatSeed(seed);
   installControls();
   exposeDiagnostics();
   requestAnimationFrame(frame);
+  void monitoringReady.then(() => setRuntimeTag("renderer", renderer.kind.toLowerCase()));
 } catch (error) {
   console.error(error);
-  captureException(error, { stage: "instrument_initialization" });
   elements.runtimeStatus.textContent = "This browser could not start the instrument.";
   elements.runtimeStatus.classList.add("error");
+  void monitoringReady.then(() => {
+    captureException(error, { stage: "instrument_initialization" });
+  });
 }
 
 async function recoverFromRendererLoss(info) {
@@ -211,7 +229,7 @@ function installControls() {
     if (duration > 90 || travel > 0.025) {
       const strikeStrength =
         state.pointer.mode === "orbit" ? 0.72 : state.pointer.mode === "divide" ? 0.64 : 0.5;
-      audio.strike(strikeStrength, engine.metrics()[0], point.x);
+      audio.strike(strikeStrength, engine.metrics()[METRIC_FIELD.ENERGY], point.x);
     }
     if (event.pointerType !== "mouse" && duration < 230 && travel < 0.055) {
       const now = performance.now();
@@ -249,7 +267,7 @@ function installControls() {
   const settleOff = () => {
     if (!state.settle) return;
     state.settle = false;
-    audio.strike(0.58, engine.metrics()[0]);
+    audio.strike(0.58, engine.metrics()[METRIC_FIELD.ENERGY]);
   };
   elements.population.addEventListener("change", () => {
     settings.population = clampPopulation(Number(elements.population.value));
@@ -379,7 +397,7 @@ function updatePointerPosition(event, trackMotion) {
 }
 
 function setGestureMode(mode, updateUrl = true) {
-  if (!GESTURE_MODES.has(mode)) return;
+  if (!isGestureMode(mode)) return;
   state.gestureMode = mode;
   settings.mode = mode;
   elements.instrument.dataset.gesture = mode;
@@ -388,13 +406,11 @@ function setGestureMode(mode, updateUrl = true) {
   });
   if (updateUrl) {
     syncSettingsUrl();
-    audio.cueControl(`gesture-${mode}`, ["gather", "orbit", "divide"].indexOf(mode) / 2);
+    audio.cueControl(
+      `gesture-${mode}`,
+      GESTURE_MODES.indexOf(mode) / (GESTURE_MODES.length - 1),
+    );
   }
-}
-
-function clampPopulation(value) {
-  if (!Number.isFinite(value)) return 2000;
-  return Math.max(600, Math.min(4096, Math.round(value)));
 }
 
 function readSettingsFromControls() {
@@ -578,11 +594,16 @@ function frame(milliseconds) {
   const time = milliseconds / 1000;
   const elapsed = Math.min(0.05, Math.max(0, time - previousTime));
   previousTime = time;
-  accumulator += elapsed * settings.flow;
+  // Under sustained overload, prefer slowed performance time to an ever-growing
+  // catch-up queue that would make input and audio lag behind the image.
+  accumulator = Math.min(
+    accumulator + elapsed * settings.flow,
+    FIXED_STEP * MAX_CATCH_UP_STEPS,
+  );
 
   if (state.running) {
     let steps = 0;
-    while (accumulator >= FIXED_STEP && steps < 2) {
+    while (accumulator >= FIXED_STEP && steps < MAX_CATCH_UP_STEPS) {
       const interaction = pointerInteraction();
       engine.step(
         FIXED_STEP,
@@ -616,10 +637,14 @@ function frame(milliseconds) {
     state.pointer.x,
   );
   audio.update(metrics, engine.formations());
-  if (metrics[5] > 0.24 && state.previousTransition <= 0.24 && state.running) {
-    audio.strike(metrics[5], metrics[0]);
+  if (
+    metrics[METRIC_FIELD.TRANSITION] > 0.24 &&
+    state.previousTransition <= 0.24 &&
+    state.running
+  ) {
+    audio.strike(metrics[METRIC_FIELD.TRANSITION], metrics[METRIC_FIELD.ENERGY]);
   }
-  state.previousTransition = metrics[5];
+  state.previousTransition = metrics[METRIC_FIELD.TRANSITION];
 
   if (milliseconds - lastReadout > 160) {
     elements.instrument.dataset.particles = String(engine.particle_count());
@@ -640,21 +665,25 @@ function smoothVisualState(snapshot, metrics, elapsed) {
   } else {
     const positionBlend = 1 - Math.exp(-elapsed / 0.052);
     const attributeBlend = 1 - Math.exp(-elapsed / 0.09);
-    for (let offset = 0; offset < snapshot.length; offset += 4) {
-      visualSnapshot[offset] = smoothWrappedCoordinate(
-        visualSnapshot[offset],
-        snapshot[offset],
+    for (let offset = 0; offset < snapshot.length; offset += PARTICLE_STRIDE) {
+      visualSnapshot[offset + PARTICLE_FIELD.X] = smoothWrappedCoordinate(
+        visualSnapshot[offset + PARTICLE_FIELD.X],
+        snapshot[offset + PARTICLE_FIELD.X],
         positionBlend,
       );
-      visualSnapshot[offset + 1] = smoothWrappedCoordinate(
-        visualSnapshot[offset + 1],
-        snapshot[offset + 1],
+      visualSnapshot[offset + PARTICLE_FIELD.Y] = smoothWrappedCoordinate(
+        visualSnapshot[offset + PARTICLE_FIELD.Y],
+        snapshot[offset + PARTICLE_FIELD.Y],
         positionBlend,
       );
-      visualSnapshot[offset + 2] +=
-        (snapshot[offset + 2] - visualSnapshot[offset + 2]) * attributeBlend;
-      visualSnapshot[offset + 3] +=
-        (snapshot[offset + 3] - visualSnapshot[offset + 3]) * attributeBlend;
+      visualSnapshot[offset + PARTICLE_FIELD.PACKED_SPECIES_ENERGY] +=
+        (snapshot[offset + PARTICLE_FIELD.PACKED_SPECIES_ENERGY] -
+          visualSnapshot[offset + PARTICLE_FIELD.PACKED_SPECIES_ENERGY]) *
+        attributeBlend;
+      visualSnapshot[offset + PARTICLE_FIELD.SPEED] +=
+        (snapshot[offset + PARTICLE_FIELD.SPEED] -
+          visualSnapshot[offset + PARTICLE_FIELD.SPEED]) *
+        attributeBlend;
     }
   }
 
@@ -664,7 +693,11 @@ function smoothVisualState(snapshot, metrics, elapsed) {
     for (let index = 0; index < metrics.length; index += 1) {
       const target = metrics[index];
       const timeConstant =
-        index === 5 ? (target > visualMetrics[index] ? 0.085 : 0.48) : 0.22;
+        index === METRIC_FIELD.TRANSITION
+          ? target > visualMetrics[index]
+            ? 0.085
+            : 0.48
+          : 0.22;
       const blend = 1 - Math.exp(-elapsed / timeConstant);
       visualMetrics[index] += (target - visualMetrics[index]) * blend;
     }
@@ -685,16 +718,16 @@ function smoothWrappedCoordinate(current, target, blend) {
 
 function spawn(x, y) {
   engine.spawn_at(x, y, 50);
-  audio.strike(0.84, engine.metrics()[0], x);
+  audio.strike(0.84, engine.metrics()[METRIC_FIELD.ENERGY], x);
 }
 
 function loadFieldScore(source, name) {
   const featuredUrl = new URL(source, window.location.href);
-  const featuredSeed = Number(featuredUrl.searchParams.get("seed"));
-  if (!Number.isInteger(featuredSeed) || featuredSeed <= 0 || featuredSeed > 0xffffffff) return;
+  const featuredSeed = parseSeed(featuredUrl);
+  if (featuredSeed === null) return;
 
-  seed = featuredSeed >>> 0;
-  Object.assign(settings, readPerformanceSettings(featuredUrl));
+  seed = featuredSeed;
+  Object.assign(settings, parsePerformanceSettings(featuredUrl));
   engine = new Engine(seed, settings.population);
   resetVisualSmoothing();
   renderer.resetTrails();
@@ -704,7 +737,7 @@ function loadFieldScore(source, name) {
   elements.seed.textContent = formatSeed(seed);
   elements.runtimeStatus.textContent = `Entered ${name}, seed ${formatSeed(seed)}.`;
   setControlsOpen(false);
-  if (state.started) audio.strike(0.7, engine.metrics()[0]);
+  if (state.started) audio.strike(0.7, engine.metrics()[METRIC_FIELD.ENERGY]);
 }
 
 function togglePause() {
@@ -725,6 +758,8 @@ function setAudioState() {
 
 function exposeDiagnostics() {
   window.confluon = Object.freeze({
+    apiVersion: CONFLUON_API_VERSION,
+    simulationContractVersion: SIMULATION_CONTRACT_VERSION,
     prepareCapture,
     beginCapture,
     captureAudioStream: () => audio.captureStream(),
@@ -804,13 +839,9 @@ function eventPoint(event) {
   };
 }
 
-function formatSeed(value) {
-  return value.toString(16).toUpperCase().padStart(8, "0");
-}
-
 function readSeed() {
-  const value = Number(new URL(window.location.href).searchParams.get("seed"));
-  if (Number.isInteger(value) && value > 0 && value <= 0xffffffff) return value >>> 0;
+  const value = parseSeed(window.location.href);
+  if (value !== null) return value;
   const values = new Uint32Array(1);
   crypto.getRandomValues(values);
   const generated = values[0] || 1;
@@ -820,40 +851,8 @@ function readSeed() {
   return generated;
 }
 
-function readPerformanceSettings(source = window.location.href) {
-  const parameters = new URL(source, window.location.href).searchParams;
-  const mode = parameters.get("mode");
-  return {
-    ecology: readScaledParameter(parameters, "ecology", 1, 0.25, 1.8),
-    flow: readScaledParameter(parameters, "flow", 1, 0.5, 1.8),
-    gesture: readScaledParameter(parameters, "touch", 1, 0.5, 1.8),
-    glow: readScaledParameter(parameters, "halo", 1, 0.45, 1.55),
-    memory: readScaledParameter(parameters, "memory", 0.42, 0, 1),
-    tone: readScaledParameter(parameters, "tone", 0.55, 0, 1),
-    level: readScaledParameter(parameters, "level", 0.74, 0, 1),
-    population: clampPopulation(Number(parameters.get("life") ?? 2000)),
-    mode: GESTURE_MODES.has(mode) ? mode : "gather",
-  };
-}
-
-function readScaledParameter(parameters, key, fallback, minimum, maximum) {
-  if (!parameters.has(key)) return fallback;
-  const value = Number(parameters.get(key)) / 100;
-  if (!Number.isFinite(value)) return fallback;
-  return Math.max(minimum, Math.min(maximum, value));
-}
-
 function syncSettingsUrl() {
-  const url = new URL(window.location.href);
-  url.searchParams.set("ecology", String(Math.round(settings.ecology * 100)));
-  url.searchParams.set("flow", String(Math.round(settings.flow * 100)));
-  url.searchParams.set("touch", String(Math.round(settings.gesture * 100)));
-  url.searchParams.set("halo", String(Math.round(settings.glow * 100)));
-  url.searchParams.set("memory", String(Math.round(settings.memory * 100)));
-  url.searchParams.set("tone", String(Math.round(settings.tone * 100)));
-  url.searchParams.set("level", String(Math.round(settings.level * 100)));
-  url.searchParams.set("life", String(settings.population));
-  url.searchParams.set("mode", settings.mode);
+  const url = encodePerformanceState(window.location.href, seed, settings);
   window.history.replaceState({}, "", url);
 }
 

@@ -39,8 +39,20 @@ npm run smoke
 ```
 
 Native Rust tests should cover deterministic rules and invariants. Browser code
-should keep simulation, rendering, audio, and capture responsibilities separate.
-The architecture and research notes in `docs/` describe those boundaries.
+must follow the functional-core/imperative-shell, command/query, same-state
+projection, and bounded-work patterns in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). In particular:
+
+- change WASM tuple layouts only through `web/simulation-contract.js` and increment
+  the contract version;
+- change score query keys, defaults, bounds, or modes only through
+  `web/performance-state.js` and its round-trip tests;
+- keep renderers and audio independent of the `Engine`; `web/app.js` alone issues
+  commands and passes state to those projections;
+- discuss Workers, AudioWorklets, frameworks, or state libraries as measured
+  architectural changes rather than introducing them incidentally.
+
+The architecture and research notes in `docs/` describe the complete boundaries.
 
 By submitting a contribution, you agree that it is licensed under the project's
 Apache-2.0 licence.

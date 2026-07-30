@@ -1,8 +1,14 @@
+import {
+  FORMATION_FIELD,
+  FORMATION_STRIDE,
+  MAX_FORMATION_VOICES,
+  METRIC_FIELD,
+} from "./simulation-contract.js";
+
 const PARTIALS = [1, 1.25, 1.5, 2, 2.5, 3];
 const SCALE = [0, 2, 5, 7, 9, 12, 14, 17];
 const ROOT_STEPS = [0, 2, 5, 7, 9, 12];
 const MASTER_LEVEL = 0.52;
-const FORMATION_VOICES = 8;
 const CONTROL_STEPS = {
   ecology: 2,
   flow: 5,
@@ -113,7 +119,7 @@ export class ConfluonAudio {
       .connect(context.destination);
     // The production capture pipeline records this second pull from the same
     // mastered signal that reaches the speakers. Keeping the tap after the
-    // limiter makes browser video exports and interactive WAV takes agree.
+    // limiter makes production video exports agree with interactive playback.
     this.captureDestination = context.createMediaStreamDestination();
     this.limiter.connect(this.captureDestination);
 
@@ -240,7 +246,7 @@ export class ConfluonAudio {
     this.formationReverbSend = context.createGain();
     this.formationReverbSend.gain.value = 0.5;
     this.formationBus.connect(this.formationReverbSend).connect(this.reverb);
-    for (let index = 0; index < FORMATION_VOICES; index += 1) {
+    for (let index = 0; index < MAX_FORMATION_VOICES; index += 1) {
       const primary = context.createOscillator();
       primary.type = "sine";
       primary.frequency.value = 220;
@@ -421,12 +427,19 @@ export class ConfluonAudio {
    */
   updateFormations(formations, now, metrics) {
     const incoming = [];
-    for (let offset = 0; offset + 3 < formations.length; offset += 4) {
+    for (
+      let offset = 0;
+      offset + FORMATION_STRIDE - 1 < formations.length;
+      offset += FORMATION_STRIDE
+    ) {
       incoming.push({
-        x: formations[offset],
-        y: formations[offset + 1],
-        share: formations[offset + 2],
-        species: Math.max(0, Math.min(2, Math.round(formations[offset + 3]))),
+        x: formations[offset + FORMATION_FIELD.X],
+        y: formations[offset + FORMATION_FIELD.Y],
+        share: formations[offset + FORMATION_FIELD.SIZE_SHARE],
+        species: Math.max(
+          0,
+          Math.min(2, Math.round(formations[offset + FORMATION_FIELD.SPECIES])),
+        ),
       });
     }
 
@@ -491,7 +504,9 @@ export class ConfluonAudio {
     for (const track of this.tracked) {
       const voice = this.formationVoices[track.voice];
       const frequency = this.formationFrequency(track);
-      const level = Math.pow(track.share, 0.72) * (0.045 + (metrics?.[1] ?? 0) * 0.02);
+      const level =
+        Math.pow(track.share, 0.72) *
+        (0.045 + (metrics?.[METRIC_FIELD.COHERENCE] ?? 0) * 0.02);
       voice.primary.frequency.setTargetAtTime(frequency, now, 0.7);
       voice.partner.frequency.setTargetAtTime(frequency * 2.003, now, 0.7);
       voice.filter.frequency.setTargetAtTime(
@@ -521,9 +536,13 @@ export class ConfluonAudio {
     // Sparse tones speak from a visible formation when one exists, so the ear
     // is drawn to the same places as the eye.
     let pan = (this.random() * 2 - 1) * (0.46 + activity * 0.35);
-    if (formations.length >= 4) {
-      const which = Math.floor(this.random() * (formations.length / 4)) * 4;
-      pan = clampPan(formations[which] + (this.random() - 0.5) * 0.2);
+    if (formations.length >= FORMATION_STRIDE) {
+      const which =
+        Math.floor(this.random() * (formations.length / FORMATION_STRIDE)) *
+        FORMATION_STRIDE;
+      pan = clampPan(
+        formations[which + FORMATION_FIELD.X] + (this.random() - 0.5) * 0.2,
+      );
     }
     this.playTone(frequency * (0.995 + energy * 0.01), peak, when, duration, pan);
   }

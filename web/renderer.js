@@ -1,6 +1,11 @@
 import { captureException, captureMessage } from "./monitoring.js";
+import {
+  MAX_PARTICLES,
+  METRIC_FIELD,
+  PARTICLE_FIELD,
+  PARTICLE_STRIDE,
+} from "./simulation-contract.js";
 
-const MAX_PARTICLES = 4096;
 const FIELD_FORMAT = "rgba16float";
 const HDR_FORMAT = "rgba16float";
 
@@ -508,7 +513,8 @@ class TrailRenderer {
       this.ready = true;
     } else {
       context.globalCompositeOperation = "source-over";
-      const fade = 0.24 - this.memory * 0.19 + metrics[2] * 0.025;
+      const fade =
+        0.24 - this.memory * 0.19 + metrics[METRIC_FIELD.ACTIVITY] * 0.025;
       context.fillStyle = `rgba(4, 6, 9, ${fade})`;
       context.fillRect(0, 0, canvas.width, canvas.height);
     }
@@ -521,8 +527,14 @@ class TrailRenderer {
       canvas.height * 0.5,
       Math.max(canvas.width, canvas.height) * 0.62,
     );
-    glow.addColorStop(0, `rgba(25, 67, 70, ${0.014 + metrics[1] * 0.016})`);
-    glow.addColorStop(0.58, `rgba(58, 35, 30, ${0.007 + metrics[0] * 0.009})`);
+    glow.addColorStop(
+      0,
+      `rgba(25, 67, 70, ${0.014 + metrics[METRIC_FIELD.COHERENCE] * 0.016})`,
+    );
+    glow.addColorStop(
+      0.58,
+      `rgba(58, 35, 30, ${0.007 + metrics[METRIC_FIELD.ENERGY] * 0.009})`,
+    );
     glow.addColorStop(1, "rgba(4, 6, 9, 0)");
     context.fillStyle = glow;
     context.fillRect(0, 0, canvas.width, canvas.height);
@@ -530,19 +542,33 @@ class TrailRenderer {
     if (this.previous?.length === snapshot.length) {
       context.globalCompositeOperation = "lighter";
       context.lineCap = "round";
-      for (let offset = 0; offset < snapshot.length; offset += 8) {
-        const dx = snapshot[offset] - this.previous[offset];
-        const dy = snapshot[offset + 1] - this.previous[offset + 1];
+      for (
+        let offset = 0;
+        offset < snapshot.length;
+        offset += PARTICLE_STRIDE * 2
+      ) {
+        const dx =
+          snapshot[offset + PARTICLE_FIELD.X] -
+          this.previous[offset + PARTICLE_FIELD.X];
+        const dy =
+          snapshot[offset + PARTICLE_FIELD.Y] -
+          this.previous[offset + PARTICLE_FIELD.Y];
         if (Math.abs(dx) > 0.35 || Math.abs(dy) > 0.35) continue;
-        const speed = snapshot[offset + 3];
-        const packedEnergy = snapshot[offset + 2];
+        const speed = snapshot[offset + PARTICLE_FIELD.SPEED];
+        const packedEnergy = snapshot[offset + PARTICLE_FIELD.PACKED_SPECIES_ENERGY];
         const [red, green, blue] = speciesColour(speciesOf(packedEnergy), 0.7);
         const traceAlpha = (0.018 + speed * 0.11) * (0.42 + this.memory * 1.08);
         context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${traceAlpha})`;
         context.lineWidth = deviceScale() * (0.34 + speed * 0.5);
         context.beginPath();
-        context.moveTo(toX(this.previous[offset], canvas.width), toY(this.previous[offset + 1], canvas.height));
-        context.lineTo(toX(snapshot[offset], canvas.width), toY(snapshot[offset + 1], canvas.height));
+        context.moveTo(
+          toX(this.previous[offset + PARTICLE_FIELD.X], canvas.width),
+          toY(this.previous[offset + PARTICLE_FIELD.Y], canvas.height),
+        );
+        context.lineTo(
+          toX(snapshot[offset + PARTICLE_FIELD.X], canvas.width),
+          toY(snapshot[offset + PARTICLE_FIELD.Y], canvas.height),
+        );
         context.stroke();
       }
     }
@@ -585,7 +611,7 @@ class WebGpuRenderer {
 
     this.particleBuffer = device.createBuffer({
       label: "particle snapshot",
-      size: MAX_PARTICLES * 4 * Float32Array.BYTES_PER_ELEMENT,
+      size: MAX_PARTICLES * PARTICLE_STRIDE * Float32Array.BYTES_PER_ELEMENT,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
     this.uniformBuffer = device.createBuffer({
@@ -818,7 +844,7 @@ class WebGpuRenderer {
     const dt = this.lastTime > 0 ? Math.min(0.1, Math.max(0, time - this.lastTime)) : 1 / 60;
     this.lastTime = time;
 
-    const particleCount = Math.min(MAX_PARTICLES, snapshot.length / 4);
+    const particleCount = Math.min(MAX_PARTICLES, snapshot.length / PARTICLE_STRIDE);
     this.device.queue.writeBuffer(this.particleBuffer, 0, snapshot);
     this.device.queue.writeBuffer(
       this.uniformBuffer,
@@ -827,15 +853,15 @@ class WebGpuRenderer {
         this.canvas.width / this.canvas.height,
         time,
         dt,
-        metrics[1],
-        metrics[3],
-        metrics[6] ?? 0,
-        metrics[2],
-        metrics[0],
+        metrics[METRIC_FIELD.COHERENCE],
+        metrics[METRIC_FIELD.DENSITY],
+        metrics[METRIC_FIELD.ENCOUNTERS] ?? 0,
+        metrics[METRIC_FIELD.ACTIVITY],
+        metrics[METRIC_FIELD.ENERGY],
         this.visualGlow,
         this.visualCore,
         this.memory,
-        metrics[5] ?? 0,
+        metrics[METRIC_FIELD.TRANSITION] ?? 0,
       ]),
     );
 
@@ -977,10 +1003,15 @@ class CanvasRenderer {
       const [red, green, blue] = speciesColour(species, 0.72);
       context.fillStyle = `rgba(${red}, ${green}, ${blue}, ${0.012 * this.visualGlow})`;
       context.beginPath();
-      for (let offset = 0; offset < snapshot.length; offset += 4) {
-        if (speciesOf(snapshot[offset + 2]) !== species) continue;
-        const x = toX(snapshot[offset], canvas.width);
-        const y = toY(snapshot[offset + 1], canvas.height);
+      for (let offset = 0; offset < snapshot.length; offset += PARTICLE_STRIDE) {
+        if (
+          speciesOf(snapshot[offset + PARTICLE_FIELD.PACKED_SPECIES_ENERGY]) !==
+          species
+        ) {
+          continue;
+        }
+        const x = toX(snapshot[offset + PARTICLE_FIELD.X], canvas.width);
+        const y = toY(snapshot[offset + PARTICLE_FIELD.Y], canvas.height);
         const radius = (11 + species * 2.2) * deviceScale();
         context.moveTo(x + radius, y);
         context.arc(x, y, radius, 0, Math.PI * 2);
@@ -991,20 +1022,25 @@ class CanvasRenderer {
 
     this.ensureSprites();
 
-    for (let offset = 0; offset < snapshot.length; offset += 4) {
-      const x = toX(snapshot[offset], canvas.width);
-      const y = toY(snapshot[offset + 1], canvas.height);
-      const packedEnergy = snapshot[offset + 2];
+    for (let offset = 0; offset < snapshot.length; offset += PARTICLE_STRIDE) {
+      const x = toX(snapshot[offset + PARTICLE_FIELD.X], canvas.width);
+      const y = toY(snapshot[offset + PARTICLE_FIELD.Y], canvas.height);
+      const packedEnergy = snapshot[offset + PARTICLE_FIELD.PACKED_SPECIES_ENERGY];
       const species = speciesOf(packedEnergy);
       const energy = energyOf(packedEnergy);
-      const speed = snapshot[offset + 3];
+      const speed = snapshot[offset + PARTICLE_FIELD.SPEED];
       const breath = 0.5 + 0.5 * Math.sin(time * 0.57 + offset * 0.0925);
-      const particleIndex = offset / 4;
+      const particleIndex = offset / PARTICLE_STRIDE;
       const variant = particleIndex % PARTICLE_SPRITE_VARIANTS;
       const sizeSeed = particleVariation(particleIndex, 3);
       const radiusVariation = 0.62 + Math.pow(sizeSeed, 1.35) * 0.8;
       const pulse = 0.91 + breath * 0.14;
-      const radius = (1.9 + speed * 1.1 + breath * metrics[1] * 0.42) * deviceScale() * radiusVariation;
+      const radius =
+        (1.9 +
+          speed * 1.1 +
+          breath * metrics[METRIC_FIELD.COHERENCE] * 0.42) *
+        deviceScale() *
+        radiusVariation;
       const diameter = radius * (5.4 + energy * 0.4 + speed * 0.25) * this.visualCore;
       context.globalAlpha = pulse;
       context.drawImage(
