@@ -100,11 +100,12 @@ try {
     throw new Error(`pointer poke did not reach audio: ${JSON.stringify(audiblePoke)}`);
   }
 
+  // A software-rendered CI swarm can delay separately issued input commands
+  // beyond the gesture window. Quiesce simulation, not event handling, so the
+  // trusted taps represent a human double-tap even on a heavily loaded runner.
+  await page.evaluate(() => document.querySelector("#pause").click());
   const beforeDoubleTap = await page.evaluate(() => window.confluon.particleCount());
   await page.touchscreen.tap(900, 560);
-  // Leave headroom for software rendering on slower CI runners while still
-  // exercising the app's real 330 ms double-tap window with trusted input.
-  await page.waitForTimeout(40);
   await page.touchscreen.tap(900, 560);
   await page.waitForTimeout(120);
   const afterDoubleTap = await page.evaluate(() => window.confluon.particleCount());
@@ -113,6 +114,7 @@ try {
       `native double-tap seeded ${afterDoubleTap - beforeDoubleTap} particles, expected 50`,
     );
   }
+  await page.evaluate(() => document.querySelector("#pause").click());
 
   await page.click("#controls-toggle");
   await page.waitForTimeout(500);
