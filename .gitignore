@@ -8,6 +8,7 @@
 /.claude/
 /.idea/
 /.playwright-cli/
+/output/playwright/
 /.vscode/
 .env
 .env.*

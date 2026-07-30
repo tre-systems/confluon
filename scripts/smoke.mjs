@@ -24,10 +24,11 @@ try {
       "--disable-renderer-backgrounding",
     ],
   });
-  const context = await browser.newContext({
+  const contextOptions = {
     viewport: { width: 1280, height: 800 },
     hasTouch: true,
-  });
+  };
+  let context = await browser.newContext(contextOptions);
   let page = await context.newPage();
   watchPage(page, browserErrors);
 
@@ -126,6 +127,26 @@ try {
     throw new Error(`pointer poke did not reach audio: ${JSON.stringify(audiblePoke)}`);
   }
 
+  await page.touchscreen.tap(320, 250);
+  const touchPoke = await page.evaluate(() => window.confluon.interaction());
+  await page.waitForTimeout(40);
+  const audibleTouchPoke = await page.evaluate(
+    () => window.confluon.audioResponse().interaction,
+  );
+  if (
+    touchPoke.type !== "touch" ||
+    !touchPoke.influencing ||
+    touchPoke.impulse <= 0 ||
+    !audibleTouchPoke.influencing
+  ) {
+    throw new Error(
+      `touch poke did not persist into simulation/audio: ${JSON.stringify({
+        touchPoke,
+        audibleTouchPoke,
+      })}`,
+    );
+  }
+
   // A software-rendered CI swarm can delay separately issued input commands
   // beyond the gesture window. Quiesce simulation, not event handling, so the
   // trusted taps represent a human double-tap even on a heavily loaded runner.
@@ -206,18 +227,6 @@ try {
     throw new Error(`service worker is ${serviceWorkerState}`);
   }
 
-  await page.close();
-  page = await context.newPage();
-  watchPage(page, browserErrors);
-  await page.goto(new URL("/?renderer=canvas-locked&seed=424242", baseUrl).href, {
-    waitUntil: "domcontentloaded",
-  });
-  await page.waitForFunction(() => Boolean(window.confluon), null, { timeout: 20_000 });
-  const fallbackRenderer = await page.evaluate(() => window.confluon.renderer());
-  if (fallbackRenderer !== "CANVAS") {
-    throw new Error(`Canvas fallback returned ${fallbackRenderer}`);
-  }
-
   await context.setOffline(true);
   const offlineShell = await page.evaluate(async () => {
     const response = await fetch("/", { cache: "reload" });
@@ -231,6 +240,35 @@ try {
   }
   await context.setOffline(false);
 
+  // Renderer fallback does not depend on PWA state. Use a fresh context so a
+  // service-worker/offline failure cannot be misreported as a renderer failure.
+  await page.close();
+  await context.close();
+  context = await browser.newContext(contextOptions);
+  page = await context.newPage();
+  watchPage(page, browserErrors);
+  await page.goto(
+    new URL("/?renderer=canvas-locked&seed=424242&life=1777", baseUrl).href,
+    {
+      waitUntil: "domcontentloaded",
+    },
+  );
+  await page.waitForFunction(() => Boolean(window.confluon), null, { timeout: 20_000 });
+  const fallbackState = await page.evaluate(() => ({
+    renderer: window.confluon.renderer(),
+    particles: window.confluon.particleCount(),
+    populationSetting: window.confluon.settings().population,
+    populationControl: Number(document.querySelector("#population").value),
+  }));
+  if (
+    fallbackState.renderer !== "CANVAS" ||
+    fallbackState.particles !== 1777 ||
+    fallbackState.populationSetting !== 1777 ||
+    fallbackState.populationControl !== 1777
+  ) {
+    throw new Error(`Canvas/score fallback failed: ${JSON.stringify(fallbackState)}`);
+  }
+
   const ignoredErrors = browserErrors.filter(
     (message) =>
       !/Failed to load resource: the server responded with a status of 404/i.test(message),
@@ -240,7 +278,7 @@ try {
   }
 
   console.log(
-    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, pointer/audio response, 50-particle double-tap, musical controls, offline PWA/privacy/404 healthy`,
+    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, mouse/touch/audio response, 50-particle double-tap, musical controls, offline PWA/privacy/404 healthy`,
   );
 } finally {
   await browser?.close();
