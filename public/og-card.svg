@@ -51,40 +51,38 @@
       <feGaussianBlur stdDeviation="28"/>
     </filter>
     <clipPath id="cyan-field">
-      <path d="M635 76c73-34 164-3 188 64 23 63-23 101-4 159 19 57-34 102-91 78-61-26-79-80-137-92-62-13-79-85-39-131 25-29 47-61 83-78zM951 330c57-27 128-4 147 49 18 49-18 80-3 125 15 44-26 79-71 61-47-20-62-63-107-72-49-10-63-66-31-102 19-23 36-48 65-61z"/>
+      <path d="M667 104c86-40 192-4 220 74 26 73-27 118-5 185 22 66-39 118-106 91-71-31-92-93-160-107-72-15-93-99-46-153 29-34 55-71 97-90z"/>
     </clipPath>
     <clipPath id="ember-field">
-      <path d="M947 49c58-14 120 20 132 78 12 55-30 80-23 129 8 48-39 78-82 53-43-25-47-68-88-87-44-21-41-78-5-106 23-18 36-59 66-67zM592 392c59-25 129 1 146 56 16 52-23 82-10 130 13 46-31 79-76 58-47-22-59-67-105-78-49-12-60-71-27-105 20-22 42-49 72-61z"/>
+      <path d="M965 70c68-17 141 23 155 91 14 64-35 94-26 151 9 56-46 91-96 62-51-29-56-79-104-102-51-24-48-91-6-124 27-21 42-69 77-78z"/>
     </clipPath>
     <clipPath id="violet-field">
-      <path d="M759 244c62-35 144-14 172 48 26 59-14 99 9 151 24 50-23 98-77 81-57-18-79-66-134-70-58-5-83-69-51-114 21-30 49-77 81-96zM1068 188c43-21 96-2 111 38 14 38-14 61-3 96 11 34-20 60-54 46-36-15-47-47-81-54-37-8-47-50-24-77 15-17 29-38 51-49z"/>
+      <path d="M813 307c73-41 169-16 201 57 31 68-16 115 11 176 28 59-27 115-90 95-67-21-93-77-157-82-68-6-97-81-59-134 24-35 57-90 94-112z"/>
     </clipPath>
   </defs>
   <rect width="1200" height="630" fill="url(#ground)"/>
-  <circle cx="758" cy="239" r="220" fill="#1a8f98" opacity=".2" filter="url(#soft)"/>
-  <circle cx="985" cy="205" r="166" fill="#a33b25" opacity=".2" filter="url(#soft)"/>
-  <circle cx="837" cy="420" r="188" fill="#6e3f94" opacity=".2" filter="url(#soft)"/>
+  <circle cx="755" cy="265" r="240" fill="#1a8f98" opacity=".19" filter="url(#soft)"/>
+  <circle cx="1010" cy="220" r="185" fill="#a33b25" opacity=".18" filter="url(#soft)"/>
+  <circle cx="880" cy="465" r="210" fill="#6e3f94" opacity=".19" filter="url(#soft)"/>
   <g filter="url(#glow)" stroke-width="2.2">
-    <path d="M635 76c73-34 164-3 188 64 23 63-23 101-4 159 19 57-34 102-91 78-61-26-79-80-137-92-62-13-79-85-39-131 25-29 47-61 83-78zM951 330c57-27 128-4 147 49 18 49-18 80-3 125 15 44-26 79-71 61-47-20-62-63-107-72-49-10-63-66-31-102 19-23 36-48 65-61z" fill="url(#cyan)" stroke="#76f6ed" stroke-opacity=".74"/>
-    <path d="M947 49c58-14 120 20 132 78 12 55-30 80-23 129 8 48-39 78-82 53-43-25-47-68-88-87-44-21-41-78-5-106 23-18 36-59 66-67zM592 392c59-25 129 1 146 56 16 52-23 82-10 130 13 46-31 79-76 58-47-22-59-67-105-78-49-12-60-71-27-105 20-22 42-49 72-61z" fill="url(#ember)" stroke="#ffad72" stroke-opacity=".76"/>
-    <path d="M759 244c62-35 144-14 172 48 26 59-14 99 9 151 24 50-23 98-77 81-57-18-79-66-134-70-58-5-83-69-51-114 21-30 49-77 81-96zM1068 188c43-21 96-2 111 38 14 38-14 61-3 96 11 34-20 60-54 46-36-15-47-47-81-54-37-8-47-50-24-77 15-17 29-38 51-49z" fill="url(#violet)" stroke="#dbabff" stroke-opacity=".72"/>
+    <path d="M667 104c86-40 192-4 220 74 26 73-27 118-5 185 22 66-39 118-106 91-71-31-92-93-160-107-72-15-93-99-46-153 29-34 55-71 97-90z" fill="url(#cyan)" stroke="#76f6ed" stroke-opacity=".74"/>
+    <path d="M965 70c68-17 141 23 155 91 14 64-35 94-26 151 9 56-46 91-96 62-51-29-56-79-104-102-51-24-48-91-6-124 27-21 42-69 77-78z" fill="url(#ember)" stroke="#ffad72" stroke-opacity=".76"/>
+    <path d="M813 307c73-41 169-16 201 57 31 68-16 115 11 176 28 59-27 115-90 95-67-21-93-77-157-82-68-6-97-81-59-134 24-35 57-90 94-112z" fill="url(#violet)" stroke="#dbabff" stroke-opacity=".72"/>
   </g>
   <g opacity=".94">
-    <rect x="510" y="34" width="680" height="560" fill="url(#cyan-points)" clip-path="url(#cyan-field)"/>
-    <rect x="500" y="30" width="660" height="590" fill="url(#ember-points)" clip-path="url(#ember-field)"/>
-    <rect x="650" y="170" width="540" height="390" fill="url(#violet-points)" clip-path="url(#violet-field)"/>
+    <rect x="540" y="55" width="410" height="430" fill="url(#cyan-points)" clip-path="url(#cyan-field)"/>
+    <rect x="860" y="45" width="330" height="360" fill="url(#ember-points)" clip-path="url(#ember-field)"/>
+    <rect x="690" y="275" width="430" height="355" fill="url(#violet-points)" clip-path="url(#violet-field)"/>
   </g>
   <g fill="none" stroke-width="1.2">
-    <path d="M602 178c48-58 127-71 184-24M712 319c-36-42-86-52-128-29M910 423c38-42 99-50 143-17" stroke="#a8fff4" opacity=".45"/>
-    <path d="M900 134c43-39 102-38 139 0M555 487c41-42 103-45 145-7" stroke="#ffd09f" opacity=".42"/>
-    <path d="M710 354c47-55 131-66 190-20M1032 261c31-34 79-39 113-12" stroke="#edceff" opacity=".42"/>
+    <path d="M625 221c56-68 148-83 214-28M753 383c-42-49-100-61-149-34" stroke="#a8fff4" opacity=".43"/>
+    <path d="M910 172c50-46 119-44 162 0" stroke="#ffd09f" opacity=".41"/>
+    <path d="M756 435c55-65 153-77 222-23" stroke="#edceff" opacity=".41"/>
   </g>
-  <rect width="700" height="630" fill="url(#left-fade)"/>
+  <rect width="670" height="630" fill="url(#left-fade)"/>
   <g font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" fill="#eee9df">
-    <text x="72" y="102" font-family="SFMono-Regular, Menlo, monospace" font-size="16" font-weight="600" letter-spacing="5" fill="#9da39f">CONFLUON</text>
-    <text x="70" y="249" font-size="61" font-weight="300" letter-spacing="-2.2">A field finding</text>
-    <text x="70" y="314" font-size="61" font-weight="300" letter-spacing="-2.2">its voice.</text>
-    <text x="73" y="383" font-size="20" font-weight="400" fill="#bbc2bd">A deterministic instrument for light and sound.</text>
-    <text x="73" y="545" font-family="SFMono-Regular, Menlo, monospace" font-size="13" letter-spacing="2.2" fill="#959b97">THREE POPULATIONS · ONE STATE · NO SEQUENCER</text>
+    <text x="70" y="298" font-size="82" font-weight="500" letter-spacing="10">CONFLUON</text>
+    <text x="75" y="351" font-family="SFMono-Regular, Menlo, monospace" font-size="15" letter-spacing="3.2" fill="#aeb5b0">GENERATIVE AUDIOVISUAL INSTRUMENT</text>
+    <text x="75" y="550" font-family="SFMono-Regular, Menlo, monospace" font-size="13" letter-spacing="2.7" fill="#878e89">CONFLUON.COM</text>
   </g>
 </svg>
