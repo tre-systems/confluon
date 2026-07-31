@@ -1,17 +1,14 @@
 export const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
 export const UPDATE_CHECK_COOLDOWN_MS = 60 * 1000;
 export const UPDATE_RELOAD_FALLBACK_MS = 4000;
+export const SERVICE_WORKER_URL = "/sw.js";
+export const SERVICE_WORKER_OPTIONS = Object.freeze({ scope: "/", updateViaCache: "none" });
 
 export function shouldCheckForUpdate(now, lastCheckAt, cooldownMs = UPDATE_CHECK_COOLDOWN_MS) {
   return lastCheckAt === 0 || now - lastCheckAt >= cooldownMs;
 }
 
-export async function checkForServiceWorkerUpdate(registration, swUrl, fetcher = fetch) {
-  const response = await fetcher(swUrl, {
-    cache: "no-store",
-    headers: { "cache-control": "no-cache" },
-  });
-  if (!response.ok) throw new Error("Service worker is unavailable");
+export async function checkForServiceWorkerUpdate(registration) {
   await registration.update();
 }
 

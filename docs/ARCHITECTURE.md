@@ -394,7 +394,10 @@ and the assembled artifact.
 
 The service worker precaches the instrument shell and article surface, uses
 network-first navigation, and waits for explicit approval before activating a new
-release. A release must never replace a running performance underneath the player.
+release. It keeps the stable `/sw.js` registration identity and bypasses the HTTP
+cache with `updateViaCache: "none"`; release identity belongs in the worker's cache
+name, not its URL. This prevents a returning player from receiving duplicate update
+prompts. A release must never replace a running performance underneath the player.
 
 Sentry and Cloudflare Web Analytics are build-time opt-ins. Query strings, fragments,
 cookies, bodies, authorization headers, and user fields are removed from diagnostics;

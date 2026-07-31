@@ -20,8 +20,5 @@
 /runtime-config.js
   Cache-Control: no-cache
 
-/build-meta.js
-  Cache-Control: no-cache
-
 /site.webmanifest
   Cache-Control: no-cache

@@ -14,7 +14,6 @@ const requiredFiles = [
   "article.css",
   "article.js",
   "assets",
-  "build-meta.js",
   "engineering.html",
   "field.html",
   "icons/apple-touch-icon.png",
@@ -57,6 +56,7 @@ for (const file of listFiles(outDir)) {
 const index = readText("index.html");
 const headers = readText("_headers");
 const serviceWorker = readText("sw.js");
+const pwa = readText("pwa.js");
 const runtimeConfig = readText("runtime-config.js");
 const manifest = readText("site.webmanifest");
 const privacy = readText("privacy.html");
@@ -84,6 +84,10 @@ for (const token of [
 for (const token of ["CACHE_NAME", "SKIP_WAITING", '"/assets/', '"/privacy"']) {
   if (!serviceWorker.includes(token)) errors.push(`sw.js missing ${token}`);
 }
+for (const token of ["SERVICE_WORKER_URL", "SERVICE_WORKER_OPTIONS"]) {
+  if (!pwa.includes(token)) errors.push(`pwa.js missing ${token}`);
+}
+if (pwa.includes("sw.js?v=")) errors.push("pwa.js gives the service worker an unstable URL");
 for (const token of ["sentryDsn", "analyticsToken", "release"]) {
   if (!runtimeConfig.includes(token)) errors.push(`runtime-config.js missing ${token}`);
 }

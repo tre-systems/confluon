@@ -24,7 +24,7 @@ if (!entry) throw new Error("finalize-build: Vite entry is missing");
 
 const hash = createHash("sha256");
 for (const file of listFiles(outDir).filter((file) => !file.includes("/.vite/")).sort()) {
-  if (file.endsWith("/runtime-config.js") || file.endsWith("/build-meta.js") || file.endsWith("/sw.js")) {
+  if (file.endsWith("/runtime-config.js") || file.endsWith("/sw.js")) {
     continue;
   }
   hash.update(file.slice(outDir.length));
@@ -60,13 +60,10 @@ writeFileSync(
   join(outDir, "runtime-config.js"),
   `window.CONFLUON_RUNTIME_CONFIG = Object.freeze(${serializedConfig});\n`,
 );
-writeFileSync(join(outDir, "build-meta.js"), `export const BUILD_ID = ${JSON.stringify(buildId)};\n`);
-
 const precache = new Set([
   "/",
   "/article.css",
   "/article.js",
-  "/build-meta.js",
   "/engineering",
   "/field",
   "/icons/apple-touch-icon.png",

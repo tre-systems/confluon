@@ -1,8 +1,9 @@
-import { BUILD_ID } from "/build-meta.js";
 import {
   activateWaitingServiceWorker,
   checkForServiceWorkerUpdate,
   installUpdateCheckTriggers,
+  SERVICE_WORKER_OPTIONS,
+  SERVICE_WORKER_URL,
   shouldCheckForUpdate,
 } from "/pwa-update.js";
 
@@ -32,8 +33,10 @@ function showUpdatePrompt(registration) {
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
-      const swUrl = `/sw.js?v=${encodeURIComponent(BUILD_ID)}`;
-      const registration = await navigator.serviceWorker.register(swUrl, { scope: "/" });
+      const registration = await navigator.serviceWorker.register(
+        SERVICE_WORKER_URL,
+        SERVICE_WORKER_OPTIONS,
+      );
       let checking = false;
       let lastCheckAt = 0;
       const check = async (force = false) => {
@@ -48,7 +51,7 @@ if ("serviceWorker" in navigator) {
         checking = true;
         lastCheckAt = Date.now();
         try {
-          await checkForServiceWorkerUpdate(registration, swUrl);
+          await checkForServiceWorkerUpdate(registration);
           if (registration.waiting && navigator.serviceWorker.controller) {
             showUpdatePrompt(registration);
           }

@@ -4,6 +4,8 @@ import {
   activateWaitingServiceWorker,
   checkForServiceWorkerUpdate,
   installUpdateCheckTriggers,
+  SERVICE_WORKER_OPTIONS,
+  SERVICE_WORKER_URL,
   shouldCheckForUpdate,
 } from "../public/pwa-update.js";
 
@@ -13,18 +15,14 @@ test("update checks use a cooldown", () => {
   assert.equal(shouldCheckForUpdate(60_001, 1), true);
 });
 
-test("worker discovery bypasses browser caches", async () => {
-  let fetchOptions;
+test("worker registration has one stable cache-bypassing identity", () => {
+  assert.equal(SERVICE_WORKER_URL, "/sw.js");
+  assert.deepEqual(SERVICE_WORKER_OPTIONS, { scope: "/", updateViaCache: "none" });
+});
+
+test("worker update checks use the existing registration", async () => {
   let updateCalls = 0;
-  await checkForServiceWorkerUpdate(
-    { update: async () => updateCalls++ },
-    "/sw.js?v=test",
-    async (_url, options) => {
-      fetchOptions = options;
-      return { ok: true };
-    },
-  );
-  assert.equal(fetchOptions.cache, "no-store");
+  await checkForServiceWorkerUpdate({ update: async () => updateCalls++ });
   assert.equal(updateCalls, 1);
 });
 
