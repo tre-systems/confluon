@@ -76,7 +76,7 @@ lower values retain more detail and create larger files. The default is 18.
 
 ## Performance settings
 
-The capture command accepts the same values stored in a share URL:
+The capture command accepts the same values stored in a performance URL:
 
 ```sh
 npm run video -- \

@@ -2,8 +2,8 @@
 
 Confluon is a deterministic audiovisual instrument. Changes to motion, sound, timing,
 or controls must preserve a simple rule: the same engine revision, seed, performance
-settings, fixed timestep, and gesture stream reproduce the same take. Audio and image
-must continue to read the same simulation state.
+settings, fixed timestep, and commands at the same step indexes reproduce the same
+engine state. Audio and image must continue to read that same state.
 
 ## Set up the project
 
@@ -12,7 +12,8 @@ You need Node.js 22 or newer, stable Rust, `wasm-pack`, and the
 
 ```sh
 rustup target add wasm32-unknown-unknown
-cargo install wasm-pack
+cargo install wasm-pack --locked
+cargo install cargo-audit --locked
 npm ci
 npm run dev
 ```
@@ -55,4 +56,4 @@ projection, and bounded-work patterns in
 The architecture and research notes in `docs/` describe the complete boundaries.
 
 By submitting a contribution, you agree that it is licensed under the project's
-Apache-2.0 licence.
+Apache-2.0 license.

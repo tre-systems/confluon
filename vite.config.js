@@ -31,10 +31,14 @@ function cleanArticleRoutes() {
 
 export default defineConfig(() => {
   const sentryRelease = process.env.SENTRY_RELEASE || process.env.GITHUB_SHA;
-  const sentryOrg = process.env.SENTRY_ORG || "total-reality-engineering";
-  const sentryProject = process.env.SENTRY_PROJECT || "confluon";
+  const sentryOrg = process.env.SENTRY_ORG;
+  const sentryProject = process.env.SENTRY_PROJECT;
   const sentryUploadEnabled = Boolean(
-    process.env.SENTRY_DSN && process.env.SENTRY_AUTH_TOKEN && sentryRelease,
+    process.env.SENTRY_DSN &&
+      process.env.SENTRY_AUTH_TOKEN &&
+      sentryOrg &&
+      sentryProject &&
+      sentryRelease,
   );
   const plugins = [cleanArticleRoutes()];
 

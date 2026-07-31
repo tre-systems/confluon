@@ -1,69 +1,90 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
-    <radialGradient id="ground" cx="68%" cy="48%" r="72%">
-      <stop offset="0" stop-color="#17272a"/>
-      <stop offset=".5" stop-color="#091014"/>
+    <radialGradient id="ground" cx="74%" cy="47%" r="78%">
+      <stop offset="0" stop-color="#173034"/>
+      <stop offset=".5" stop-color="#091216"/>
       <stop offset="1" stop-color="#05070a"/>
     </radialGradient>
-    <radialGradient id="cyan" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="#bcead5" stop-opacity=".8"/>
-      <stop offset=".26" stop-color="#63cfd0" stop-opacity=".4"/>
-      <stop offset="1" stop-color="#63cfd0" stop-opacity="0"/>
+    <radialGradient id="cyan" cx="42%" cy="38%" r="72%">
+      <stop offset="0" stop-color="#c9fff4" stop-opacity=".64"/>
+      <stop offset=".36" stop-color="#27d8d7" stop-opacity=".42"/>
+      <stop offset="1" stop-color="#087b8f" stop-opacity=".12"/>
     </radialGradient>
-    <radialGradient id="amber" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="#f2d3a6" stop-opacity=".72"/>
-      <stop offset=".28" stop-color="#d3865f" stop-opacity=".32"/>
-      <stop offset="1" stop-color="#d3865f" stop-opacity="0"/>
+    <radialGradient id="ember" cx="43%" cy="38%" r="72%">
+      <stop offset="0" stop-color="#ffe5af" stop-opacity=".68"/>
+      <stop offset=".36" stop-color="#ff713c" stop-opacity=".46"/>
+      <stop offset="1" stop-color="#8f271a" stop-opacity=".12"/>
     </radialGradient>
-    <radialGradient id="violet" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="#d8c7ee" stop-opacity=".64"/>
-      <stop offset=".3" stop-color="#8d78bd" stop-opacity=".28"/>
-      <stop offset="1" stop-color="#8d78bd" stop-opacity="0"/>
+    <radialGradient id="violet" cx="42%" cy="38%" r="72%">
+      <stop offset="0" stop-color="#f2ddff" stop-opacity=".66"/>
+      <stop offset=".36" stop-color="#ba72ed" stop-opacity=".44"/>
+      <stop offset="1" stop-color="#553079" stop-opacity=".12"/>
     </radialGradient>
-    <filter id="soft">
-      <feGaussianBlur stdDeviation="26"/>
+    <linearGradient id="left-fade" x1="0%" x2="100%">
+      <stop offset="0" stop-color="#05070a" stop-opacity=".82"/>
+      <stop offset=".72" stop-color="#05070a" stop-opacity=".72"/>
+      <stop offset="1" stop-color="#05070a" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="cyan-points" width="37" height="33" patternUnits="userSpaceOnUse">
+      <circle cx="7" cy="9" r="2" fill="#dcfff8" opacity=".95"/>
+      <circle cx="25" cy="6" r="1.15" fill="#65ede8" opacity=".78"/>
+      <circle cx="19" cy="26" r="1.55" fill="#a3fff5" opacity=".88"/>
+      <circle cx="34" cy="20" r=".8" fill="#2fd0d4" opacity=".7"/>
+    </pattern>
+    <pattern id="ember-points" width="41" height="37" patternUnits="userSpaceOnUse">
+      <circle cx="8" cy="11" r="1.9" fill="#fff0bd" opacity=".94"/>
+      <circle cx="31" cy="8" r="1.1" fill="#ff9a60" opacity=".78"/>
+      <circle cx="22" cy="30" r="1.5" fill="#ffd58d" opacity=".88"/>
+      <circle cx="38" cy="24" r=".8" fill="#ff6239" opacity=".72"/>
+    </pattern>
+    <pattern id="violet-points" width="39" height="35" patternUnits="userSpaceOnUse">
+      <circle cx="7" cy="8" r="1.9" fill="#f7e9ff" opacity=".94"/>
+      <circle cx="29" cy="10" r="1.1" fill="#d39aff" opacity=".78"/>
+      <circle cx="19" cy="28" r="1.5" fill="#ead0ff" opacity=".88"/>
+      <circle cx="36" cy="24" r=".8" fill="#a961de" opacity=".7"/>
+    </pattern>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="13" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <pattern id="cyan-points" width="41" height="37" patternUnits="userSpaceOnUse">
-      <circle cx="8" cy="11" r="1.7" fill="#a9e7dd" opacity=".82"/>
-      <circle cx="29" cy="28" r="1.1" fill="#6dcbd0" opacity=".58"/>
-    </pattern>
-    <pattern id="amber-points" width="47" height="43" patternUnits="userSpaceOnUse">
-      <circle cx="12" cy="31" r="1.55" fill="#f1c49b" opacity=".76"/>
-      <circle cx="36" cy="10" r=".95" fill="#dc8c68" opacity=".54"/>
-    </pattern>
-    <pattern id="violet-points" width="43" height="39" patternUnits="userSpaceOnUse">
-      <circle cx="10" cy="9" r="1.45" fill="#d2c4e7" opacity=".7"/>
-      <circle cx="32" cy="28" r="1" fill="#927fc0" opacity=".5"/>
-    </pattern>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="28"/>
+    </filter>
     <clipPath id="cyan-field">
-      <path d="M640 78c112-35 237 5 268 99 29 89-50 135-8 219 34 69 4 148-83 163-105 18-161-83-256-74-86 8-143-62-111-133 30-68 100-77 100-151 0-61 31-105 90-123z"/>
+      <path d="M635 76c73-34 164-3 188 64 23 63-23 101-4 159 19 57-34 102-91 78-61-26-79-80-137-92-62-13-79-85-39-131 25-29 47-61 83-78zM951 330c57-27 128-4 147 49 18 49-18 80-3 125 15 44-26 79-71 61-47-20-62-63-107-72-49-10-63-66-31-102 19-23 36-48 65-61z"/>
     </clipPath>
-    <clipPath id="amber-field">
-      <path d="M935 101c78 9 147 67 154 143 7 73-65 103-47 171 18 67-49 119-116 88-66-30-63-104-129-128-72-26-78-105-20-145 54-38 84-137 158-129z"/>
+    <clipPath id="ember-field">
+      <path d="M947 49c58-14 120 20 132 78 12 55-30 80-23 129 8 48-39 78-82 53-43-25-47-68-88-87-44-21-41-78-5-106 23-18 36-59 66-67zM592 392c59-25 129 1 146 56 16 52-23 82-10 130 13 46-31 79-76 58-47-22-59-67-105-78-49-12-60-71-27-105 20-22 42-49 72-61z"/>
     </clipPath>
     <clipPath id="violet-field">
-      <path d="M722 247c67-55 158-53 207 5 47 55 8 111 55 153 47 43 13 112-51 117-72 6-103-62-167-48-68 15-120-37-100-94 18-52-2-91 56-133z"/>
+      <path d="M759 244c62-35 144-14 172 48 26 59-14 99 9 151 24 50-23 98-77 81-57-18-79-66-134-70-58-5-83-69-51-114 21-30 49-77 81-96zM1068 188c43-21 96-2 111 38 14 38-14 61-3 96 11 34-20 60-54 46-36-15-47-47-81-54-37-8-47-50-24-77 15-17 29-38 51-49z"/>
     </clipPath>
   </defs>
   <rect width="1200" height="630" fill="url(#ground)"/>
-  <circle cx="760" cy="293" r="270" fill="url(#cyan)" filter="url(#soft)"/>
-  <circle cx="948" cy="292" r="190" fill="url(#amber)" filter="url(#soft)"/>
-  <circle cx="812" cy="409" r="170" fill="url(#violet)" filter="url(#soft)"/>
-  <g opacity=".92">
-    <rect x="420" y="44" width="560" height="540" fill="url(#cyan-points)" clip-path="url(#cyan-field)"/>
-    <rect x="748" y="66" width="380" height="470" fill="url(#amber-points)" clip-path="url(#amber-field)"/>
-    <rect x="640" y="216" width="390" height="350" fill="url(#violet-points)" clip-path="url(#violet-field)"/>
+  <circle cx="758" cy="239" r="220" fill="#1a8f98" opacity=".2" filter="url(#soft)"/>
+  <circle cx="985" cy="205" r="166" fill="#a33b25" opacity=".2" filter="url(#soft)"/>
+  <circle cx="837" cy="420" r="188" fill="#6e3f94" opacity=".2" filter="url(#soft)"/>
+  <g filter="url(#glow)" stroke-width="2.2">
+    <path d="M635 76c73-34 164-3 188 64 23 63-23 101-4 159 19 57-34 102-91 78-61-26-79-80-137-92-62-13-79-85-39-131 25-29 47-61 83-78zM951 330c57-27 128-4 147 49 18 49-18 80-3 125 15 44-26 79-71 61-47-20-62-63-107-72-49-10-63-66-31-102 19-23 36-48 65-61z" fill="url(#cyan)" stroke="#76f6ed" stroke-opacity=".74"/>
+    <path d="M947 49c58-14 120 20 132 78 12 55-30 80-23 129 8 48-39 78-82 53-43-25-47-68-88-87-44-21-41-78-5-106 23-18 36-59 66-67zM592 392c59-25 129 1 146 56 16 52-23 82-10 130 13 46-31 79-76 58-47-22-59-67-105-78-49-12-60-71-27-105 20-22 42-49 72-61z" fill="url(#ember)" stroke="#ffad72" stroke-opacity=".76"/>
+    <path d="M759 244c62-35 144-14 172 48 26 59-14 99 9 151 24 50-23 98-77 81-57-18-79-66-134-70-58-5-83-69-51-114 21-30 49-77 81-96zM1068 188c43-21 96-2 111 38 14 38-14 61-3 96 11 34-20 60-54 46-36-15-47-47-81-54-37-8-47-50-24-77 15-17 29-38 51-49z" fill="url(#violet)" stroke="#dbabff" stroke-opacity=".72"/>
   </g>
-  <g fill="none" stroke-width="1">
-    <path d="M563 201c91-89 247-98 337-2 77 83 57 198 133 248" stroke="#86d8cf" opacity=".22"/>
-    <path d="M533 366c119-72 233-32 317 76 48 61 119 69 193 34" stroke="#d9a27d" opacity=".2"/>
-    <path d="M652 466c74-100 194-113 271-25" stroke="#aa95cf" opacity=".23"/>
+  <g opacity=".94">
+    <rect x="510" y="34" width="680" height="560" fill="url(#cyan-points)" clip-path="url(#cyan-field)"/>
+    <rect x="500" y="30" width="660" height="590" fill="url(#ember-points)" clip-path="url(#ember-field)"/>
+    <rect x="650" y="170" width="540" height="390" fill="url(#violet-points)" clip-path="url(#violet-field)"/>
   </g>
+  <g fill="none" stroke-width="1.2">
+    <path d="M602 178c48-58 127-71 184-24M712 319c-36-42-86-52-128-29M910 423c38-42 99-50 143-17" stroke="#a8fff4" opacity=".45"/>
+    <path d="M900 134c43-39 102-38 139 0M555 487c41-42 103-45 145-7" stroke="#ffd09f" opacity=".42"/>
+    <path d="M710 354c47-55 131-66 190-20M1032 261c31-34 79-39 113-12" stroke="#edceff" opacity=".42"/>
+  </g>
+  <rect width="700" height="630" fill="url(#left-fade)"/>
   <g font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" fill="#eee9df">
-    <text x="72" y="102" font-family="SFMono-Regular, Menlo, monospace" font-size="16" font-weight="600" letter-spacing="5" fill="#8e918e">CONFLUON</text>
+    <text x="72" y="102" font-family="SFMono-Regular, Menlo, monospace" font-size="16" font-weight="600" letter-spacing="5" fill="#9da39f">CONFLUON</text>
     <text x="70" y="249" font-size="61" font-weight="300" letter-spacing="-2.2">A field finding</text>
     <text x="70" y="314" font-size="61" font-weight="300" letter-spacing="-2.2">its voice.</text>
-    <text x="73" y="383" font-size="20" font-weight="400" fill="#b2b8b3">A deterministic audiovisual swarm instrument.</text>
-    <text x="73" y="545" font-family="SFMono-Regular, Menlo, monospace" font-size="13" letter-spacing="2.4" fill="#8e918e">SHAPE THE FIELD · HEAR IT RESPOND · SHARE THE SCORE</text>
+    <text x="73" y="383" font-size="20" font-weight="400" fill="#bbc2bd">A deterministic instrument for light and sound.</text>
+    <text x="73" y="545" font-family="SFMono-Regular, Menlo, monospace" font-size="13" letter-spacing="2.2" fill="#959b97">THREE POPULATIONS · ONE STATE · NO SEQUENCER</text>
   </g>
 </svg>

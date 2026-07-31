@@ -6,7 +6,7 @@
     <title>Confluon: how a swarm becomes music</title>
     <meta
       name="description"
-      content="How Confluon turns one deterministic particle field into a live WebAudio composition, spatial voices, and synchronized video."
+      content="How Confluon turns one deterministic particle field into a live Web Audio composition, spatial voices, and synchronized video."
     />
     <link rel="canonical" href="https://confluon.com/sound" />
     <meta property="og:type" content="article" />
@@ -14,7 +14,7 @@
     <meta property="og:title" content="Confluon — how a swarm becomes music" />
     <meta
       property="og:description"
-      content="Collective state becomes harmony, texture, spatial voices, resonant events, and one slowly breathing WebAudio field."
+      content="Collective state becomes harmony, texture, spatial voices, resonant events, and one slowly breathing Web Audio field."
     />
     <meta property="og:url" content="https://confluon.com/sound" />
     <meta property="og:image" content="https://confluon.com/og-card.png" />
@@ -62,7 +62,7 @@
       <h1>How a swarm becomes music</h1>
       <p class="lede">
         Confluon has no backing track and no animation reacting to a separate song. The Rust
-        engine produces one evolving state. WebGPU turns it into light; WebAudio turns it into
+        engine produces one evolving state. WebGPU turns it into light; Web Audio turns it into
         harmony, texture, position, and event.
       </p>
     </header>
@@ -82,7 +82,7 @@
           interpolation that never feeds back into motion or sound.
         </p>
         <figure class="diagram">
-          <svg viewBox="0 0 760 210" role="img" aria-label="The Rust swarm state feeds both WebGPU image and WebAudio sound.">
+          <svg viewBox="0 0 760 210" role="img" aria-label="The Rust swarm state feeds both WebGPU image and Web Audio sound.">
             <defs>
               <marker id="sound-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
                 <path d="M0 0L7 3L0 6Z" fill="rgba(188,234,213,.55)" />
@@ -101,7 +101,7 @@
             <text class="d-title" x="625" y="66">WebGPU</text>
             <text class="d-copy" x="625" y="84">field becomes light</text>
             <rect class="d-box d-sound" x="530" y="114" width="190" height="60" rx="14" />
-            <text class="d-title" x="625" y="142">WebAudio</text>
+            <text class="d-title" x="625" y="142">Web Audio</text>
             <text class="d-copy" x="625" y="160">field becomes music</text>
           </svg>
           <figcaption>
@@ -306,7 +306,7 @@
           every page load.
         </p>
         <p>
-          WebAudio runs on its own high-resolution clock. Long tones are scheduled there rather
+          Web Audio runs on its own high-resolution clock. Long tones are scheduled there rather
           than with frame timers, and continuous parameters are smoothed towards new targets.
           This keeps the music continuous when a render frame is briefly expensive.
         </p>

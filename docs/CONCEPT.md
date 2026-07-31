@@ -15,7 +15,8 @@ without a step grid.
 - Form: emergent energy-attractor transitions; no sequencer or fixed bars.
 - Visual family: dense, point-built membranes moving through restrained translucent
   kernel fields; the organisms remain visibly particulate at every scale.
-- Harmony: a non-octave partial lattice that becomes more consonant as motion aligns.
+- Harmony: an overtone partial lattice rather than an octave-repeating scale; aligned
+  motion brings its sustained voices into focus.
 - Energy: breathing ambient motion that can break into dense, unstable clusters.
 - Risk: wild. The simulation is allowed to settle into silence or rupture into noisy
   transitions; performance gestures are how the player negotiates those states.
@@ -31,7 +32,7 @@ signals:
 - directional coherence opens the sustained choir;
 - activity controls spatial width and delay feedback;
 - abrupt energy changes excite short resonant strikes;
-- connected formations select intervals from the partial lattice;
+- formation count shifts the harmonic root through a six-step cycle;
 - each visible formation owns a sustained voice panned to its screen position and
   weighted by its size, and a newly born formation rings an emergence bell from
   where it appeared;
@@ -47,11 +48,12 @@ The visual image and the audio mix read the same deterministic simulation snapsh
 - A mouse or hovering pen is a quiet presence. Fast movement alarms nearby organisms;
   a still pointer attracts attention without letting matter collapse onto it.
 - A poke or click produces a short startle response that survives a quick release.
-- Press and drag: after the initial startle, herd the swarm towards a protected space
-  around the pointer.
-- Orbit drag: apply a local tangential field that winds nearby cells around the
-  gesture without pulling the entire world into it.
-- Option/Alt + drag: repel and open a cavity.
+- Press and drag: after the initial startle, apply the selected Gather, Orbit, or
+  Divide gesture around the pointer.
+- Gather draws nearby matter towards a protected inner space; Orbit winds it around
+  the gesture without pulling the entire world into it.
+- Shift + drag: temporarily orbit without changing the selected gesture.
+- Option/Alt + drag: temporarily divide and open a cavity.
 - Double click/tap: seed a new local population.
 - Hold `S`: constrain the system toward a quieter common state; release it to return
   to local negotiation, often causing a phase transition.
@@ -67,8 +69,9 @@ The visual image and the audio mix read the same deterministic simulation snapsh
 - Halo and Memory shape the rendered field and motion history.
 - Halo and Memory also shape shimmer, delay, and room depth, keeping those controls
   meaningful to both sides of the instrument.
-- Tone tilts the shared WebAudio spectrum between dark and bright.
+- Tone tilts the shared Web Audio spectrum between dark and bright.
 - Life sets the particle population, from a sparse 600 to a teeming 4,096.
+- Level changes playback and capture gain without altering the swarm.
 
 The settings and selected gesture are encoded in the URL with the seed. They are
 therefore part of a reproducible performance state rather than hidden preferences.

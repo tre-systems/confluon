@@ -3,21 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Confluon engineering: Rust, WebGPU, and WebAudio</title>
+    <title>Confluon engineering: Rust, WebGPU, and Web Audio</title>
     <meta
       name="description"
-      content="A technical walkthrough of Confluon: its deterministic Rust/WASM engine, neighbour grid, WebGPU renderer, WebAudio instrument, and video pipeline."
+      content="A technical walkthrough of Confluon: its deterministic Rust/WASM engine, neighbour grid, WebGPU renderer, Web Audio instrument, and video pipeline."
     />
     <link rel="canonical" href="https://confluon.com/engineering" />
     <meta property="og:type" content="article" />
     <meta property="og:site_name" content="Confluon" />
     <meta
       property="og:title"
-      content="Confluon — how it is built in Rust, WebGPU, and WebAudio"
+      content="Confluon — how it is built in Rust, WebGPU, and Web Audio"
     />
     <meta
       property="og:description"
-      content="The deterministic engine, neighbour grid, narrow state boundary, HDR render graph, WebAudio instrument, and reproducible capture pipeline."
+      content="The deterministic engine, neighbour grid, narrow state boundary, HDR render graph, Web Audio instrument, and reproducible capture pipeline."
     />
     <meta property="og:url" content="https://confluon.com/engineering" />
     <meta property="og:image" content="https://confluon.com/og-card.png" />
@@ -30,11 +30,11 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta
       name="twitter:title"
-      content="Confluon — how it is built in Rust, WebGPU, and WebAudio"
+      content="Confluon — how it is built in Rust, WebGPU, and Web Audio"
     />
     <meta
       name="twitter:description"
-      content="A deterministic Rust/WASM swarm, WebGPU image, WebAudio score, and synchronized production pipeline."
+      content="A deterministic Rust/WASM swarm, WebGPU image, Web Audio score, and synchronized production pipeline."
     />
     <meta name="twitter:image" content="https://confluon.com/og-card.png" />
     <meta
@@ -68,7 +68,7 @@
       <h1>How Confluon is built</h1>
       <p class="lede">
         A small Rust/WebAssembly core owns the simulation. One compact state then feeds the
-        WebGPU image, the WebAudio instrument, and production capture. Each part can change
+        WebGPU image, the Web Audio instrument, and production capture. Each part can change
         independently without creating a second version of the field.
       </p>
     </header>
@@ -82,7 +82,7 @@
           small WebAssembly module.
         </p>
         <figure class="diagram">
-          <svg viewBox="0 0 860 330" role="img" aria-label="Architecture diagram showing app input driving a Rust WASM engine whose state feeds WebGPU, WebAudio, and production capture.">
+          <svg viewBox="0 0 860 330" role="img" aria-label="Architecture diagram showing app input driving a Rust WASM engine whose state feeds WebGPU, Web Audio, and production capture.">
             <defs>
               <marker id="eng-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
                 <path d="M0 0L7 3L0 6Z" fill="rgba(188,234,213,.55)" />
@@ -105,7 +105,7 @@
             <text class="d-title" x="734" y="183">WebGPU / Canvas</text>
             <text class="d-copy" x="734" y="203">the image</text>
             <rect class="d-box d-sound" x="642" y="235" width="184" height="62" rx="13" />
-            <text class="d-title" x="734" y="261">WebAudio</text>
+            <text class="d-title" x="734" y="261">Web Audio</text>
             <text class="d-copy" x="734" y="281">sound · production tap</text>
             <path class="d-line" d="M411 243V289H556" marker-end="url(#eng-arrow)" />
             <rect class="d-box" x="558" y="271" width="68" height="38" rx="10" />
@@ -180,7 +180,8 @@ while (accumulator &gt;= FIXED_STEP &amp;&amp; steps &lt; MAX_CATCH_UP_STEPS) {
 
 const snapshot = engine.snapshot();
 const metrics = engine.metrics();
-renderer.render(snapshot, metrics, time);
+const visual = smoothVisualState(snapshot, metrics, elapsed);
+renderer.render(visual.snapshot, visual.metrics, time);
 audio.update(metrics, engine.formations());</code></pre>
         </figure>
         <p>
@@ -304,7 +305,7 @@ audio.update(metrics, engine.formations());</code></pre>
       <section>
         <h2><span class="num" aria-hidden="true">08</span>Sound reads the same state</h2>
         <p>
-          The sound graph is built from standard WebAudio nodes after an explicit user gesture.
+          The sound graph is built from standard Web Audio nodes after an explicit user gesture.
           It contains sustained oscillators, filtered procedural noise, panners, delay,
           convolution reverb, waveshaping, compression, limiting, and an analyser. JavaScript
           decides the musical targets; the browser's audio thread renders them.
@@ -332,9 +333,9 @@ audio.update(metrics, engine.formations());</code></pre>
         </p>
         <p>
           Reproduction needs the engine revision, seed, particle count, fixed timestep,
-          performance settings, and timed gesture stream. The current URL covers an untouched
-          field and the starting state of a performance. A future take bundle can add gestures
-          without changing the engine boundary.
+          performance settings, and step-indexed gesture commands. The current URL covers an
+          untouched field and the starting state of a performance. A future take bundle can add
+          gestures without changing the engine boundary.
         </p>
       </section>
 
@@ -378,7 +379,7 @@ audio.update(metrics, engine.formations());</code></pre>
         <div class="note honesty">
           <span class="tag">A useful division of labour</span>
           <p>
-            Rust owns reproducible rules. WebGPU interprets them as light; WebAudio interprets
+            Rust owns reproducible rules. WebGPU interprets them as light; Web Audio interprets
             them as music. The browser owns timing and consent. The production tool owns
             delivery formats.
           </p>

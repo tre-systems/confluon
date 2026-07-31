@@ -20,7 +20,7 @@ follow. The short version is:
    browser composition root that connects those pieces to DOM, timing, input, audio,
    GPU, and platform APIs.
 3. **Same-state projections.** A display frame reads one raw metrics snapshot.
-   WebGPU/Canvas and WebAudio both project that state. Visual interpolation may make
+   WebGPU/Canvas and Web Audio both project that state. Visual interpolation may make
    the 30 Hz simulation look fluid, but interpolated values never feed the engine or
    audio.
 4. **Explicit contracts over incidental coupling.** The WASM flat-array ABI lives in
@@ -58,7 +58,7 @@ URL score + pointer/keyboard commands
                     +---------+---------+
                     |                   |
                     v                   v
-             WebGPU / Canvas       WebAudio graph
+             WebGPU / Canvas       Web Audio graph
                projection            projection
                     |                   |
                     +---------+---------+
@@ -176,7 +176,7 @@ Only the composition root issues commands. Per display frame it performs this or
 4. read raw snapshot, metrics, and formations;
 5. update the renderer from interpolated presentation copies;
 6. update audio from raw metrics, formations, and interaction;
-7. update low-frequency diagnostics/control readouts;
+7. trigger a bounded strike when the raw transition metric crosses its threshold;
 8. request the next animation frame.
 
 This ordering is part of the architecture. In particular, audio must not read
@@ -221,7 +221,7 @@ The Rust core uses a small internal integer PRNG. There are two useful guarantee
   fixed timestep, and commands at the same step indexes produce the same simulation
   state. Native tests assert exact same-seed snapshots and compare the neighbour
   grid against a brute-force oracle.
-- **Performance-equivalent:** rendering and WebAudio are projections of that exact
+- **Performance-equivalent:** rendering and Web Audio are projections of that exact
   state, but pixels and PCM are not promised bit-identical across GPU drivers,
   browsers, sample rates, or output devices. Production capture records image and
   mastered audio from one browser clock and verifies frame cadence and media streams.
@@ -283,7 +283,7 @@ transition release. The raw snapshot still drives audio and future engine state.
 
 ## Audio strategy
 
-The native WebAudio graph is self-contained and sample-free:
+The native Web Audio graph is self-contained and sample-free:
 
 ```text
 six partial oscillators (+ drift LFOs) -> gains/panners -> pad low-pass -> dry
@@ -304,7 +304,7 @@ texture and musical density; formations retain voices by toroidal proximity; poi
 pressure, movement, and position modulate brightness, air, and pan. Controls provide
 a restrained audible confirmation.
 
-WebAudio intentionally uses its own high-resolution clock for AudioParam ramps and
+Web Audio intentionally uses its own high-resolution clock for AudioParam ramps and
 sparse note scheduling. It consumes simulation state but does not become simulation
 state. An AudioWorklet would be appropriate for custom sample-level DSP or an
 offline-identical synthesis requirement; it is not needed for the current native
@@ -436,7 +436,7 @@ touch, audio-resume, and graphics lifecycle behaviour.
 | Flat typed-array ABI | Compact hot-path interchange, direct GPU upload | Contract becomes sparse/optional or needs independent evolution |
 | Vanilla ESM + DOM | Small single-screen UI, direct lifecycle and low framework weight | Multiple screens/components need independent ownership and testing |
 | WebGPU + Canvas fallback | HDR particle field with a usable progressive fallback | A supported platform needs another maintained renderer |
-| Native WebAudio nodes | Rich procedural graph, precise parameter automation, no sample assets | Custom sample-level DSP or bit-stable offline audio is required |
+| Native Web Audio nodes | Rich procedural graph, precise parameter automation, no sample assets | Custom sample-level DSP or bit-stable offline audio is required |
 | Vite | Modern ESM development, fingerprinted static production artifact and manifest | Build requirements exceed static-client packaging |
 | Playwright scripts | Real browser/API integration and production-artifact smoke | Test count needs fixtures, parallel projects, traces, and richer reporting |
 | Cloudflare static assets + small Worker | Global static delivery and canonical redirects without an application server | Accounts, persistence, collaboration, or authenticated APIs enter scope |

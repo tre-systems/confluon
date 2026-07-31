@@ -6,13 +6,13 @@ Each population forms its own structures while cyclic attraction and avoidance p
 them into encounters. Local crowding excites resonant voices, coherent movement opens
 a shared drone, and changes in collective energy produce strikes and transitions.
 
-Its deterministic Rust/WASM simulation drives both WebGPU visuals and WebAudio
+Its deterministic Rust/WASM simulation drives both WebGPU visuals and Web Audio
 sound. There is no sequencer and no separate audio-reactive animation: the image
 and music are two views of one evolving state.
 
 **Live:** [confluon.com](https://confluon.com/)
 
-![Confluon: three luminous particle populations meeting in a dark field](public/og-card.png)
+![Confluon's cyan, ember, and violet organisms forming in a luminous field](screenshot.png)
 
 ## What is here
 
@@ -27,11 +27,11 @@ and music are two views of one evolving state.
   contours and luminous particle cores in an HDR target, then finishes with bloom,
   ACES tone mapping, vignette, and grain. A cached-sprite Canvas 2D fallback
   preserves the same point-built image.
-- An audible WebAudio harmonic field with six sustained voices, a formation choir
-  whose up-to-eight voices pan to the screen positions of the visible cell clusters,
-  sub foundation, filtered air, shimmer, sparse scale-locked tones, delay, a
-  generated early-reflection reverb, tape-style saturation, compression, limiting,
-  and an output meter.
+- An audible Web Audio harmonic field with six sustained voices, a formation choir
+  whose up to eight voices pan to the screen positions of visible formations, sub
+  foundation, filtered air, shimmer, sparse scale-locked tones, delay, a generated
+  early-reflection and diffuse-tail reverb, tape-style saturation, compression,
+  limiting, and an output meter.
 - Pointer-aware organisms that startle at a poke or fast approach, investigate a
   still cursor, and keep a protected inner distance. Touch-friendly Gather, Orbit,
   and Divide gestures add deliberate sculpting, alongside seeding and resetting.
@@ -48,7 +48,8 @@ and music are two views of one evolving state.
   quiet support link. Diagnostics and anonymous Web Analytics are build-time
   opt-ins and remain absent when their deployment configuration is not present.
 - Native Rust tests for determinism, stability, bounded metrics, interaction, and
-  particle-count conservation.
+  particle-count conservation, plus browser smoke tests for graphics, audio,
+  controls, touch, offline use, privacy, and error routes.
 
 ## Play locally
 
@@ -61,7 +62,7 @@ npm run dev
 ```
 
 Open the local URL printed by Vite. The field appears immediately; the first click,
-touch, key press, or wheel gesture starts WebAudio. The control icon in the top-left
+touch, key press, or wheel gesture starts Web Audio. The control icon in the top-left
 opens the compact performance controls and fades away when left alone.
 
 Run the complete verification gate with:
@@ -77,6 +78,19 @@ privacy, and 404 behavior, with:
 npx playwright install chromium
 npm run smoke
 ```
+
+## Project layout
+
+- `src/` contains the deterministic Rust simulation and narrow WASM facade.
+- `web/` contains the browser composition root, renderers, audio graph, score codec,
+  and viewport projection.
+- `public/` contains the article pages, PWA shell, icons, and social preview.
+- `scripts/` contains verification, build finalization, browser smoke tests, and
+  video production.
+- `docs/` records the creative, research, architecture, and capture contracts.
+
+`pkg/`, `dist/`, `output/`, `renders/`, and `target/` are generated locally and are
+ignored by git.
 
 ## Produce video
 
@@ -120,10 +134,9 @@ while preserving paths, query parameters, and shared seeds.
 
 Production releases can provide these GitHub Actions secrets:
 
-- `SENTRY_DSN` and `SENTRY_AUTH_TOKEN` activate browser error reporting, Feedback,
-  release tagging, and private source-map upload. The build targets the
-  `total-reality-engineering/confluon` Sentry project by default;
-  `SENTRY_ORG` and `SENTRY_PROJECT` can override it.
+- `SENTRY_DSN` activates browser error reporting and Feedback.
+  `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` enable release tagging and
+  private source-map upload.
 - `CLOUDFLARE_WEB_ANALYTICS_TOKEN` activates Cloudflare's cookieless performance
   beacon.
 - `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` authorize deployment.
@@ -146,7 +159,7 @@ See [Privacy](https://confluon.com/privacy) for the user-facing data boundary.
 - Double click/tap: seed a compact 50-particle colony at the pointer.
 - Hold `S`: move toward a quieter common state; release it to return to local
   negotiation, often provoking a transition.
-- `R`: rebuild the current field.
+- `R`: reset the current field to its starting state.
 - `Space`: pause or resume.
 - `G`, `O`, `D`: select Gather, Orbit, or Divide.
 
@@ -162,7 +175,7 @@ Copy the browser address to share that complete starting state.
 - [The sound](https://confluon.com/sound) — how collective state becomes
   harmony, texture, space, and gesture.
 - [How it is built](https://confluon.com/engineering) — the Rust/WASM,
-  WebGPU, WebAudio, reproducibility, and production architecture.
+  WebGPU, Web Audio, reproducibility, and production architecture.
 - [Privacy](https://confluon.com/privacy) — what remains local and how
   optional diagnostics and feedback are handled.
 - [Concept](docs/CONCEPT.md) — creative axes and musical mapping.
@@ -177,6 +190,9 @@ Copy the browser address to share that complete starting state.
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup,
 verification, and the determinism contract. Please use an issue to discuss a large
 change before investing heavily in it.
+
+Report suspected vulnerabilities privately through the process in
+[SECURITY.md](SECURITY.md), not a public issue.
 
 ## Research basis and attribution
 
