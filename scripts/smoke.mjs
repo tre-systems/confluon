@@ -58,6 +58,12 @@ try {
     manifestHref: document.querySelector('link[rel="manifest"]')?.href,
     marketingOverlay: Boolean(document.querySelector("#welcome, #gesture-hint")),
     controlsCollapsed: document.querySelector("#controls")?.classList.contains("collapsed"),
+    controlsToggleTargeted: (() => {
+      const toggle = document.querySelector("#controls-toggle");
+      const rect = toggle?.getBoundingClientRect();
+      if (!toggle || !rect) return false;
+      return toggle.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    })(),
     tuningPermanent:
       document.querySelector(".tuning")?.tagName === "SECTION" &&
       !document.querySelector(".tuning summary"),
@@ -116,6 +122,7 @@ try {
     initial.newSeedButtons !== 0 ||
     initial.interactionHelp !== 0 ||
     initial.redundantControlChrome !== 0 ||
+    !initial.controlsToggleTargeted ||
     !initial.runtimeStatusHidden ||
     initial.footerDocs.join(",") !== "/field,/engineering,/sound,/privacy"
   ) {

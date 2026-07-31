@@ -25,7 +25,6 @@ import { clientPointToWorld } from "./viewport-projection.js";
 const FIXED_STEP = 1 / 30;
 const MAX_CATCH_UP_STEPS = 2;
 const CONFLUON_API_VERSION = 1;
-const IDLE_CONTROLS_MS = 9000;
 const SOUND_START_EVENTS = [
   "pointerdown",
   "pointerup",
@@ -96,7 +95,6 @@ let seed = readSeed();
 let engine;
 let renderer;
 let audio;
-let idleTimer;
 let visualSnapshot;
 let visualMetrics;
 
@@ -151,19 +149,14 @@ function installControls() {
   });
 
   document.addEventListener("pointerdown", (event) => {
-    wakeControls();
     if (!elements.controls.classList.contains("collapsed") && !elements.controls.contains(event.target)) {
       setControlsOpen(false);
     }
   });
 
-  ["pointermove", "keydown", "wheel"].forEach((eventName) => {
-    window.addEventListener(eventName, wakeControls, { passive: true });
-  });
   ["pointerup", "touchend", "click", "keydown"].forEach((eventName) => {
     window.addEventListener(eventName, resumeSound, { capture: true, passive: true });
   });
-  wakeControls();
 
   elements.gestureModes.forEach((button) => {
     button.addEventListener("click", () => setGestureMode(button.dataset.gesture));
@@ -553,17 +546,6 @@ function setControlsOpen(open) {
   elements.controls.classList.toggle("collapsed", !open);
   elements.controlsToggle.setAttribute("aria-expanded", String(open));
   elements.controlsToggle.setAttribute("aria-label", open ? "Hide controls" : "Show controls");
-  wakeControls();
-}
-
-function wakeControls() {
-  elements.controls.classList.remove("idle-hidden");
-  window.clearTimeout(idleTimer);
-  idleTimer = window.setTimeout(() => {
-    if (elements.controls.classList.contains("collapsed")) {
-      elements.controls.classList.add("idle-hidden");
-    }
-  }, IDLE_CONTROLS_MS);
 }
 
 let previousTime = performance.now() / 1000;
