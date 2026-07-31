@@ -35,9 +35,8 @@ and music are two views of one evolving state.
 - Pointer-aware organisms that startle at a poke or fast approach, investigate a
   still cursor, and keep a protected inner distance. Touch-friendly Gather, Orbit,
   and Divide gestures add deliberate sculpting, alongside seeding and resetting.
-- Shareable performance settings for ecology, flow, touch strength, halo, visual
-  memory, tone, population, and level. Share opens the native device sheet when
-  available and otherwise copies the complete URL.
+- URL-backed performance settings for ecology, flow, touch strength, halo, visual
+  memory, tone, population, and level.
 - Three featured starting scores—Still Choir, Tidal Assembly, and Ember Rift—offer
   deliberately contrasting seeds and settings without changing the deterministic
   state contract.
@@ -147,15 +146,14 @@ See [Privacy](https://confluon.com/privacy) for the user-facing data boundary.
 - Double click/tap: seed a compact 50-particle colony at the pointer.
 - Hold `S`: move toward a quieter common state; release it to return to local
   negotiation, often provoking a transition.
-- `R`: rebuild the displayed seed.
+- `R`: rebuild the current field.
 - `Space`: pause or resume.
 - `G`, `O`, `D`: select Gather, Orbit, or Divide.
 
 Append `?seed=12345` to the URL to start from a specific field.
 Changing a performance setting records the complete configuration in the URL, so a
 seed and its ecology, flow, look, tone, and selected gesture can be shared together.
-Use **Share** at the foot of the controls to send that complete performance URL
-through the device share sheet or copy it when native sharing is unavailable.
+Copy the browser address to share that complete starting state.
 
 ## Design documents
 

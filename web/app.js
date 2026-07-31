@@ -9,7 +9,6 @@ import {
 import {
   clampPopulation,
   encodePerformanceState,
-  formatSeed,
   GESTURE_MODES,
   isGestureMode,
   parsePerformanceSettings,
@@ -27,7 +26,6 @@ const FIXED_STEP = 1 / 30;
 const MAX_CATCH_UP_STEPS = 2;
 const CONFLUON_API_VERSION = 1;
 const IDLE_CONTROLS_MS = 9000;
-const AUDIO_STATUS_INTERVAL_MS = 500;
 const SOUND_START_EVENTS = [
   "pointerdown",
   "pointerup",
@@ -47,7 +45,6 @@ const elements = {
   controlsToggle: document.querySelector("#controls-toggle"),
   fieldScore: document.querySelector("#field-score"),
   volume: document.querySelector("#volume"),
-  shareLink: document.querySelector("#share-link"),
   population: document.querySelector("#population"),
   populationLabel: document.querySelector("#population-label"),
   ecology: document.querySelector("#ecology"),
@@ -63,8 +60,6 @@ const elements = {
   memoryLabel: document.querySelector("#memory-label"),
   toneLabel: document.querySelector("#tone-label"),
   gestureModes: Array.from(document.querySelectorAll("[data-gesture]")),
-  seed: document.querySelector("#seed-value"),
-  audioState: document.querySelector("#audio-state"),
   runtimeStatus: document.querySelector("#runtime-status"),
 };
 
@@ -102,7 +97,6 @@ let engine;
 let renderer;
 let audio;
 let idleTimer;
-let shareFeedbackTimer;
 let visualSnapshot;
 let visualMetrics;
 
@@ -117,7 +111,6 @@ try {
   });
   audio = new ConfluonAudio(seed);
   applyPerformanceSettings(false);
-  elements.seed.textContent = formatSeed(seed);
   installControls();
   exposeDiagnostics();
   requestAnimationFrame(frame);
@@ -152,8 +145,6 @@ function installControls() {
   elements.controlsToggle.addEventListener("click", () => {
     setControlsOpen(elements.controls.classList.contains("collapsed"));
   });
-  elements.shareLink.textContent = shareButtonLabel();
-  elements.shareLink.addEventListener("click", sharePerformance);
   elements.fieldScore.addEventListener("change", () => {
     if (!elements.fieldScore.value) return;
     loadFieldScore(elements.fieldScore.value);
@@ -533,20 +524,15 @@ async function startExperience() {
     audio.setLevel(Number(elements.volume.value) / 100);
     audio.wake();
     state.started = true;
-    setAudioState();
     SOUND_START_EVENTS.forEach((eventName) => {
       window.removeEventListener(eventName, startExperience, { capture: true });
     });
   } catch (error) {
     if (["suspended", "interrupted"].includes(audio.state())) {
-      elements.audioState.dataset.state = "waiting";
-      elements.audioState.textContent = "sound waiting";
       return;
     }
     console.error(error);
     captureException(error, { stage: "audio_start" });
-    elements.audioState.dataset.state = "error";
-    elements.audioState.textContent = "sound unavailable";
     elements.runtimeStatus.textContent = "Sound did not start. Check this tab’s audio permission and try again.";
   } finally {
     state.starting = false;
@@ -557,7 +543,6 @@ async function resumeSound() {
   if (!state.started || audio.state() === "running") return;
   try {
     await audio.resume();
-    setAudioState();
   } catch (error) {
     console.warn("Could not resume audio", error);
     captureException(error, { stage: "audio_resume" });
@@ -583,7 +568,6 @@ function wakeControls() {
 
 let previousTime = performance.now() / 1000;
 let accumulator = 0;
-let lastStatusUpdate = 0;
 let fpsWindowStarted = performance.now();
 let fpsFrameCount = 0;
 let measuredFps = 0;
@@ -649,11 +633,6 @@ function frame(milliseconds) {
     audio.strike(metrics[METRIC_FIELD.TRANSITION], metrics[METRIC_FIELD.ENERGY]);
   }
   state.previousTransition = metrics[METRIC_FIELD.TRANSITION];
-
-  if (milliseconds - lastStatusUpdate > AUDIO_STATUS_INTERVAL_MS) {
-    setAudioState();
-    lastStatusUpdate = milliseconds;
-  }
   requestAnimationFrame(frame);
 }
 
@@ -737,7 +716,6 @@ function loadFieldScore(source) {
   audio.reseed(seed);
   applyPerformanceSettings(false);
   window.history.replaceState({}, "", `${featuredUrl.pathname}${featuredUrl.search}`);
-  elements.seed.textContent = formatSeed(seed);
   setControlsOpen(false);
   if (state.started) audio.strike(0.7, engine.metrics()[METRIC_FIELD.ENERGY]);
 }
@@ -745,13 +723,6 @@ function loadFieldScore(source) {
 function togglePause() {
   state.running = !state.running;
   audio.setPaused(!state.running);
-}
-
-function setAudioState() {
-  const current = audio?.state() ?? "waiting";
-  elements.audioState.dataset.state = current;
-  elements.audioState.textContent =
-    current === "running" ? "sound running" : current === "waiting" ? "sound waiting" : `sound ${current}`;
 }
 
 function exposeDiagnostics() {
@@ -854,71 +825,4 @@ function readSeed() {
 function syncSettingsUrl() {
   const url = encodePerformanceState(window.location.href, seed, settings);
   window.history.replaceState({}, "", url);
-}
-
-function shareButtonLabel() {
-  return supportsNativeShare() ? "Share" : "Copy link";
-}
-
-function supportsNativeShare() {
-  return window.matchMedia("(pointer: coarse)").matches && typeof navigator.share === "function";
-}
-
-async function sharePerformance() {
-  syncSettingsUrl();
-  const shareUrl = window.location.href;
-  const shareData = {
-    title: "Confluon",
-    text: `Enter Confluon at seed ${formatSeed(seed)}.`,
-    url: shareUrl,
-  };
-
-  if (supportsNativeShare()) {
-    try {
-      if (typeof navigator.canShare !== "function" || navigator.canShare(shareData)) {
-        await navigator.share(shareData);
-        showShareFeedback("Shared");
-        return;
-      }
-    } catch (error) {
-      if (error?.name === "AbortError") return;
-      captureException(error, { stage: "native_share" });
-    }
-  }
-
-  await copyPerformanceLink(shareUrl);
-}
-
-async function copyPerformanceLink(shareUrl) {
-  let copied = false;
-
-  try {
-    await navigator.clipboard.writeText(shareUrl);
-    copied = true;
-  } catch {
-    const temporaryInput = document.createElement("textarea");
-    try {
-      temporaryInput.value = shareUrl;
-      temporaryInput.setAttribute("readonly", "");
-      temporaryInput.style.position = "fixed";
-      temporaryInput.style.opacity = "0";
-      document.body.append(temporaryInput);
-      temporaryInput.select();
-      copied = document.execCommand("copy");
-    } catch {
-      copied = false;
-    } finally {
-      temporaryInput.remove();
-    }
-  }
-
-  showShareFeedback(copied ? "Copied" : "Copy failed");
-}
-
-function showShareFeedback(label) {
-  window.clearTimeout(shareFeedbackTimer);
-  elements.shareLink.textContent = label;
-  shareFeedbackTimer = window.setTimeout(() => {
-    elements.shareLink.textContent = shareButtonLabel();
-  }, 2400);
 }

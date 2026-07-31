@@ -260,41 +260,36 @@
           louder.
         </p>
         <figure class="diagram">
-          <svg viewBox="0 0 820 300" role="img" aria-label="Confluon audio signal flow from synth sources through spatial effects and the master chain.">
+          <svg viewBox="0 0 860 300" role="img" aria-label="Confluon audio signal flow from sound sources through the dry mix, spatial returns, master chain, and dynamics output.">
             <defs>
               <marker id="flow-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
                 <path d="M0 0L7 3L0 6Z" fill="rgba(188,234,213,.55)" />
               </marker>
             </defs>
-            <rect class="d-box d-sound" x="20" y="42" width="154" height="48" rx="12" />
-            <text class="d-title" x="97" y="63">Six-part pad</text>
-            <text class="d-copy" x="97" y="80">partial lattice</text>
-            <rect class="d-box d-sound" x="20" y="106" width="154" height="48" rx="12" />
-            <text class="d-title" x="97" y="127">Formation choir</text>
-            <text class="d-copy" x="97" y="144">up to eight voices</text>
-            <rect class="d-box d-sound" x="20" y="170" width="154" height="48" rx="12" />
-            <text class="d-title" x="97" y="191">Sub · air · tones</text>
-            <text class="d-copy" x="97" y="208">events + texture</text>
-            <path class="d-line" d="M174 66H240M174 130H240M174 194H240" marker-end="url(#flow-arrow)" />
-            <rect class="d-box" x="242" y="94" width="120" height="72" rx="12" />
-            <text class="d-title" x="302" y="124">Dry field</text>
-            <text class="d-copy" x="302" y="145">shared bus</text>
-            <path class="d-line" d="M362 115H430" marker-end="url(#flow-arrow)" />
-            <path class="d-line" d="M302 166V238H430" marker-end="url(#flow-arrow)" />
-            <rect class="d-box d-field" x="432" y="80" width="154" height="70" rx="12" />
-            <text class="d-title" x="509" y="108">Delay · reverb</text>
-            <text class="d-copy" x="509" y="129">filtered wet returns</text>
-            <rect class="d-box d-field" x="432" y="212" width="154" height="52" rx="12" />
-            <text class="d-title" x="509" y="235">Shimmer</text>
-            <text class="d-copy" x="509" y="253">octave into hall</text>
-            <path class="d-line" d="M586 115H626M586 238H610V145H626" marker-end="url(#flow-arrow)" />
-            <rect class="d-box d-render" x="628" y="82" width="170" height="66" rx="12" />
-            <text class="d-title" x="713" y="107">Master</text>
-            <text class="d-copy" x="713" y="126">HP · warmth · tone</text>
-            <path class="d-line" d="M713 148V190" marker-end="url(#flow-arrow)" />
-            <rect class="d-box d-render" x="628" y="192" width="170" height="66" rx="12" />
-            <text class="d-title" x="713" y="217">Dynamics · output</text>
-            <text class="d-copy" x="713" y="237">compress · limit · meter</text>
+            <rect class="d-box d-sound" x="28" y="92" width="210" height="112" rx="14" />
+            <text class="d-title" x="133" y="122">Sound sources</text>
+            <text class="d-copy" x="133" y="150">six-part pad · formation choir</text>
+            <text class="d-copy" x="133" y="173">sub · air · tones</text>
+
+            <path class="d-line" d="M238 148H286" marker-end="url(#flow-arrow)" />
+            <rect class="d-box" x="288" y="110" width="132" height="76" rx="13" />
+            <text class="d-title" x="354" y="140">Dry mix</text>
+            <text class="d-copy" x="354" y="163">shared bus</text>
+
+            <path class="d-line" d="M420 130H650" marker-end="url(#flow-arrow)" />
+            <path class="d-line" d="M354 186V226H468" marker-end="url(#flow-arrow)" />
+            <rect class="d-box d-field" x="470" y="190" width="162" height="72" rx="13" />
+            <text class="d-title" x="551" y="218">Spatial returns</text>
+            <text class="d-copy" x="551" y="240">delay · hall · pad shimmer</text>
+            <path class="d-line" d="M632 226H642V150H650" marker-end="url(#flow-arrow)" />
+
+            <rect class="d-box d-render" x="652" y="96" width="178" height="70" rx="13" />
+            <text class="d-title" x="741" y="124">Master chain</text>
+            <text class="d-copy" x="741" y="146">HP · warmth · tone</text>
+            <path class="d-line" d="M741 166V202" marker-end="url(#flow-arrow)" />
+            <rect class="d-box d-render" x="652" y="204" width="178" height="70" rx="13" />
+            <text class="d-title" x="741" y="232">Dynamics · output</text>
+            <text class="d-copy" x="741" y="254">compress · limit · meter</text>
           </svg>
           <figcaption>
             Synth sources share dry, delay, and procedural hall paths before a conservative mastered output.

@@ -64,6 +64,9 @@ try {
     transportButtons: document.querySelectorAll("#settle, #pause, #record").length,
     newSeedButtons: document.querySelectorAll("#new-seed").length,
     interactionHelp: document.querySelectorAll(".interaction-help").length,
+    redundantControlChrome: document.querySelectorAll(
+      ".panel-heading, #audio-state, .performance-row, .seed-readout, #share-link",
+    ).length,
     runtimeStatusHidden:
       document.querySelector("#runtime-status")?.classList.contains("visually-hidden"),
     footerDocs: Array.from(document.querySelectorAll(".panel-links a"), (link) => link.pathname),
@@ -112,6 +115,7 @@ try {
     initial.transportButtons !== 0 ||
     initial.newSeedButtons !== 0 ||
     initial.interactionHelp !== 0 ||
+    initial.redundantControlChrome !== 0 ||
     !initial.runtimeStatusHidden ||
     initial.footerDocs.join(",") !== "/field,/engineering,/sound,/privacy"
   ) {

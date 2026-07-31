@@ -37,9 +37,8 @@ follow. The short version is:
    version, population, settings, fixed-step command stream, and source revision are
    the durable score.
 7. **Progressive capability.** WebGPU is preferred and Canvas 2D is the supported
-   fallback. Audio starts only from a user gesture. Offline support, native sharing,
-   diagnostics, feedback, and analytics add capability without becoming startup
-   requirements.
+   fallback. Audio starts only from a user gesture. Offline support, diagnostics,
+   feedback, and analytics add capability without becoming startup requirements.
 8. **Measure before distributing.** The current main-thread WASM call and native
    AudioNode graph are deliberate. Add a Worker, `SharedArrayBuffer`, AudioWorklet,
    frontend framework, or state library only when a measured constraint justifies
@@ -328,8 +327,8 @@ these rules:
 - Optional diagnostics initialise concurrently and never gate startup or error
   presentation. A fatal bootstrap exception is sent after diagnostics become ready
   when possible.
-- Monitoring, feedback, analytics, native share, clipboard, service worker, and
-  offline failures degrade their own capability rather than the instrument.
+- Monitoring, feedback, analytics, service worker, and offline failures degrade
+  their own capability rather than the instrument.
 
 Any future adapter that creates listeners, timers, GPU resources, workers, or audio
 nodes with a shorter lifetime than the page must expose `dispose()` and be disposed

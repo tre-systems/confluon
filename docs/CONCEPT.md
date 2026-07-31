@@ -55,7 +55,7 @@ The visual image and the audio mix read the same deterministic simulation snapsh
 - Double click/tap: seed a new local population.
 - Hold `S`: constrain the system toward a quieter common state; release it to return
   to local negotiation, often causing a phase transition.
-- `R`: regenerate from the displayed seed.
+- `R`: regenerate the current field.
 - `Space`: pause or resume.
 - `G`, `O`, `D`: select the touch-friendly Gather, Orbit, or Divide mode.
 
