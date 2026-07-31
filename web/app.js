@@ -21,6 +21,7 @@ import {
   PARTICLE_STRIDE,
   SIMULATION_CONTRACT_VERSION,
 } from "./simulation-contract.js";
+import { clientPointToWorld } from "./viewport-projection.js";
 
 const FIXED_STEP = 1 / 30;
 const MAX_CATCH_UP_STEPS = 2;
@@ -261,6 +262,9 @@ function installControls() {
     const point = eventPoint(event);
     spawn(point.x, point.y);
   });
+  ["contextmenu", "selectstart", "dragstart"].forEach((eventName) => {
+    elements.field.addEventListener(eventName, preventBrowserFieldGesture);
+  });
 
   const settleOff = () => {
     if (!state.settle) return;
@@ -327,6 +331,10 @@ function configurePointerGesture(event) {
   const mode = event.altKey ? "divide" : event.shiftKey ? "orbit" : state.gestureMode;
   state.pointer.mode = mode;
   elements.instrument.dataset.activeGesture = mode;
+}
+
+function preventBrowserFieldGesture(event) {
+  event.preventDefault();
 }
 
 function pointerInteraction() {
@@ -765,6 +773,8 @@ function exposeDiagnostics() {
       active: state.pointer.active,
       present: state.pointer.present,
       type: state.pointer.type,
+      x: state.pointer.x,
+      y: state.pointer.y,
       impulse: state.pointer.impulse,
       motion: state.pointer.motion,
       ...pointerInteraction(),
@@ -818,9 +828,9 @@ function beginCapture() {
 
 function eventPoint(event) {
   const rect = elements.field.getBoundingClientRect();
+  const point = clientPointToWorld(event.clientX, event.clientY, rect);
   return {
-    x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
-    y: 1 - ((event.clientY - rect.top) / rect.height) * 2,
+    ...point,
     inside:
       event.clientX >= rect.left &&
       event.clientX <= rect.right &&

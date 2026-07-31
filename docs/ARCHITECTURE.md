@@ -88,6 +88,7 @@ Dependencies point inward toward contracts and the engine:
 | `src/lib.rs` | Narrow WASM command/query facade | A second model or browser policy |
 | `web/simulation-contract.js` | ABI version, tuple indexes, strides, hard consumer limits | Dynamic engine state |
 | `web/performance-state.js` | URL keys, defaults, bounds, seed/settings parse and encode | DOM controls or side effects |
+| `web/viewport-projection.js` | Pure centred-cover projection and inverse pointer mapping | DOM, simulation state, renderer policy |
 | `web/app.js` | Composition, frame clock, input state machine, adapter lifecycle, URL/history side effects, diagnostics facade | Particle rules, shader details, synthesis graph |
 | `web/renderer.js` | WebGPU and Canvas strategies, visual history, presentation interpolation inputs | Commands to the engine, audio state |
 | `web/audio.js` | Audio graph lifecycle, metric/formation mapping, browser-clock scheduling, capture tap | Commands to the engine, visual state |
@@ -268,6 +269,14 @@ Visible membranes are made from current particles and their measured field.
 Canvas 2D uses cached deterministic sprites and CPU trails. It is a supported
 fallback, not a second visual design. WebGPU loss is isolated: the composition root
 replaces the projection with Canvas while retaining the engine and score.
+
+Both renderers use the centred-cover contract in `web/viewport-projection.js`. The
+square torus is uniformly scaled from the viewport's long edge, filling every aspect
+ratio while cropping excess world space instead of stretching it or adding bars.
+Pointer and touch coordinates use the exact inverse mapping, so a gesture acts on the
+world position visibly beneath it. Browser selection, callout, drag, and pan/zoom
+gestures are suppressed only on the field surface; native controls and page-level
+accessibility zoom remain available.
 
 Presentation interpolation is frame-rate independent and owns no domain truth. It
 smooths wrapped coordinates, particle attributes, and visual metrics, with asymmetric

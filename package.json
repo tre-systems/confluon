@@ -26,7 +26,7 @@
     "check:icons": "node scripts/gen-icons.mjs --check",
     "test:state": "node --test scripts/performance-state.test.mjs",
     "test:pwa": "node --test scripts/pwa-update.test.mjs",
-    "test:tooling": "node --test scripts/static-server.test.mjs scripts/worker.test.mjs",
+    "test:tooling": "node --test scripts/static-server.test.mjs scripts/viewport-projection.test.mjs scripts/worker.test.mjs",
     "verify:build": "node scripts/verify-build.mjs",
     "smoke": "node scripts/smoke.mjs --dir dist",
     "smoke:live": "node scripts/smoke-live.mjs",

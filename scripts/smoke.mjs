@@ -66,6 +66,20 @@ try {
     runtimeStatusHidden:
       document.querySelector("#runtime-status")?.classList.contains("visually-hidden"),
     footerDocs: Array.from(document.querySelectorAll(".panel-links a"), (link) => link.pathname),
+    fieldInputGuard: (() => {
+      const field = document.querySelector("#field");
+      const style = getComputedStyle(field);
+      const prevented = ["contextmenu", "selectstart", "dragstart"].every((type) => {
+        const event = new Event(type, { bubbles: true, cancelable: true });
+        field.dispatchEvent(event);
+        return event.defaultPrevented;
+      });
+      return {
+        touchAction: style.touchAction,
+        userSelect: style.userSelect,
+        prevented,
+      };
+    })(),
   }));
   if (
     initial.apiVersion !== 1 ||
@@ -100,6 +114,13 @@ try {
     initial.footerDocs.join(",") !== "/field,/engineering,/sound,/privacy"
   ) {
     throw new Error(`controls were not simplified: ${JSON.stringify(initial)}`);
+  }
+  if (
+    initial.fieldInputGuard.touchAction !== "none" ||
+    initial.fieldInputGuard.userSelect !== "none" ||
+    !initial.fieldInputGuard.prevented
+  ) {
+    throw new Error(`field browser gestures were not suppressed: ${JSON.stringify(initial)}`);
   }
 
   await page.mouse.click(640, 400);
@@ -147,6 +168,8 @@ try {
     touchPoke.type !== "touch" ||
     !touchPoke.influencing ||
     touchPoke.impulse <= 0 ||
+    Math.abs(touchPoke.x + 0.5) > 0.01 ||
+    Math.abs(touchPoke.y - 0.234375) > 0.01 ||
     !audibleTouchPoke.influencing
   ) {
     throw new Error(
@@ -308,7 +331,7 @@ try {
   }
 
   console.log(
-    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, caption-free featured fields, mouse/touch/audio response, 50-particle double-tap, musical controls, offline PWA/privacy/404 healthy`,
+    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, caption-free featured fields, cover-projected mouse/touch/audio response, field browser-gesture guards, 50-particle double-tap, musical controls, offline PWA/privacy/404 healthy`,
   );
 } finally {
   await browser?.close();

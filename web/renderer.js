@@ -5,6 +5,10 @@ import {
   PARTICLE_FIELD,
   PARTICLE_STRIDE,
 } from "./simulation-contract.js";
+import {
+  coverWorldScale,
+  createCoverProjection,
+} from "./viewport-projection.js";
 
 const FIELD_FORMAT = "rgba16float";
 const HDR_FORMAT = "rgba16float";
@@ -23,7 +27,7 @@ const PARTICLE_COLOUR_RANGES = [
 
 const sharedWgsl = /* wgsl */ `
 struct Uniforms {
-  aspect: f32,
+  projection: vec2<f32>,
   time: f32,
   dt: f32,
   coherence: f32,
@@ -69,6 +73,10 @@ fn fullscreen_position(vertex_index: u32) -> vec2<f32> {
   );
   return positions[vertex_index];
 }
+
+fn project_world(position: vec2<f32>) -> vec2<f32> {
+  return position * uniforms.projection;
+}
 `;
 
 const fieldShader = /* wgsl */ `
@@ -110,13 +118,10 @@ fn field_vs(
   let species = u32(floor(particle.energy));
   let local = corner(vertex_index);
   let support = kernel_radius(species) + kernel_width(species) * 3.5;
-  // The simulation's torus occupies clip space directly. Its neighbourhood
-  // metric therefore stretches with the viewport too; keep the field aligned
-  // with the particles instead of drawing aesthetically round but false rings.
   let offset = local * support;
 
   var output: FieldVertexOutput;
-  output.position = vec4<f32>(particle.position + offset, 0.0, 1.0);
+  output.position = vec4<f32>(project_world(particle.position + offset), 0.0, 1.0);
   output.local = local;
   output.species = species;
   return output;
@@ -195,10 +200,10 @@ fn deposit_vs(
   let species = u32(floor(particle.energy));
   let local = corner(vertex_index);
   let radius = 0.0045 + particle.speed * 0.0035;
-  let offset = vec2<f32>(local.x / max(uniforms.aspect, 0.01), local.y) * radius;
+  let offset = local * radius;
 
   var output: DepositOutput;
-  output.position = vec4<f32>(particle.position + offset, 0.0, 1.0);
+  output.position = vec4<f32>(project_world(particle.position + offset), 0.0, 1.0);
   output.local = local;
   output.tint = species_colour(species);
   output.strength = 0.010 + particle.speed * 0.075;
@@ -337,12 +342,12 @@ fn particle_vs(
   let radius_variation = mix(0.62, 1.42, pow(size_seed, 1.35));
   let radius = (0.0098 + particle.speed * 0.0028 + breath * uniforms.coherence * 0.0014)
     * radius_variation;
-  let offset = vec2<f32>(local.x / max(uniforms.aspect, 0.01), local.y) * radius;
+  let offset = local * radius;
   let hue = particle_variation(instance_index, 11.3);
   let character = particle_variation(instance_index, 47.9);
 
   var output: ParticleVertexOutput;
-  output.position = vec4<f32>(particle.position + offset, 0.0, 1.0);
+  output.position = vec4<f32>(project_world(particle.position + offset), 0.0, 1.0);
   output.local = local;
   output.species = species;
   output.energy = fract(particle.energy);
@@ -518,6 +523,7 @@ class TrailRenderer {
   render(snapshot, metrics, time) {
     const resized = resizeCanvas(this.canvas);
     const { context, canvas } = this;
+    const worldScale = coverWorldScale(canvas.width, canvas.height);
     if (resized || !this.ready) {
       context.fillStyle = "rgb(4 6 9)";
       context.fillRect(0, 0, canvas.width, canvas.height);
@@ -574,12 +580,12 @@ class TrailRenderer {
         context.lineWidth = deviceScale() * (0.34 + speed * 0.5);
         context.beginPath();
         context.moveTo(
-          toX(this.previous[offset + PARTICLE_FIELD.X], canvas.width),
-          toY(this.previous[offset + PARTICLE_FIELD.Y], canvas.height),
+          toX(this.previous[offset + PARTICLE_FIELD.X], canvas.width, worldScale),
+          toY(this.previous[offset + PARTICLE_FIELD.Y], canvas.height, worldScale),
         );
         context.lineTo(
-          toX(snapshot[offset + PARTICLE_FIELD.X], canvas.width),
-          toY(snapshot[offset + PARTICLE_FIELD.Y], canvas.height),
+          toX(snapshot[offset + PARTICLE_FIELD.X], canvas.width, worldScale),
+          toY(snapshot[offset + PARTICLE_FIELD.Y], canvas.height, worldScale),
         );
         context.stroke();
       }
@@ -606,7 +612,7 @@ class WebGpuRenderer {
     this.sizedHeight = 0;
     this.trailIndex = 0;
     this.clearTrails = true;
-    this.uniformValues = new Float32Array(12);
+    this.uniformValues = new Float32Array(16);
     device.addEventListener("uncapturederror", (event) => {
       console.error("WebGPU validation error:", event.error.message);
       captureMessage("WebGPU validation error", {
@@ -630,7 +636,7 @@ class WebGpuRenderer {
     });
     this.uniformBuffer = device.createBuffer({
       label: "render uniforms",
-      size: 12 * Float32Array.BYTES_PER_ELEMENT,
+      size: this.uniformValues.byteLength,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
@@ -790,6 +796,9 @@ class WebGpuRenderer {
     if (width === this.sizedWidth && height === this.sizedHeight) return;
     this.sizedWidth = width;
     this.sizedHeight = height;
+    const projection = createCoverProjection(width, height);
+    this.projectionX = projection.x;
+    this.projectionY = projection.y;
 
     const make = (label, w, h) => {
       const texture = this.device.createTexture({
@@ -861,18 +870,19 @@ class WebGpuRenderer {
     const particleCount = Math.min(MAX_PARTICLES, snapshot.length / PARTICLE_STRIDE);
     this.device.queue.writeBuffer(this.particleBuffer, 0, snapshot);
     const uniforms = this.uniformValues;
-    uniforms[0] = this.canvas.width / this.canvas.height;
-    uniforms[1] = time;
-    uniforms[2] = dt;
-    uniforms[3] = metrics[METRIC_FIELD.COHERENCE];
-    uniforms[4] = metrics[METRIC_FIELD.DENSITY];
-    uniforms[5] = metrics[METRIC_FIELD.ENCOUNTERS] ?? 0;
-    uniforms[6] = metrics[METRIC_FIELD.ACTIVITY];
-    uniforms[7] = metrics[METRIC_FIELD.ENERGY];
-    uniforms[8] = this.visualGlow;
-    uniforms[9] = this.visualCore;
-    uniforms[10] = this.memory;
-    uniforms[11] = metrics[METRIC_FIELD.TRANSITION] ?? 0;
+    uniforms[0] = this.projectionX;
+    uniforms[1] = this.projectionY;
+    uniforms[2] = time;
+    uniforms[3] = dt;
+    uniforms[4] = metrics[METRIC_FIELD.COHERENCE];
+    uniforms[5] = metrics[METRIC_FIELD.DENSITY];
+    uniforms[6] = metrics[METRIC_FIELD.ENCOUNTERS] ?? 0;
+    uniforms[7] = metrics[METRIC_FIELD.ACTIVITY];
+    uniforms[8] = metrics[METRIC_FIELD.ENERGY];
+    uniforms[9] = this.visualGlow;
+    uniforms[10] = this.visualCore;
+    uniforms[11] = this.memory;
+    uniforms[12] = metrics[METRIC_FIELD.TRANSITION] ?? 0;
     this.device.queue.writeBuffer(this.uniformBuffer, 0, uniforms);
 
     const encoder = this.device.createCommandEncoder({ label: "living field frame" });
@@ -1004,6 +1014,7 @@ class CanvasRenderer {
     resizeCanvas(this.canvas);
     this.trails.render(snapshot, metrics, time);
     const { context, canvas } = this;
+    const worldScale = coverWorldScale(canvas.width, canvas.height);
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.globalCompositeOperation = "lighter";
 
@@ -1020,8 +1031,8 @@ class CanvasRenderer {
         ) {
           continue;
         }
-        const x = toX(snapshot[offset + PARTICLE_FIELD.X], canvas.width);
-        const y = toY(snapshot[offset + PARTICLE_FIELD.Y], canvas.height);
+        const x = toX(snapshot[offset + PARTICLE_FIELD.X], canvas.width, worldScale);
+        const y = toY(snapshot[offset + PARTICLE_FIELD.Y], canvas.height, worldScale);
         const radius = (11 + species * 2.2) * deviceScale();
         context.moveTo(x + radius, y);
         context.arc(x, y, radius, 0, Math.PI * 2);
@@ -1033,8 +1044,8 @@ class CanvasRenderer {
     this.ensureSprites();
 
     for (let offset = 0; offset < snapshot.length; offset += PARTICLE_STRIDE) {
-      const x = toX(snapshot[offset + PARTICLE_FIELD.X], canvas.width);
-      const y = toY(snapshot[offset + PARTICLE_FIELD.Y], canvas.height);
+      const x = toX(snapshot[offset + PARTICLE_FIELD.X], canvas.width, worldScale);
+      const y = toY(snapshot[offset + PARTICLE_FIELD.Y], canvas.height, worldScale);
       const packedEnergy = snapshot[offset + PARTICLE_FIELD.PACKED_SPECIES_ENERGY];
       const species = speciesOf(packedEnergy);
       const energy = energyOf(packedEnergy);
@@ -1130,12 +1141,12 @@ function particleVariation(index, salt = 0) {
   return (value >>> 0) / 0xffffffff;
 }
 
-function toX(value, width) {
-  return (value * 0.5 + 0.5) * width;
+function toX(value, width, worldScale) {
+  return width * 0.5 + value * worldScale;
 }
 
-function toY(value, height) {
-  return (0.5 - value * 0.5) * height;
+function toY(value, height, worldScale) {
+  return height * 0.5 - value * worldScale;
 }
 
 function deviceScale() {
