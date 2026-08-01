@@ -277,6 +277,13 @@ world position visibly beneath it. Browser selection, callout, drag, and pan/zoo
 gestures are suppressed only on the field surface; native controls and page-level
 accessibility zoom remain available.
 
+The instrument shell is fixed to a pixel height synchronized from `window.innerHeight`
+on window and visual-viewport resize events. Its CSS fallback is `100dvh`, then
+`100vh` for older engines. This avoids both a stale document percentage height and
+WebKit transitions where the dynamic viewport unit briefly retains its previous
+value. Both canvases remain absolutely pinned to the shell and resize their drawing
+buffers from its current client dimensions.
+
 The closed settings icon fades after 20 seconds of inactivity. Pointer movement,
 screen presses, keyboard input, and wheel input restore it immediately. The idle
 timer never hides an open control panel. Browser smoke coverage verifies the hidden

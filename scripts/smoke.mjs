@@ -53,6 +53,17 @@ try {
     particles: window.confluon.particleCount(),
     canvasWidth: document.querySelector("#field")?.width || 0,
     canvasHeight: document.querySelector("#field")?.height || 0,
+    viewportCoverage: (() => {
+      const rect = document.querySelector("#field")?.getBoundingClientRect();
+      return rect
+        ? {
+            top: rect.top,
+            left: rect.left,
+            rightGap: window.innerWidth - rect.right,
+            bottomGap: window.innerHeight - rect.bottom,
+          }
+        : null;
+    })(),
     feedbackHidden: document.querySelector("#feedback-button")?.hidden,
     supportHref: document.querySelector(".panel-support a")?.href,
     manifestHref: document.querySelector('link[rel="manifest"]')?.href,
@@ -106,6 +117,12 @@ try {
   }
   if (initial.particles !== 2000 || initial.canvasWidth === 0 || initial.canvasHeight === 0) {
     throw new Error(`instrument is not drawing: ${JSON.stringify(initial)}`);
+  }
+  if (
+    !initial.viewportCoverage ||
+    Object.values(initial.viewportCoverage).some((gap) => Math.abs(gap) > 1)
+  ) {
+    throw new Error(`field does not cover the viewport: ${JSON.stringify(initial.viewportCoverage)}`);
   }
   if (!initial.supportHref?.startsWith("https://ko-fi.com/robgilks")) {
     throw new Error("Ko-fi support link is missing");
@@ -351,6 +368,36 @@ try {
     throw new Error(`Canvas/score fallback failed: ${JSON.stringify(fallbackState)}`);
   }
 
+  await page.close();
+  await context.close();
+  context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 3,
+    hasTouch: true,
+    isMobile: true,
+  });
+  page = await context.newPage();
+  watchPage(page, browserErrors);
+  await page.goto(new URL("/?renderer=canvas&seed=424242", baseUrl).href, {
+    waitUntil: "domcontentloaded",
+  });
+  await page.waitForFunction(() => Boolean(window.confluon), null, { timeout: 20_000 });
+  const tallMobileCoverage = await measureViewportCoverage(page);
+  await page.setViewportSize({ width: 390, height: 700 });
+  await page.waitForFunction(() => {
+    const rect = document.querySelector("#field")?.getBoundingClientRect();
+    return rect && Math.abs(window.innerHeight - rect.bottom) <= 1;
+  });
+  const shortMobileCoverage = await measureViewportCoverage(page);
+  for (const coverage of [tallMobileCoverage, shortMobileCoverage]) {
+    if (
+      Object.values(coverage.gaps).some((gap) => Math.abs(gap) > 1) ||
+      Math.abs(coverage.heightOverride - coverage.viewport.height) > 1
+    ) {
+      throw new Error(`mobile field does not cover the viewport: ${JSON.stringify(coverage)}`);
+    }
+  }
+
   const ignoredErrors = browserErrors.filter(
     (message) =>
       !/Failed to load resource: the server responded with a status of 404/i.test(message),
@@ -360,7 +407,7 @@ try {
   }
 
   console.log(
-    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, caption-free featured fields, cover-projected mouse/touch/audio response, field browser-gesture guards, idle-waking controls, 50-particle double-tap, musical controls, offline PWA/privacy/404 healthy`,
+    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, dynamic mobile viewport fill, caption-free featured fields, cover-projected mouse/touch/audio response, field browser-gesture guards, idle-waking controls, 50-particle double-tap, musical controls, offline PWA/privacy/404 healthy`,
   );
 } finally {
   await browser?.close();
@@ -371,6 +418,25 @@ function watchPage(page, browserErrors) {
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("console", (message) => {
     if (message.type() === "error") browserErrors.push(message.text());
+  });
+}
+
+async function measureViewportCoverage(page) {
+  return page.evaluate(() => {
+    const rect = document.querySelector("#field").getBoundingClientRect();
+    return {
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      field: { width: rect.width, height: rect.height },
+      heightOverride: Number.parseFloat(
+        document.documentElement.style.getPropertyValue("--viewport-height"),
+      ),
+      gaps: {
+        top: rect.top,
+        left: rect.left,
+        right: window.innerWidth - rect.right,
+        bottom: window.innerHeight - rect.bottom,
+      },
+    };
   });
 }
 

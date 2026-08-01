@@ -8,6 +8,7 @@
   --line: rgba(226, 232, 224, 0.14);
   --glass: rgba(7, 10, 14, 0.74);
   --mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --viewport-height: 100dvh;
 }
 
 * {
@@ -17,7 +18,8 @@
 html,
 body {
   width: 100%;
-  height: 100%;
+  height: 100vh;
+  height: var(--viewport-height);
   margin: 0;
   overflow: hidden;
   overscroll-behavior: none;
@@ -35,9 +37,12 @@ button {
 }
 
 #instrument {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: var(--viewport-height);
   overflow: hidden;
   isolation: isolate;
   -webkit-tap-highlight-color: transparent;
@@ -131,6 +136,9 @@ button {
 .controls-body {
   width: min(420px, calc(100vw - 28px));
   max-height: calc(100vh - 72px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  max-height: calc(
+    var(--viewport-height) - 72px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+  );
   overflow-y: auto;
   padding: 20px;
   border: 1px solid var(--line);

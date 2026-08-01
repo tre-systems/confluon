@@ -35,6 +35,7 @@ const SOUND_START_EVENTS = [
   "keydown",
   "wheel",
 ];
+installViewportSizing();
 const settings = parsePerformanceSettings(window.location.href);
 
 const elements = {
@@ -136,6 +137,15 @@ async function recoverFromRendererLoss(info) {
     });
     elements.runtimeStatus.textContent = "The graphics renderer could not recover.";
   }
+}
+
+function installViewportSizing() {
+  const syncHeight = () => {
+    document.documentElement.style.setProperty("--viewport-height", `${window.innerHeight}px`);
+  };
+  syncHeight();
+  window.addEventListener("resize", syncHeight, { passive: true });
+  window.visualViewport?.addEventListener("resize", syncHeight, { passive: true });
 }
 
 function installControls() {
