@@ -11,6 +11,16 @@
   --viewport-height: 100dvh;
 }
 
+:root.standalone-display {
+  --viewport-height: 100vh;
+}
+
+@supports (height: 100lvh) {
+  :root.standalone-display {
+    --viewport-height: 100lvh;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -50,6 +60,10 @@ button {
     radial-gradient(circle at 49% 46%, rgba(36, 58, 61, 0.18), transparent 44%),
     radial-gradient(circle at 18% 72%, rgba(79, 48, 36, 0.08), transparent 38%),
     #05070a;
+}
+
+.standalone-display #instrument {
+  position: absolute;
 }
 
 #traces,

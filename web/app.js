@@ -140,6 +140,13 @@ async function recoverFromRendererLoss(info) {
 }
 
 function installViewportSizing() {
+  const standalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    navigator.standalone === true;
+  document.documentElement.classList.toggle("standalone-display", standalone);
+  if (standalone) return;
+
   const syncHeight = () => {
     document.documentElement.style.setProperty("--viewport-height", `${window.innerHeight}px`);
   };

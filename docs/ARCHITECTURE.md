@@ -284,6 +284,12 @@ WebKit transitions where the dynamic viewport unit briefly retains its previous
 value. Both canvases remain absolutely pinned to the shell and resize their drawing
 buffers from its current client dimensions.
 
+Installed Home Screen mode is detected through the display-mode media queries and
+the legacy iOS `navigator.standalone` flag. It deliberately skips pixel viewport
+synchronization and uses a top-anchored absolute shell at `100lvh`, with `100vh` as
+fallback. This isolates WebKit's standalone fixed-container and safe-area defects
+without changing browser-tab sizing or the centred-cover projection.
+
 The closed settings icon fades after 20 seconds of inactivity. Pointer movement,
 screen presses, keyboard input, and wheel input restore it immediately. The idle
 timer never hides an open control panel. Browser smoke coverage verifies the hidden

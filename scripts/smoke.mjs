@@ -398,6 +398,34 @@ try {
     }
   }
 
+  await page.close();
+  page = await context.newPage();
+  watchPage(page, browserErrors);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "standalone", { value: true, configurable: true });
+  });
+  await page.goto(new URL("/?renderer=canvas&seed=424242", baseUrl).href, {
+    waitUntil: "domcontentloaded",
+  });
+  await page.waitForFunction(() => Boolean(window.confluon), null, { timeout: 20_000 });
+  const portraitStandaloneCoverage = await measureViewportCoverage(page);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForFunction(() => {
+    const rect = document.querySelector("#field")?.getBoundingClientRect();
+    return rect && Math.abs(window.innerHeight - rect.bottom) <= 1;
+  });
+  const landscapeStandaloneCoverage = await measureViewportCoverage(page);
+  for (const coverage of [portraitStandaloneCoverage, landscapeStandaloneCoverage]) {
+    if (
+      !coverage.standalone ||
+      coverage.instrumentPosition !== "absolute" ||
+      coverage.heightOverride !== null ||
+      Object.values(coverage.gaps).some((gap) => Math.abs(gap) > 1)
+    ) {
+      throw new Error(`standalone field does not cover the viewport: ${JSON.stringify(coverage)}`);
+    }
+  }
+
   const ignoredErrors = browserErrors.filter(
     (message) =>
       !/Failed to load resource: the server responded with a status of 404/i.test(message),
@@ -407,7 +435,7 @@ try {
   }
 
   console.log(
-    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, dynamic mobile viewport fill, caption-free featured fields, cover-projected mouse/touch/audio response, field browser-gesture guards, idle-waking controls, 50-particle double-tap, musical controls, offline PWA/privacy/404 healthy`,
+    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, dynamic mobile and standalone PWA viewport fill, caption-free featured fields, cover-projected mouse/touch/audio response, field browser-gesture guards, idle-waking controls, 50-particle double-tap, musical controls, offline PWA/privacy/404 healthy`,
   );
 } finally {
   await browser?.close();
@@ -424,12 +452,15 @@ function watchPage(page, browserErrors) {
 async function measureViewportCoverage(page) {
   return page.evaluate(() => {
     const rect = document.querySelector("#field").getBoundingClientRect();
+    const override = Number.parseFloat(
+      document.documentElement.style.getPropertyValue("--viewport-height"),
+    );
     return {
       viewport: { width: window.innerWidth, height: window.innerHeight },
       field: { width: rect.width, height: rect.height },
-      heightOverride: Number.parseFloat(
-        document.documentElement.style.getPropertyValue("--viewport-height"),
-      ),
+      heightOverride: Number.isFinite(override) ? override : null,
+      standalone: document.documentElement.classList.contains("standalone-display"),
+      instrumentPosition: getComputedStyle(document.querySelector("#instrument")).position,
       gaps: {
         top: rect.top,
         left: rect.left,
