@@ -211,6 +211,22 @@ try {
   await page.keyboard.press("Space");
   await page.waitForFunction(() => !window.confluon.audioMeter().paused);
 
+  const idleControls = await page.evaluate(() => {
+    const controls = document.querySelector("#controls");
+    controls.classList.add("idle-hidden");
+    return {
+      hidden: controls.classList.contains("idle-hidden"),
+      pointerEvents: getComputedStyle(controls).pointerEvents,
+    };
+  });
+  if (!idleControls.hidden || idleControls.pointerEvents !== "none") {
+    throw new Error(`Idle controls did not hide: ${JSON.stringify(idleControls)}`);
+  }
+  await page.touchscreen.tap(640, 400);
+  await page.waitForFunction(
+    () => !document.querySelector("#controls").classList.contains("idle-hidden"),
+  );
+
   await page.click("#controls-toggle");
   await page.waitForTimeout(500);
   const audibleControl = await page.evaluate(() => {
@@ -344,7 +360,7 @@ try {
   }
 
   console.log(
-    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, caption-free featured fields, cover-projected mouse/touch/audio response, field browser-gesture guards, 50-particle double-tap, musical controls, offline PWA/privacy/404 healthy`,
+    `smoke: ${initial.renderer.toLowerCase()}, Canvas fallback, ${initial.particles} particles, direct field opening, caption-free featured fields, cover-projected mouse/touch/audio response, field browser-gesture guards, idle-waking controls, 50-particle double-tap, musical controls, offline PWA/privacy/404 healthy`,
   );
 } finally {
   await browser?.close();

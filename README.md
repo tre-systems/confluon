@@ -40,8 +40,8 @@ and music are two views of one evolving state.
 - Three featured starting scores—Still Choir, Tidal Assembly, and Ember Rift—offer
   deliberately contrasting seeds and settings without changing the deterministic
   state contract.
-- A discreet control panel that closes out of the image while leaving its small
-  settings icon available.
+- A discreet control panel whose closed settings icon fades after 20 seconds and
+  returns with the next pointer movement, screen press, key, or wheel interaction.
 - An installable PWA shell with versioned offline caching and an explicit update
   prompt, so a running performance is never replaced underneath the player.
 - Privacy-scrubbed production diagnostics, an in-instrument feedback form, and a
@@ -63,7 +63,8 @@ npm run dev
 
 Open the local URL printed by Vite. The field appears immediately; the first click,
 touch, key press, or wheel gesture starts Web Audio. The control icon in the top-left
-opens the compact performance controls.
+opens the compact performance controls. It fades while closed and idle; an open panel
+remains visible.
 
 Run the complete verification gate with:
 

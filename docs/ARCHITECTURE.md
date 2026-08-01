@@ -277,6 +277,11 @@ world position visibly beneath it. Browser selection, callout, drag, and pan/zoo
 gestures are suppressed only on the field surface; native controls and page-level
 accessibility zoom remain available.
 
+The closed settings icon fades after 20 seconds of inactivity. Pointer movement,
+screen presses, keyboard input, and wheel input restore it immediately. The idle
+timer never hides an open control panel. Browser smoke coverage verifies the hidden
+state, field-interaction wake-up, and subsequent control click separately.
+
 Presentation interpolation is frame-rate independent and owns no domain truth. It
 smooths wrapped coordinates, particle attributes, and visual metrics, with asymmetric
 transition release. The raw snapshot still drives audio and future engine state.
