@@ -48,10 +48,13 @@ const sentryTracesSampleRate =
 const runtimeConfig = {
   sentryDsn: process.env.SENTRY_DSN || "",
   sentryTracesSampleRate,
+  // The Web Analytics beacon token is public by design (it ships in the
+  // page HTML), so default to the production site's token rather than
+  // silently disabling measurement when the env var is absent.
   analyticsToken:
     process.env.CLOUDFLARE_WEB_ANALYTICS_TOKEN ||
     process.env.CF_WEB_ANALYTICS_TOKEN ||
-    "",
+    "2e1b8e76e99140b4aa222f4d3efe1cbb",
   environment,
   release,
 };
