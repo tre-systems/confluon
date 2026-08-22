@@ -80,6 +80,19 @@ npx playwright install chromium
 npm run smoke
 ```
 
+Prepare and verify the self-contained itch.io HTML5 package and listing artwork with:
+
+```sh
+npm run build:itch
+npm run capture:itch
+npm run smoke:itch
+```
+
+The archive, checksummed manifest, cover, page background, and screenshot are written
+under the ignored `output/itch/` directory. The exact listing copy, metadata, theme,
+QA sequence, and seven-day measurement contract live in
+[`docs/ITCH_LISTING.md`](docs/ITCH_LISTING.md).
+
 ## Project layout
 
 - `src/` contains the deterministic Rust simulation and narrow WASM facade.

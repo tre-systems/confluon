@@ -1,5 +1,6 @@
 let sentry;
 let monitoringReady = false;
+const MONITORING_ENABLED = __CONFLUON_DISTRIBUTION__ !== "itch";
 
 function runtimeConfig() {
   return window.CONFLUON_RUNTIME_CONFIG || {};
@@ -66,6 +67,7 @@ function scrubBreadcrumb(breadcrumb) {
 }
 
 export async function initializeMonitoring() {
+  if (!MONITORING_ENABLED) return false;
   const config = runtimeConfig();
   if (!config.sentryDsn) return false;
   if (navigator.onLine === false) {

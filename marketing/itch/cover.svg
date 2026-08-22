@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="630" height="500" viewBox="0 0 630 500">
+  <defs>
+    <radialGradient id="ground" cx="68%" cy="24%" r="92%">
+      <stop offset="0" stop-color="#163338"/>
+      <stop offset=".48" stop-color="#091519"/>
+      <stop offset="1" stop-color="#05070a"/>
+    </radialGradient>
+    <radialGradient id="cyan" cx="42%" cy="38%" r="72%">
+      <stop offset="0" stop-color="#d6fff7" stop-opacity=".72"/>
+      <stop offset=".34" stop-color="#2ce1dc" stop-opacity=".48"/>
+      <stop offset="1" stop-color="#087b8f" stop-opacity=".1"/>
+    </radialGradient>
+    <radialGradient id="ember" cx="43%" cy="38%" r="72%">
+      <stop offset="0" stop-color="#ffebbd" stop-opacity=".72"/>
+      <stop offset=".34" stop-color="#ff7440" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#8f271a" stop-opacity=".1"/>
+    </radialGradient>
+    <radialGradient id="violet" cx="42%" cy="38%" r="72%">
+      <stop offset="0" stop-color="#f4e5ff" stop-opacity=".7"/>
+      <stop offset=".34" stop-color="#ba72ed" stop-opacity=".48"/>
+      <stop offset="1" stop-color="#553079" stop-opacity=".1"/>
+    </radialGradient>
+    <pattern id="cyan-points" width="28" height="25" patternUnits="userSpaceOnUse">
+      <circle cx="5" cy="7" r="1.65" fill="#e3fff9"/>
+      <circle cx="19" cy="5" r=".9" fill="#65ede8" opacity=".82"/>
+      <circle cx="14" cy="20" r="1.2" fill="#a3fff5" opacity=".9"/>
+      <circle cx="26" cy="16" r=".7" fill="#2fd0d4" opacity=".74"/>
+    </pattern>
+    <pattern id="ember-points" width="30" height="27" patternUnits="userSpaceOnUse">
+      <circle cx="6" cy="8" r="1.55" fill="#fff0bd"/>
+      <circle cx="23" cy="6" r=".9" fill="#ff9a60" opacity=".82"/>
+      <circle cx="16" cy="22" r="1.2" fill="#ffd58d" opacity=".9"/>
+      <circle cx="28" cy="17" r=".7" fill="#ff6239" opacity=".75"/>
+    </pattern>
+    <pattern id="violet-points" width="29" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="5" cy="6" r="1.55" fill="#f7e9ff"/>
+      <circle cx="22" cy="8" r=".9" fill="#d39aff" opacity=".82"/>
+      <circle cx="14" cy="21" r="1.2" fill="#ead0ff" opacity=".9"/>
+      <circle cx="27" cy="18" r=".7" fill="#a961de" opacity=".74"/>
+    </pattern>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="11" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="35"/>
+    </filter>
+    <clipPath id="cyan-field">
+      <path d="M306 44c69-31 154-2 176 61 22 60-21 97-4 151 18 53-31 95-85 73-57-25-73-75-128-86-58-12-74-80-36-123 23-28 44-59 77-76z"/>
+    </clipPath>
+    <clipPath id="ember-field">
+      <path d="M496 22c54-13 112 19 123 73 11 50-27 73-20 118 7 44-36 72-76 50-40-23-44-63-82-81-40-19-38-72-5-98 22-17 34-55 60-62z"/>
+    </clipPath>
+    <clipPath id="violet-field">
+      <path d="M420 202c59-32 134-12 160 45 24 54-13 91 9 139 22 47-22 91-72 75-54-17-75-61-126-66-54-5-77-64-47-106 20-28 46-71 76-87z"/>
+    </clipPath>
+    <linearGradient id="title-rule" x1="0" x2="1">
+      <stop stop-color="#73e8df" stop-opacity=".78"/>
+      <stop offset="1" stop-color="#73e8df" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="630" height="500" fill="url(#ground)"/>
+  <circle cx="393" cy="166" r="190" fill="#168994" opacity=".18" filter="url(#soft)"/>
+  <circle cx="538" cy="130" r="142" fill="#b0482c" opacity=".16" filter="url(#soft)"/>
+  <circle cx="463" cy="350" r="168" fill="#77479e" opacity=".18" filter="url(#soft)"/>
+  <g filter="url(#glow)" stroke-width="1.8">
+    <path d="M306 44c69-31 154-2 176 61 22 60-21 97-4 151 18 53-31 95-85 73-57-25-73-75-128-86-58-12-74-80-36-123 23-28 44-59 77-76z" fill="url(#cyan)" stroke="#76f6ed" stroke-opacity=".72"/>
+    <path d="M496 22c54-13 112 19 123 73 11 50-27 73-20 118 7 44-36 72-76 50-40-23-44-63-82-81-40-19-38-72-5-98 22-17 34-55 60-62z" fill="url(#ember)" stroke="#ffad72" stroke-opacity=".74"/>
+    <path d="M420 202c59-32 134-12 160 45 24 54-13 91 9 139 22 47-22 91-72 75-54-17-75-61-126-66-54-5-77-64-47-106 20-28 46-71 76-87z" fill="url(#violet)" stroke="#dbabff" stroke-opacity=".7"/>
+  </g>
+  <g opacity=".95">
+    <rect x="205" y="18" width="305" height="330" fill="url(#cyan-points)" clip-path="url(#cyan-field)"/>
+    <rect x="420" y="5" width="210" height="275" fill="url(#ember-points)" clip-path="url(#ember-field)"/>
+    <rect x="325" y="185" width="280" height="290" fill="url(#violet-points)" clip-path="url(#violet-field)"/>
+  </g>
+  <rect x="0" y="274" width="630" height="226" fill="#05070a" opacity=".76"/>
+  <rect x="48" y="317" width="128" height="1" fill="url(#title-rule)"/>
+  <g font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" fill="#eee9df">
+    <text x="46" y="378" font-size="61" font-weight="500" letter-spacing="7">CONFLUON</text>
+    <text x="49" y="416" font-family="SFMono-Regular, Menlo, monospace" font-size="11" letter-spacing="2.45" fill="#aeb5b0">DETERMINISTIC AUDIOVISUAL SWARM</text>
+    <text x="49" y="463" font-family="SFMono-Regular, Menlo, monospace" font-size="10" letter-spacing="2.1" fill="#76d7d1">FIELD CURRENT / BROWSER INSTRUMENT</text>
+  </g>
+</svg>

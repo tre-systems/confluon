@@ -99,6 +99,57 @@ button {
   cursor: grabbing;
 }
 
+.standalone-link {
+  display: none;
+}
+
+[data-distribution="itch"] .standalone-link {
+  position: fixed;
+  z-index: 9;
+  right: calc(16px + env(safe-area-inset-right));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  display: inline-flex;
+  min-height: 40px;
+  padding: 0 15px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(205, 239, 228, 0.2);
+  border-radius: 999px;
+  background: rgba(7, 10, 14, 0.58);
+  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.24);
+  color: rgba(226, 239, 233, 0.72);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
+  backdrop-filter: blur(14px);
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+[data-distribution="itch"] .standalone-link svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.2;
+}
+
+[data-distribution="itch"] .standalone-link:hover,
+[data-distribution="itch"] .standalone-link:focus-visible {
+  border-color: rgba(205, 239, 228, 0.5);
+  background: rgba(16, 24, 27, 0.78);
+  color: var(--paper);
+  outline: none;
+  transform: translateY(-1px);
+}
+
 .controls {
   position: fixed;
   z-index: 10;
