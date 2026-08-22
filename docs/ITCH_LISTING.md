@@ -9,7 +9,7 @@ files remain untracked.
 | Field | Value |
 | --- | --- |
 | Title | Confluon |
-| Page URL | `confluon` if available |
+| Page URL | `https://tre-systems.itch.io/confluon` |
 | Kind | HTML |
 | Classification | Tool |
 | Release status | Released |
@@ -22,7 +22,7 @@ files remain untracked.
 | Languages | English |
 | Accessibility | High contrast |
 | Community | Comments enabled |
-| Visibility | Draft until explicit publication approval |
+| Visibility | Public since 22 August 2026 at 07:23:11 BST |
 
 Suggested tags, ordered by relevance:
 
@@ -124,6 +124,9 @@ or unrelated badges.
 
 Start the observation window when the listing first becomes Public and close it
 exactly 168 hours later. Do not run another acquisition campaign during the window.
+
+The live window runs from **22 August 2026 at 07:23:11 BST (06:23:11 UTC)** to
+**29 August 2026 at 07:23:11 BST (06:23:11 UTC)**.
 
 Primary success criterion:
 
