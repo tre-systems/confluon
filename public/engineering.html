@@ -13,7 +13,7 @@
     <meta property="og:site_name" content="Confluon" />
     <meta
       property="og:title"
-      content="Confluon — how it is built in Rust, WebGPU, and Web Audio"
+      content="Confluon - how it is built in Rust, WebGPU, and Web Audio"
     />
     <meta
       property="og:description"
@@ -30,7 +30,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta
       name="twitter:title"
-      content="Confluon — how it is built in Rust, WebGPU, and Web Audio"
+      content="Confluon - how it is built in Rust, WebGPU, and Web Audio"
     />
     <meta
       name="twitter:description"
@@ -132,7 +132,7 @@
           dependency in Rust.
         </p>
         <figure class="code">
-          <figcaption><span class="lang">rust</span><span>src/lib.rs — the public engine boundary</span></figcaption>
+          <figcaption><span class="lang">rust</span><span>src/lib.rs - the public engine boundary</span></figcaption>
           <pre><code><span>#[wasm_bindgen]</span>
 pub struct Engine {
     simulation: Simulation,
@@ -162,7 +162,7 @@ impl Engine {
           <strong>1/30-second</strong> steps:
         </p>
         <figure class="code">
-          <figcaption><span class="lang">js</span><span>web/app.js — fixed-step frame coordination, abridged</span></figcaption>
+          <figcaption><span class="lang">js</span><span>web/app.js - fixed-step frame coordination, abridged</span></figcaption>
           <pre><code>accumulator = Math.min(
   accumulator + elapsed * settings.flow,
   FIXED_STEP * MAX_CATCH_UP_STEPS,
@@ -291,8 +291,8 @@ audio.update(metrics, engine.formations());</code></pre>
       <section>
         <h2><span class="num" aria-hidden="true">07</span>The Canvas fallback</h2>
         <p>
-          WebGPU is preferred, but it is not assumed. If no adapter is available—or if
-          <code>?renderer=canvas</code> is present—the app uses Canvas 2D. Cached radial sprites
+          WebGPU is preferred, but it is not assumed. If no adapter is available - or if
+          <code>?renderer=canvas</code> is present - the app uses Canvas 2D. Cached radial sprites
           avoid rebuilding thousands of gradients every frame, a second canvas accumulates
           trails, and additive compositing keeps the field luminous.
         </p>
@@ -404,7 +404,7 @@ audio.update(metrics, engine.formations());</code></pre>
           <li>
             <cite>Confluon source.</cite>
             <a href="https://github.com/tre-systems/confluon">github.com/tre-systems/confluon</a>
-            — simulation, renderer, audio graph, tests, and production tooling.
+            - simulation, renderer, audio graph, tests, and production tooling.
           </li>
         </ol>
       </section>
