@@ -838,7 +838,7 @@ mod tests {
         for _ in 0..600 {
             simulation.step(1.0 / 90.0, 0.2, -0.4, 0.0, 0.0, false);
         }
-        for record in simulation.snapshot().chunks_exact(SNAPSHOT_STRIDE) {
+        for record in simulation.snapshot().as_chunks::<SNAPSHOT_STRIDE>().0 {
             assert!(record.iter().all(|value| value.is_finite()));
             assert!((-1.0..=1.0).contains(&record[0]));
             assert!((-1.0..=1.0).contains(&record[1]));
@@ -858,7 +858,9 @@ mod tests {
         }
         let snapshot = simulation.snapshot();
         let occupied: HashSet<_> = snapshot
-            .chunks_exact(4)
+            .as_chunks::<SNAPSHOT_STRIDE>()
+            .0
+            .iter()
             .map(|record| {
                 (
                     (record[0] * 100.0).round() as i32,
@@ -895,7 +897,9 @@ mod tests {
         let snapshot = simulation.snapshot();
         let species = snapshot[before * SNAPSHOT_STRIDE + 2].floor();
         assert!(snapshot[before * SNAPSHOT_STRIDE..]
-            .chunks_exact(SNAPSHOT_STRIDE)
+            .as_chunks::<SNAPSHOT_STRIDE>()
+            .0
+            .iter()
             .all(|record| record[2].floor() == species));
     }
 
@@ -967,7 +971,7 @@ mod tests {
     fn initial_field_contains_all_populations() {
         let simulation = Simulation::new(5, 72);
         let mut present = [false; SPECIES_COUNT];
-        for record in simulation.snapshot().chunks_exact(SNAPSHOT_STRIDE) {
+        for record in simulation.snapshot().as_chunks::<SNAPSHOT_STRIDE>().0 {
             present[record[2].floor() as usize] = true;
         }
         assert!(present.into_iter().all(|value| value));
@@ -984,7 +988,7 @@ mod tests {
         assert_eq!(formations.len() % FORMATION_STRIDE, 0);
         assert!(formations.len() <= MAX_FORMATION_VOICES * FORMATION_STRIDE);
         let mut previous_share = f32::INFINITY;
-        for record in formations.chunks_exact(FORMATION_STRIDE) {
+        for record in formations.as_chunks::<FORMATION_STRIDE>().0 {
             assert!((-1.0..=1.0).contains(&record[0]));
             assert!((-1.0..=1.0).contains(&record[1]));
             assert!(record[2] > 0.0 && record[2] <= 1.0);
