@@ -67,7 +67,6 @@ const elements = {
   memoryLabel: document.querySelector("#memory-label"),
   toneLabel: document.querySelector("#tone-label"),
   gestureModes: Array.from(document.querySelectorAll("[data-gesture]")),
-  standaloneLink: document.querySelector("#standalone-link"),
   runtimeStatus: document.querySelector("#runtime-status"),
 };
 
@@ -151,7 +150,6 @@ async function recoverFromRendererLoss(info) {
 function configureDistribution() {
   if (DISTRIBUTION !== "itch") return;
   document.documentElement.dataset.distribution = "itch";
-  elements.standaloneLink.href = campaignUrl("/");
   for (const link of document.querySelectorAll(".article-link")) {
     link.href = campaignUrl(link.getAttribute("href"));
     link.target = "_blank";

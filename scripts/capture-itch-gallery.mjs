@@ -57,7 +57,7 @@ try {
     await page.waitForFunction(() => Boolean(window.confluon), null, { timeout: 30_000 });
     await page.waitForTimeout(7_000);
     await page.addStyleTag({
-      content: ".controls,.standalone-link,.pwa-update{display:none!important}",
+      content: ".controls,.pwa-update{display:none!important}",
     });
     const renderer = await page.evaluate(() => window.confluon.renderer());
     const path = join(outputDir, score.file);

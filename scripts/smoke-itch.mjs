@@ -50,9 +50,7 @@ try {
       renderer: window.confluon.renderer(),
       particles: window.confluon.particleCount(),
       title: document.title,
-      standaloneVisible: getComputedStyle(document.querySelector("#standalone-link")).display,
-      standaloneHref: document.querySelector("#standalone-link").href,
-      standaloneTarget: document.querySelector("#standalone-link").target,
+      standaloneLink: Boolean(document.querySelector("#standalone-link")),
       docLinks: Array.from(document.querySelectorAll(".article-link"), (link) => link.href),
       rootRelativeResources: Array.from(document.querySelectorAll("[src], [href]"))
         .map((element) => element.getAttribute("src") || element.getAttribute("href"))
@@ -76,9 +74,7 @@ try {
     throw new Error(`itch runtime contract failed: ${JSON.stringify(initial)}`);
   }
   if (
-    initial.standaloneVisible !== "flex" ||
-    initial.standaloneTarget !== "_blank" ||
-    !hasCampaign(initial.standaloneHref) ||
+    initial.standaloneLink ||
     initial.docLinks.length !== 4 ||
     !initial.docLinks.every(hasCampaign)
   ) {
@@ -123,7 +119,6 @@ try {
   });
   const mobile = await frame.evaluate(() => {
     const rect = document.querySelector("#field").getBoundingClientRect();
-    const linkRect = document.querySelector("#standalone-link").getBoundingClientRect();
     return {
       gaps: {
         top: rect.top,
@@ -131,17 +126,9 @@ try {
         right: window.innerWidth - rect.right,
         bottom: window.innerHeight - rect.bottom,
       },
-      standaloneInsideViewport:
-        linkRect.left >= 0 &&
-        linkRect.top >= 0 &&
-        linkRect.right <= window.innerWidth &&
-        linkRect.bottom <= window.innerHeight,
     };
   });
-  if (
-    Object.values(mobile.gaps).some((gap) => Math.abs(gap) > 1) ||
-    !mobile.standaloneInsideViewport
-  ) {
+  if (Object.values(mobile.gaps).some((gap) => Math.abs(gap) > 1)) {
     throw new Error(`mobile itch embed failed: ${JSON.stringify(mobile)}`);
   }
 
@@ -149,7 +136,7 @@ try {
     throw new Error(`browser runtime errors:\n${runtimeErrors.map((item) => `- ${item}`).join("\n")}`);
   }
   console.log(
-    "smoke-itch: cross-origin iframe, relative assets/WASM, Canvas, Web Audio, featured scores, acquisition links, and responsive viewport verified",
+    "smoke-itch: cross-origin iframe, relative assets/WASM, Canvas, Web Audio, featured scores, article campaign links, button-free field, and responsive viewport verified",
   );
 } finally {
   await browser?.close();

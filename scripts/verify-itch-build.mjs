@@ -31,7 +31,6 @@ const index = readText(join(buildDir, "index.html"));
 for (const token of [
   'data-distribution="itch"',
   "<title>Confluon — Field Current</title>",
-  'id="standalone-link"',
   'src="./assets/',
   'href="./assets/',
 ]) {
@@ -41,6 +40,7 @@ for (const token of [
   "runtime-config.js",
   "telemetry.js",
   "pwa.js",
+  'id="standalone-link"',
   'rel="manifest"',
   'src="/',
   'href="/',

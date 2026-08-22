@@ -115,7 +115,7 @@ or unrelated badges.
 - Confirm the first trusted gesture starts Web Audio.
 - Select all three featured fields and change at least one performance control.
 - Confirm the URL remains inside itch.io's uploaded project path.
-- Open the standalone CTA and one article link; confirm the three campaign parameters.
+- Open the listing CTA and one article link; confirm the three campaign parameters.
 - Check desktop and narrow mobile layouts.
 - Confirm the project remains Draft after every edit and preview.
 - Publish only after explicit human approval.
