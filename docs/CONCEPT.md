@@ -23,9 +23,9 @@ without a step grid.
 
 ## Musical contract
 
-The piece does not turn every particle into an oscillator. That produces a diagram,
-not a composition. Instead, the engine reduces the swarm into a small set of musical
-signals:
+The engine reduces the swarm to seven collective metrics and up to eight formation
+summaries. Those signals expose changes in structure and motion without assigning
+2,000 oscillators to individual particles:
 
 - local field density controls brightness and noise colour;
 - mean particle energy shapes the resonator spectrum;
@@ -73,7 +73,6 @@ The visual image and the audio mix read the same deterministic simulation snapsh
 - Life sets the particle population, from a sparse 600 to a teeming 4,096.
 - Level changes playback and capture gain without altering the swarm.
 
-The settings and selected gesture are encoded in the URL with the seed. They are
-therefore part of a reproducible performance state rather than hidden preferences.
-Featured fields are named starting scores built only from those public parameters;
-selecting one replaces the live seed and settings without introducing hidden state.
+The seed, settings, and selected gesture together define the URL-backed starting
+state. Featured fields use only those public parameters; selecting one replaces the
+live seed and settings without introducing another state layer.

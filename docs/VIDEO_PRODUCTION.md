@@ -1,9 +1,8 @@
 # Confluon Video Production
 
 The local video pipeline turns a deterministic Confluon seed and its performance
-settings into synchronized, share-ready video. It records the WebGPU canvas and the
-post-limiter Web Audio master on one browser clock, then verifies every output with
-`ffprobe`.
+settings into synchronized video. It records the WebGPU canvas and the post-limiter
+Web Audio master on one browser clock, then verifies every output with `ffprobe`.
 
 ## Quick start
 
@@ -47,14 +46,13 @@ four 30-second formats take roughly two minutes to capture, plus encoding time.
 
 ## Containers and codecs
 
-MP4 is the default because H.264 video with AAC audio has the broadest sharing
-compatibility:
+MP4 is the default because H.264 video with AAC audio has broad playback support:
 
 ```sh
 npm run video -- --seed 42 --duration 20 --containers mp4
 ```
 
-Create both a shareable MP4 and a high-quality VP9/Opus WebM:
+Create both an H.264/AAC MP4 and a high-quality VP9/Opus WebM:
 
 ```sh
 npm run video -- \
@@ -121,8 +119,8 @@ and manifest with release masters.
 
 `--silent` omits audio. `--keep-source` retains the browser-recorded WebM before
 transcoding. Forks can use `--canonical-url` so the manifest points to their public
-instrument rather than confluon.com. `--no-build` is only safe when `dist/` already
-represents the source revision you intend to render.
+instrument rather than confluon.com. `--no-build` is only safe when `dist/` was built
+from the source revision you intend to render.
 
 ## Requirements and limits
 

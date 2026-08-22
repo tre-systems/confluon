@@ -1,8 +1,8 @@
 # itch.io launch package
 
-This is the publication-ready specification for Confluon's first low-traffic
-growth experiment. The repository build creates the HTML5 archive and listing
-artwork under `output/itch/`; generated files remain untracked.
+This document defines Confluon's first itch.io traffic experiment. The repository
+build creates the HTML5 archive and listing artwork under `output/itch/`; generated
+files remain untracked.
 
 ## Project metadata
 
@@ -14,7 +14,7 @@ artwork under `output/itch/`; generated files remain untracked.
 | Classification | Tool |
 | Release status | Released |
 | Pricing | No payments |
-| Short description | A deterministic audiovisual swarm instrument—shape the field and hear the swarm respond. |
+| Short description | Shape a deterministic particle swarm and hear it respond. |
 | Upload | `output/itch/confluon-html5.zip` |
 | Embed | Click to launch in fullscreen; click to play enabled |
 | Inputs | Keyboard, mouse, touchscreen |
@@ -46,14 +46,13 @@ self-contained deterministic simulation and does not use a trained model.
 
 ### A field you can hear
 
-Three particle populations attract, avoid, crowd, and flow. The same live system
-generates the image and the music—nothing is sequenced, and the visuals are not
-simply reacting to a soundtrack.
+Three particle populations attract, avoid, crowd, and flow. On each display frame,
+the renderer and Web Audio instrument read the same particle state.
 
 **[Launch Field Current →](https://confluon.com/?utm_source=itchio&utm_medium=referral&utm_campaign=field-current)**
 
-Run Confluon here on itch.io, or open Field Current in its own full-screen browser
-tab. Sound begins with your first click, touch, key press, or wheel gesture.
+Play Confluon here on itch.io, or open it in a full-screen browser tab. Sound begins
+with your first click, touch, key press, or wheel gesture.
 
 ### Play the field
 
@@ -66,8 +65,8 @@ tab. Sound begins with your first click, touch, key press, or wheel gesture.
 Open the control at the top left to adjust the ecology, motion, visuals, and sound.
 Start with **Still Choir**, **Tidal Assembly**, or **Ember Rift**.
 
-Built with a deterministic Rust/WASM simulation, WebGPU visuals with a Canvas
-fallback, and sample-free Web Audio. Everything runs locally in your browser.
+A deterministic Rust/WASM engine drives WebGPU visuals with a Canvas fallback and a
+sample-free Web Audio graph. It all runs locally in your browser.
 
 [How the field works](https://confluon.com/field?utm_source=itchio&utm_medium=referral&utm_campaign=field-current) ·
 [How it becomes sound](https://confluon.com/sound?utm_source=itchio&utm_medium=referral&utm_campaign=field-current) ·

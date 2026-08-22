@@ -1,14 +1,14 @@
 # Confluon
 
-Confluon is an original generative audiovisual instrument. It brings three
-deterministic particle populations together to compose long-form electronic music.
-Each population forms its own structures while cyclic attraction and avoidance pull
-them into encounters. Local crowding excites resonant voices, coherent movement opens
-a shared drone, and changes in collective energy produce strikes and transitions.
+Confluon is a generative audiovisual instrument built from three deterministic
+particle populations. Each population forms its own structures while cyclic
+attraction and avoidance pull them into encounters. Local crowding excites resonant
+voices, coherent movement opens a shared drone, and changes in collective energy
+produce strikes and transitions.
 
-Its deterministic Rust/WASM simulation drives both WebGPU visuals and Web Audio
-sound. There is no sequencer and no separate audio-reactive animation: the image
-and music are two views of one evolving state.
+A Rust/WASM simulation owns the evolving particle state. On each display frame,
+WebGPU renders that state while Web Audio maps its metrics and formations into sound.
+The instrument has no sequencer or separate soundtrack.
 
 **Live:** [confluon.com](https://confluon.com/)
 
@@ -108,7 +108,7 @@ ignored by git.
 
 ## Produce video
 
-Create a synchronized, share-ready video from a seed:
+Create synchronized video from a seed:
 
 ```sh
 npm run video -- --seed 12345 --duration 30
@@ -144,7 +144,7 @@ never deploy. A manual production deployment can also be started from the reposi
 Actions page. Local deployment is available to an authenticated operator with
 `npm run deploy`. The former `confluon.tre.systems` and `geno-5.tre.systems`
 hostnames, plus `www.confluon.com`, permanently redirect to the canonical domain
-while preserving paths, query parameters, and shared seeds.
+while preserving paths and query parameters, including seed and performance settings.
 
 Production releases can provide these GitHub Actions secrets:
 
@@ -178,9 +178,9 @@ See [Privacy](https://confluon.com/privacy) for the user-facing data boundary.
 - `G`, `O`, `D`: select Gather, Orbit, or Divide.
 
 Append `?seed=12345` to the URL to start from a specific field.
-Changing a performance setting records the complete configuration in the URL, so a
-seed and its ecology, flow, look, tone, and selected gesture can be shared together.
-Copy the browser address to share that complete starting state.
+Changing a performance setting writes the seed, ecology, flow, look, tone, and
+selected gesture into the URL. For the same engine revision, that address reproduces
+the starting state; an interactive take also requires its timed gesture stream.
 
 ## Design documents
 
@@ -197,7 +197,7 @@ Copy the browser address to share that complete starting state.
 - [Research basis](docs/RESEARCH.md) — what was learned from the Particle Lenia
   reference and what this implementation changes.
 - [Video production](docs/VIDEO_PRODUCTION.md) — reproducible local capture and
-  share-format exports.
+  multiple aspect-ratio exports.
 
 ## Contributing
 
