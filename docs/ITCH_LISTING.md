@@ -14,7 +14,7 @@ artwork under `output/itch/`; generated files remain untracked.
 | Classification | Tool |
 | Release status | Released |
 | Pricing | No payments |
-| Short description | A deterministic audiovisual swarm instrument—shape the field, hear it respond, and share the score. |
+| Short description | A deterministic audiovisual swarm instrument—shape the field and hear the swarm respond. |
 | Upload | `output/itch/confluon-html5.zip` |
 | Embed | Click to launch in fullscreen; click to play enabled |
 | Inputs | Keyboard, mouse, touchscreen |
@@ -44,36 +44,30 @@ self-contained deterministic simulation and does not use a trained model.
 
 ## Page copy
 
-### A deterministic field you can hear
+### A field you can hear
 
-Three particle populations negotiate attraction, avoidance, crowding, and flow.
-Their shared state drives both the image and the music: there is no sequencer and no
-separate audio-reactive animation.
+Three particle populations attract, avoid, crowd, and flow. The same live system
+generates the image and the music—nothing is sequenced, and the visuals are not
+simply reacting to a soundtrack.
 
 **[Launch Field Current →](https://confluon.com/?utm_source=itchio&utm_medium=referral&utm_campaign=field-current)**
 
 Run Confluon here on itch.io, or open Field Current in its own full-screen browser
 tab. Sound begins with your first click, touch, key press, or wheel gesture.
 
-### Shape the field
+### Play the field
 
-- Move through the field and nearby organisms notice you.
+- Move across the field; nearby organisms notice and respond.
 - Press and drag to Gather, Orbit, or Divide matter.
 - Double-click or double-tap to seed a new colony.
 - Hold **S** to draw the system toward a quieter common state.
 - Press **R** to reset and **Space** to pause.
 
-Open the discreet control at the top left to tune ecology, flow, touch, halo,
-memory, tone, population, and level. Try **Still Choir**, **Tidal Assembly**, and
-**Ember Rift** as contrasting starting scores.
+Open the control at the top left to adjust the ecology, motion, visuals, and sound.
+Start with **Still Choir**, **Tidal Assembly**, or **Ember Rift**.
 
-### Share the score
-
-Every seed and performance setting is encoded in the URL. Copy the address after
-shaping a field and someone else can open the same deterministic starting state.
-
-The Rust/WASM simulation drives WebGPU visuals with a Canvas fallback and a
-sample-free Web Audio instrument. Everything runs locally in the browser.
+Built with a deterministic Rust/WASM simulation, WebGPU visuals with a Canvas
+fallback, and sample-free Web Audio. Everything runs locally in your browser.
 
 [How the field works](https://confluon.com/field?utm_source=itchio&utm_medium=referral&utm_campaign=field-current) ·
 [How it becomes sound](https://confluon.com/sound?utm_source=itchio&utm_medium=referral&utm_campaign=field-current) ·
@@ -81,7 +75,6 @@ sample-free Web Audio instrument. Everything runs locally in the browser.
 [Privacy](https://confluon.com/privacy?utm_source=itchio&utm_medium=referral&utm_campaign=field-current)
 
 Confluon is an original instrument informed by the published Particle Lenia model.
-It includes no upstream code, saved creatures, images, or audio assets.
 
 ## Listing artwork and theme
 
