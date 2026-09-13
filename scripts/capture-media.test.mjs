@@ -20,6 +20,11 @@ test("lossless mode rejects incompatible output requests", () => {
   assert.doesNotThrow(() => validateLosslessOptions({ ...options, losslessAudio: false, silent: true }));
 });
 
+test("source-only retains PCM without requiring a delivery encode", () => {
+  assert.doesNotThrow(() => validateLosslessOptions({ ...options, sourceOnly: true, containers: [] }));
+  assert.throws(() => validateLosslessOptions({ ...options, losslessAudio: false, sourceOnly: true }), /requires/);
+});
+
 test("PCM master validation accepts stereo float without changing its sample rate", () => {
   assert.equal(assertPcmMaster(probe(), 30).sample_rate, "48000");
 });

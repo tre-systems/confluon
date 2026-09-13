@@ -9,7 +9,8 @@ export function recorderTypes(losslessAudio) {
       "video/webm;codecs=vp9", "video/webm"];
 }
 
-export function validateLosslessOptions({ losslessAudio, silent, containers }) {
+export function validateLosslessOptions({ losslessAudio, silent, containers, sourceOnly = false }) {
+  if (sourceOnly && !losslessAudio) throw new Error("--source-only requires --lossless-audio");
   if (!losslessAudio) return;
   if (silent) throw new Error("--lossless-audio cannot be combined with --silent");
   if (containers.some((container) => container !== "mp4")) {

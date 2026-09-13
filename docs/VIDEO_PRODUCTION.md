@@ -30,7 +30,8 @@ npm run video -- --seed 153812312 --duration 15 --formats landscape \
 ```
 
 Qualify a short test before increasing duration. `--lossless-audio` requires MP4
-output and cannot be combined with `--silent`. It selects VP9/PCM or VP8/PCM from
+delivery (or `--source-only`) and cannot be combined with `--silent`. It selects
+VP9/PCM or VP8/PCM from
 the browser's supported recorder types and fails if neither is available. It does
 not fall back to Opus or change the synthesis graph.
 
@@ -40,6 +41,11 @@ stream copy, and produces the H.264/AAC `.mp4` from the same combined source. PC
 uses Matroska rather than the restricted WebM container. The WAV retains the
 recorded sample rate and PCM format; it is an unedited source, not an approved
 release master. The MP4 remains a lossy delivery file.
+
+When the take needs editing or mastering, add `--source-only` to keep the combined
+PCM/VP9 source, WAV, preview and manifest without first encoding an unused MP4.
+Encode the finished film once from that source. `--source-only` requires
+`--lossless-audio` and cannot be combined with `--containers`.
 
 The manifest records source and WAV stream metadata, file SHA-256 hashes and a
 decoded float32 audio hash that must match between source and WAV. Validation

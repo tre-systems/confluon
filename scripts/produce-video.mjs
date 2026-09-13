@@ -52,6 +52,7 @@ Options:
   --silent               omit the generated audio track
   --keep-source          retain the browser-recorded source WebM
   --lossless-audio       capture PCM with video; retain Matroska source and exact WAV (MP4 only)
+  --source-only          with --lossless-audio, skip the unedited MP4 encode before finishing
 
 Performance URL settings:
   --ecology --flow --touch --halo --memory --tone --level --life --mode
@@ -701,7 +702,12 @@ const duration = boundedNumber("--duration", 30, 0.5, 86_400);
 const fps = boundedNumber("--fps", 60, 1, 120, true);
 const quality = boundedNumber("--quality", 18, 0, 51, true);
 const formats = parseFormats(value("--formats", "landscape"));
-const containers = parseContainers(value("--containers", "mp4"));
+const sourceOnly = flag("--source-only");
+if (sourceOnly && value("--containers") !== null) {
+  throw new Error("--source-only cannot be combined with --containers");
+}
+const containers = sourceOnly ? [] : parseContainers(value("--containers", "mp4"));
+validateLosslessOptions({ losslessAudio: flag("--lossless-audio"), silent: flag("--silent"), containers, sourceOnly });
 const outDir = resolve(value("--out-dir", "renders/videos"));
 const canonicalUrl = parseCanonicalUrl(
   value("--canonical-url", "https://confluon.com/"),
@@ -739,6 +745,7 @@ const options = {
   headless: !flag("--no-headless"),
   keepSource: flag("--keep-source"),
   losslessAudio: flag("--lossless-audio"),
+  sourceOnly,
   label,
   outDir,
   quality,
@@ -746,8 +753,6 @@ const options = {
   silent: flag("--silent"),
   sourceRevision: sourceRevision(),
 };
-
-validateLosslessOptions(options);
 
 mkdirSync(outDir, { recursive: true });
 const { server: staticServer, url } = await startStaticServer("dist", {
