@@ -371,6 +371,14 @@ Each output receives a preview and JSON manifest with source revision, environme
 score, frame cadence, duration, and probed stream metadata. Renders and local account
 details are never repository inputs.
 
+The optional `--lossless-audio` path uses PCM in that same recorder instead of Opus;
+it leaves the audio graph and simulation untouched. `scripts/capture-media.mjs`
+owns codec policy, PCM validation, exact WAV extraction and hashes. It requires
+explicit PCM support, retains a Matroska source, compares decoded source/WAV audio
+samples and records the audio/video start offset. The default delivery path remains
+Opus-to-AAC. Neither path makes a recording an approved master. See
+[video production](VIDEO_PRODUCTION.md#lossless-audio-source) for verification limits.
+
 Capture and browser smoke tools share `scripts/static-server.mjs`. Keep local
 artifact routing, MIME types, root-path validation, and cache policy in that adapter
 rather than maintaining test-specific HTTP servers.

@@ -19,6 +19,7 @@ import { join, resolve, sep } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { startStaticServer } from "./static-server.mjs";
 import { flag, numberValue, run, value } from "./video-cli.mjs";
+import { extractLosslessAudio, hashFile, recorderTypes, validateLosslessOptions } from "./capture-media.mjs";
 
 const FORMAT_PRESETS = Object.freeze({
   landscape: { width: 1920, height: 1080 },
@@ -50,6 +51,7 @@ Options:
   --no-headless          show the capture browser
   --silent               omit the generated audio track
   --keep-source          retain the browser-recorded source WebM
+  --lossless-audio       capture PCM with video; retain Matroska source and exact WAV (MP4 only)
 
 Performance URL settings:
   --ecology --flow --touch --halo --memory --tone --level --life --mode
@@ -421,7 +423,13 @@ async function recordFormat(options, format, baseUrl) {
   const artifactName = `${options.label}-${format.name}`;
   const previewPath = join(options.outDir, `${artifactName}-preview.png`);
   const manifestPath = join(options.outDir, `${artifactName}.json`);
-  const sourcePath = join(options.outDir, `${artifactName}-source.webm`);
+  const sourcePath = join(options.outDir, `${artifactName}-source.${options.losslessAudio ? "mkv" : "webm"}`);
+  const wavPath = join(options.outDir, `${artifactName}.wav`);
+  const expectedPaths = [previewPath, manifestPath, sourcePath, wavPath,
+    ...options.containers.map((container) => join(options.outDir, `${artifactName}.${container}`))];
+  if (expectedPaths.some((path) => existsSync(path))) {
+    throw new Error(`Output already exists for ${artifactName}; choose a new --label or --out-dir`);
+  }
   const temporary = mkdtempSync(join(tmpdir(), "confluon-video-"));
   const chunks = join(temporary, "chunks");
   const profile = join(temporary, "profile");
@@ -454,6 +462,7 @@ async function recordFormat(options, format, baseUrl) {
   });
   let page;
   let browser;
+  let completed = false;
   try {
     const version = await waitForJson(`http://127.0.0.1:${debugPort}/json/version`);
     browser = new Cdp(version.webSocketDebuggerUrl);
@@ -528,13 +537,9 @@ async function recordFormat(options, format, baseUrl) {
         if (!${options.silent}) {
           for (const track of audio.getAudioTracks()) video.addTrack(track);
         }
-        const mimeType = [
-          "video/webm;codecs=vp9,opus",
-          "video/webm;codecs=vp8,opus",
-          "video/webm;codecs=vp9",
-          "video/webm"
-        ].find((candidate) => MediaRecorder.isTypeSupported(candidate));
-        if (!mimeType) throw new Error("No WebM MediaRecorder codec is available");
+        const mimeType = ${JSON.stringify(recorderTypes(options.losslessAudio))}
+          .find((candidate) => MediaRecorder.isTypeSupported(candidate));
+        if (!mimeType) throw new Error("No requested MediaRecorder codec is available; no lossy fallback is allowed in PCM mode");
         const recorder = new MediaRecorder(video, {
           mimeType,
           videoBitsPerSecond: ${options.captureBitrate}
@@ -593,9 +598,18 @@ async function recordFormat(options, format, baseUrl) {
     );
     await done;
     if (!result.chunks) throw new Error("Capture completed without any MediaRecorder chunks");
-    const chunkCount = await appendChunks(chunks, sourcePath);
+    const rawPath = options.losslessAudio ? join(temporary, "capture.mkv") : sourcePath;
+    const chunkCount = await appendChunks(chunks, rawPath);
     const artifacts = {};
     const probes = {};
+    let losslessAudio = null;
+    if (options.losslessAudio) {
+      // Chrome labels PCM recordings WebM; Matroska supports PCM and retains both streams' timestamps.
+      run("ffmpeg", ["-v", "error", "-n", "-i", rawPath, "-map", "0", "-c", "copy", sourcePath]);
+      losslessAudio = extractLosslessAudio(sourcePath, wavPath, options.duration);
+      artifacts.wav = wavPath;
+      artifacts.source = sourcePath;
+    }
 
     if (options.containers.includes("webm")) {
       const output = join(options.outDir, `${artifactName}.webm`);
@@ -635,12 +649,16 @@ async function recordFormat(options, format, baseUrl) {
       renderer: prepared.renderer,
       sourceRevision: options.sourceRevision,
       audio: !options.silent,
+      losslessAudio,
       browserMimeType: result.mimeType,
       chunks: chunkCount,
       artifacts: Object.fromEntries(
         Object.entries(artifacts).map(([key, path]) => [key, path.split(sep).at(-1)]),
       ),
       probes,
+      sha256: Object.fromEntries(await Promise.all(
+        Object.entries(artifacts).map(async ([key, path]) => [key, await hashFile(path)]),
+      )),
       preview: previewPath.split(sep).at(-1),
     };
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
@@ -657,14 +675,19 @@ async function recordFormat(options, format, baseUrl) {
       console.log(`  ${output} (${(statSync(output).size / 1_000_000).toFixed(1)} MB)`);
     }
     console.log(`  ${manifestPath}`);
+    completed = true;
   } finally {
     page?.close();
     browser?.close();
     await new Promise((resolveClose) => chunkServer.close(resolveClose));
     chrome.kill("SIGTERM");
     await Promise.race([chromeExited, delay(3000)]);
-    if (!options.keepSource) rmSync(sourcePath, { force: true });
-    rmSync(temporary, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    if (completed) {
+      if (!options.keepSource && !options.losslessAudio) rmSync(sourcePath, { force: true });
+      rmSync(temporary, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    } else {
+      console.error(`Capture failed; partial artifacts and chunks are preserved at ${temporary}`);
+    }
   }
 }
 
@@ -715,6 +738,7 @@ const options = {
   fps,
   headless: !flag("--no-headless"),
   keepSource: flag("--keep-source"),
+  losslessAudio: flag("--lossless-audio"),
   label,
   outDir,
   quality,
@@ -722,6 +746,8 @@ const options = {
   silent: flag("--silent"),
   sourceRevision: sourceRevision(),
 };
+
+validateLosslessOptions(options);
 
 mkdirSync(outDir, { recursive: true });
 const { server: staticServer, url } = await startStaticServer("dist", {

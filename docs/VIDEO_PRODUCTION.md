@@ -20,6 +20,41 @@ also writes:
 
 `renders/` is ignored by git. Renders are production artifacts, not source files.
 
+## Lossless audio source
+
+For a release candidate, capture PCM audio alongside the image:
+
+```sh
+npm run video -- --seed 153812312 --duration 15 --formats landscape \
+  --lossless-audio --label pcm-check-01
+```
+
+Qualify a short test before increasing duration. `--lossless-audio` requires MP4
+output and cannot be combined with `--silent`. It selects VP9/PCM or VP8/PCM from
+the browser's supported recorder types and fails if neither is available. It does
+not fall back to Opus or change the synthesis graph.
+
+One MediaRecorder receives the canvas and existing post-limiter audio tap. The
+helper remuxes that recording into a retained `-source.mkv`, extracts a `.wav` by
+stream copy, and produces the H.264/AAC `.mp4` from the same combined source. PCM
+uses Matroska rather than the restricted WebM container. The WAV retains the
+recorded sample rate and PCM format; it is an unedited source, not an approved
+release master. The MP4 remains a lossy delivery file.
+
+The manifest records source and WAV stream metadata, file SHA-256 hashes and a
+decoded float32 audio hash that must match between source and WAV. Validation
+requires one stereo PCM stream at 44.1 kHz or higher, duration within 150 ms of the
+request and source audio/video start timestamps within 50 ms. The WAV begins at
+its first audio sample; use the recorded start offset when aligning it separately
+to picture. These checks do not prove gap-free playback, musical quality or
+sample-accurate audiovisual synchronization. Inspect packet timing, listen through
+the take and review the film before release.
+
+Output names must be unused. Capture failures preserve partial artifacts and print
+the temporary chunk directory for diagnosis; they do not delete the failed take.
+Keep accepted masters, sources and manifests on the audio workspace and include
+them in its backup plan. Preparation does not itself create a backup or publish.
+
 ## Social formats
 
 Several output shapes can be generated in one command:
@@ -111,13 +146,14 @@ and manifest with release masters.
 --quality 18
 --silent
 --keep-source
+--lossless-audio
 --canonical-url https://example.org/
 --no-build
 --no-headless
 --chrome /path/to/Chrome
 ```
 
-`--silent` omits audio. `--keep-source` retains the browser-recorded WebM before
+`--silent` omits audio. `--keep-source` retains the default browser-recorded WebM before
 transcoding. Forks can use `--canonical-url` so the manifest points to their public
 instrument rather than confluon.com. `--no-build` is only safe when `dist/` was built
 from the source revision you intend to render.

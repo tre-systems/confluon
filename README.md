@@ -132,6 +132,11 @@ resolution, frame cadence, duration, and codecs. See
 [Video production](docs/VIDEO_PRODUCTION.md) for format presets, codec choices, and
 requirements.
 
+Add `--lossless-audio` for a release-source capture: it retains PCM audio in the
+combined Matroska source and an exact WAV alongside the MP4. Test a short take
+first; [lossless capture](docs/VIDEO_PRODUCTION.md#lossless-audio-source) documents
+the checks and limits. The default social-video path uses compressed audio.
+
 ## Deployment
 
 Every passing push to `main` deploys the production build to Cloudflare Workers
