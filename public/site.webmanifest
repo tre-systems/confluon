@@ -1,7 +1,7 @@
 {
-  "name": "Confluon — audiovisual swarm instrument",
+  "name": "Confluon",
   "short_name": "Confluon",
-  "description": "A deterministic energy-driven audiovisual swarm instrument.",
+  "description": "Confluon is a living particle swarm you can play. Shape it with gestures and hear the music change as it organises.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
