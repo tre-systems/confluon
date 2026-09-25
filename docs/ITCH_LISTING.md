@@ -14,7 +14,7 @@ files remain untracked.
 | Classification | Tool |
 | Release status | Released |
 | Pricing | No payments |
-| Short description | Shape a deterministic particle swarm and hear it respond. |
+| Short description | Shape a living particle swarm and hear it respond. |
 | Upload | `output/itch/confluon-html5.zip` |
 | Embed | Click to launch in fullscreen; click to play enabled |
 | Inputs | Keyboard, mouse, touchscreen |
