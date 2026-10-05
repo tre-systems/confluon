@@ -316,7 +316,10 @@ dry + wet -> master -> high-pass -> saturator -> tone filter -> compressor
           -> safety limiter -> analyser -> output + capture tap
 ```
 
-The graph is created or resumed inside a user gesture. Continuous parameter changes
+The context is resumed inside a user gesture before rate-dependent buffers are
+generated. Frame updates receive the graph only after initialization completes;
+failed initialization closes the context and leaves audio retryable without stopping
+the visual field. Concurrent starts share one initialization. Continuous parameter changes
 use AudioParam scheduling rather than timer-driven value jumps. Metrics steer
 texture and musical density; formations retain voices by toroidal proximity; pointer
 pressure, movement, and position modulate brightness, air, and pan. Controls provide

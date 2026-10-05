@@ -30,6 +30,7 @@ export class ConfluonAudio {
   constructor(seed) {
     this.random = seededRandom(seed ^ 0x91e1_0da5);
     this.context = null;
+    this.startPromise = null;
     this.voices = [];
     this.formationVoices = [];
     this.tracked = [];
@@ -62,17 +63,51 @@ export class ConfluonAudio {
 
   async start() {
     claimPlaybackSession();
+    if (this.startPromise) return this.startPromise;
     if (this.context) {
       await this.resume();
       return;
     }
 
+    this.startPromise = this.initialize().finally(() => {
+      this.startPromise = null;
+    });
+    return this.startPromise;
+  }
+
+  async initialize() {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) throw new Error("Web Audio is not supported in this browser");
 
     const context = new AudioContextClass({ latencyHint: "interactive" });
-    this.context = context;
+    try {
+      // Resume in the gesture before generating rate-dependent buffers. WebKit
+      // can change the hardware rate as its playback session becomes active.
+      await context.resume();
+      if (context.state !== "running") throw new Error(`Audio context remained ${context.state}`);
+      this.buildGraph(context);
+      this.master.gain.setTargetAtTime(
+        this.paused ? 0.0001 : this.targetLevel(),
+        context.currentTime,
+        0.36,
+      );
+      this.nextNoteTime = context.currentTime + 0.35;
+      // Frame updates can only see a complete graph, never a half-built one.
+      this.context = context;
+    } catch (error) {
+      this.voices = [];
+      this.formationVoices = [];
+      this.tracked = [];
+      this.captureDestination = null;
+      this.analyser = null;
+      this.master = null;
+      this.nextNoteTime = Infinity;
+      await context.close().catch(() => {});
+      throw error;
+    }
+  }
 
+  buildGraph(context) {
     // Master chain: gain -> subsonic highpass -> tape saturator -> tone
     // lowpass -> glue compressor -> safety limiter -> analyser -> out.
     this.master = context.createGain();
@@ -279,15 +314,6 @@ export class ConfluonAudio {
     breathTone.gain.value = 160;
     this.breath.connect(breathTone).connect(this.masterFilter.frequency);
     this.breath.start();
-
-    await context.resume();
-    if (context.state !== "running") throw new Error(`Audio context remained ${context.state}`);
-    this.master.gain.setTargetAtTime(
-      this.paused ? 0.0001 : this.targetLevel(),
-      context.currentTime,
-      0.36,
-    );
-    this.nextNoteTime = context.currentTime + 0.35;
   }
 
   async resume() {
