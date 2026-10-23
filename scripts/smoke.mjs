@@ -275,6 +275,48 @@ try {
     throw new Error(`featured field did not load cleanly: ${JSON.stringify(featuredField)}`);
   }
 
+  const fieldScoreLabels = await page.evaluate(() => {
+    const label = () => document.querySelector("#field-score").selectedOptions[0]?.textContent.trim();
+    const setControl = (selector, value) => {
+      const control = document.querySelector(selector);
+      control.value = value;
+      control.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    const selected = label();
+    setControl("#volume", "40");
+    const afterLevel = label();
+    setControl("#tone", "20");
+    return { selected, afterLevel, afterTone: label() };
+  });
+  if (
+    fieldScoreLabels.selected !== "Ember Rift" ||
+    fieldScoreLabels.afterLevel !== "Ember Rift" ||
+    fieldScoreLabels.afterTone !== "Current"
+  ) {
+    throw new Error(`field menu did not follow the score: ${JSON.stringify(fieldScoreLabels)}`);
+  }
+
+  // Headless Chromium will not start a second WebGPU page beside the first, so the
+  // direct-link check uses Canvas; the renderer flag is not part of the score.
+  const directPage = await context.newPage();
+  watchPage(directPage, browserErrors);
+  const emberRift = await page.evaluate(
+    () => Array.from(document.querySelector("#field-score").options).find(
+      (option) => option.textContent.trim() === "Ember Rift",
+    ).value,
+  );
+  const directUrl = new URL(emberRift, baseUrl);
+  directUrl.searchParams.set("renderer", "canvas");
+  await directPage.goto(directUrl.href, { waitUntil: "domcontentloaded" });
+  await directPage.waitForFunction(() => Boolean(window.confluon), null, { timeout: 30_000 });
+  const directScore = await directPage.evaluate(
+    () => document.querySelector("#field-score").selectedOptions[0]?.textContent.trim(),
+  );
+  await directPage.close();
+  if (directScore !== "Ember Rift") {
+    throw new Error(`opening the Ember Rift URL showed ${directScore}`);
+  }
+
   const manifestResponse = await context.request.get(new URL("/site.webmanifest", baseUrl).href);
   if (!manifestResponse.ok()) throw new Error(`manifest returned ${manifestResponse.status()}`);
   const manifest = await manifestResponse.json();

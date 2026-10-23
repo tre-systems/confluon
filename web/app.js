@@ -13,6 +13,7 @@ import {
   isGestureMode,
   parsePerformanceSettings,
   parseSeed,
+  scoreSignature,
 } from "./performance-state.js";
 import {
   METRIC_FIELD,
@@ -458,6 +459,21 @@ function applyPerformanceSettings(updateUrl) {
   audio.setPerformance(settings);
   setGestureMode(settings.mode, false);
   if (updateUrl) syncSettingsUrl();
+  syncFieldScore();
+}
+
+function syncFieldScore() {
+  const current = scoreSignature(seed, settings);
+  const featured = Array.from(elements.fieldScore.options).find((option) => {
+    if (!option.value) return false;
+    const url = new URL(option.value, window.location.href);
+    const featuredSeed = parseSeed(url);
+    return (
+      featuredSeed !== null &&
+      scoreSignature(featuredSeed, parsePerformanceSettings(url)) === current
+    );
+  });
+  elements.fieldScore.value = featured?.value ?? "";
 }
 
 function updateSettingLabels() {
@@ -843,4 +859,5 @@ function readSeed() {
 function syncSettingsUrl() {
   const url = encodePerformanceState(window.location.href, seed, settings);
   window.history.replaceState({}, "", url);
+  syncFieldScore();
 }

@@ -6,6 +6,7 @@ import {
   formatSeed,
   parsePerformanceSettings,
   parseSeed,
+  scoreSignature,
 } from "../web/performance-state.js";
 
 test("performance settings have one canonical set of defaults", () => {
@@ -74,4 +75,17 @@ test("seed and population helpers enforce public contract bounds", () => {
   assert.equal(clampPopulation(Number.NaN), 2000);
   assert.equal(clampPopulation(599.5), 600);
   assert.equal(clampPopulation(4096.4), 4096);
+});
+
+test("score signatures ignore level but not the field's settings", () => {
+  const emberRift =
+    "/?seed=153812312&ecology=145&flow=118&touch=118&halo=95&memory=36&tone=72&level=72&life=2600&mode=divide";
+  const signature = (source) =>
+    scoreSignature(parseSeed(source), parsePerformanceSettings(source));
+
+  assert.equal(signature(emberRift), signature(emberRift.replace("level=72", "level=30")));
+  assert.equal(signature(emberRift), signature(`${emberRift}&renderer=canvas`));
+  assert.notEqual(signature(emberRift), signature(emberRift.replace("tone=72", "tone=73")));
+  assert.notEqual(signature(emberRift), signature(emberRift.replace("seed=153812312", "seed=153812313")));
+  assert.notEqual(signature(emberRift), signature(emberRift.replace("mode=divide", "mode=orbit")));
 });

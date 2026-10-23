@@ -77,4 +77,7 @@ The visual image and the audio mix read the same deterministic simulation snapsh
 
 The seed, settings, and selected gesture together define the URL-backed starting
 state. Featured fields use only those public parameters; selecting one replaces the
-live seed and settings without introducing another state layer.
+live seed and settings without introducing another state layer. The field menu names a
+featured field whenever the current seed and settings match it, including when the
+page opens from that field's URL. Level is ignored because it changes loudness, not
+the field.

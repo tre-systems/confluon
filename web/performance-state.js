@@ -57,6 +57,14 @@ export function encodePerformanceState(source, seed, settings) {
   return url;
 }
 
+// Two scores match when they share a seed and every setting except level, which
+// changes loudness rather than the field.
+export function scoreSignature(seed, settings) {
+  const url = encodePerformanceState(URL_BASE, seed, settings);
+  url.searchParams.delete("level");
+  return url.search;
+}
+
 export function parseSeed(source) {
   const value = Number(asUrl(source).searchParams.get("seed"));
   if (!Number.isInteger(value) || value <= 0 || value > 0xffff_ffff) return null;
