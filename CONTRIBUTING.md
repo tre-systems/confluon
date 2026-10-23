@@ -31,7 +31,7 @@ npm run check
 npm run audit
 ```
 
-For changes to browser behavior, also install Chromium once and run the production
+For changes to browser behaviour, also install Chromium once and run the production
 smoke test:
 
 ```sh
@@ -56,4 +56,4 @@ projection, and bounded-work patterns in
 The architecture and research notes in `docs/` describe the complete boundaries.
 
 By submitting a contribution, you agree that it is licensed under the project's
-Apache-2.0 license.
+Apache-2.0 licence.

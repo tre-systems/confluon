@@ -12,9 +12,10 @@ The instrument has no sequencer or separate soundtrack.
 
 **Live:** [confluon.com](https://confluon.com/)
 
-**Film:** [*Confluon* by Multivibrator](https://www.youtube.com/watch?v=f6xhDhJLdW0),
-a ten-minute piece made with the instrument
-([Bandcamp](https://multivibrator.bandcamp.com/track/confluon)).
+**Film:** [*Confluon* by Multivibrator](https://www.youtube.com/watch?v=f6xhDhJLdW0)
+is the instrument's Ember Rift field, recorded in one ten-minute take with no gestures
+([Bandcamp](https://multivibrator.bandcamp.com/track/confluon)). Open
+[the same starting field](https://confluon.com/?seed=153812312&ecology=145&flow=118&touch=118&halo=95&memory=36&tone=72&level=72&life=2600&mode=divide).
 
 ![Confluon's cyan, ember, and violet organisms forming in a luminous field](screenshot.png)
 
@@ -77,25 +78,12 @@ npm run check
 ```
 
 Exercise the built instrument in Chromium, including audio startup, PWA metadata,
-privacy, and 404 behavior, with:
+privacy, and 404 behaviour, with:
 
 ```sh
 npx playwright install chromium
 npm run smoke
 ```
-
-Prepare and verify the self-contained itch.io HTML5 package and listing artwork with:
-
-```sh
-npm run build:itch
-npm run capture:itch
-npm run smoke:itch
-```
-
-The archive, checksummed manifest, cover, page background, and screenshot are written
-under the ignored `output/itch/` directory. The exact listing copy, metadata, theme,
-QA sequence, and seven-day measurement contract live in
-[`docs/ITCH_LISTING.md`](docs/ITCH_LISTING.md).
 
 ## Project layout
 
@@ -103,7 +91,7 @@ QA sequence, and seven-day measurement contract live in
 - `web/` contains the browser composition root, renderers, audio graph, score codec,
   and viewport projection.
 - `public/` contains the article pages, PWA shell, icons, and social preview.
-- `scripts/` contains verification, build finalization, browser smoke tests, and
+- `scripts/` contains verification, build finalisation, browser smoke tests, and
   video production.
 - `docs/` records the creative, research, architecture, and capture contracts.
 
@@ -112,7 +100,7 @@ ignored by git.
 
 ## Produce video
 
-Create synchronized video from a seed:
+Create synchronised video from a seed:
 
 ```sh
 npm run video -- --seed 12345 --duration 30
@@ -162,7 +150,7 @@ Production releases can provide these GitHub Actions secrets:
   private source-map upload.
 - `CLOUDFLARE_WEB_ANALYTICS_TOKEN` activates Cloudflare's cookieless performance
   beacon.
-- `CLOUDFLARE_DEPLOY_API_TOKEN` authorizes deployment. The workflow passes it to
+- `CLOUDFLARE_DEPLOY_API_TOKEN` authorises deployment. The workflow passes it to
   Wrangler as `CLOUDFLARE_API_TOKEN` only in the deploy step.
 
 Without the Sentry or analytics values the corresponding browser integration is a
@@ -170,7 +158,9 @@ no-op; Feedback stays hidden rather than presenting a dead control. Every deploy
 candidate is dependency-audited, built, artifact-verified, and browser-smoked before
 release, then the public hostname is smoked again after deployment.
 
-See [Privacy](https://confluon.com/privacy) for the user-facing data boundary.
+See [Privacy](https://confluon.com/privacy) for the user-facing data boundary. That page
+states that Sentry does not store client IP addresses, so keep **Prevent Storing of IP
+Addresses** enabled in the Sentry project's Security & Privacy settings.
 
 ## Performance map
 
@@ -195,19 +185,19 @@ also requires its timed gesture stream.
 
 ## Design documents
 
-- [The field](https://confluon.com/field) — how the three-population
+- [The field](https://confluon.com/field): how the three-population
   energy system forms, senses, and responds.
-- [The sound](https://confluon.com/sound) — how collective state becomes
+- [The sound](https://confluon.com/sound): how collective state becomes
   harmony, texture, space, and gesture.
-- [How it is built](https://confluon.com/engineering) — the Rust/WASM,
+- [How it is built](https://confluon.com/engineering): the Rust/WASM,
   WebGPU, Web Audio, reproducibility, and production architecture.
-- [Privacy](https://confluon.com/privacy) — what remains local and how
+- [Privacy](https://confluon.com/privacy): what remains local and how
   optional diagnostics and feedback are handled.
-- [Concept](docs/CONCEPT.md) — creative axes and musical mapping.
-- [Architecture](docs/ARCHITECTURE.md) — simulation, render, and audio contracts.
-- [Research basis](docs/RESEARCH.md) — what was learned from the Particle Lenia
+- [Concept](docs/CONCEPT.md): creative axes and musical mapping.
+- [Architecture](docs/ARCHITECTURE.md): simulation, render, and audio contracts.
+- [Research basis](docs/RESEARCH.md): what was learned from the Particle Lenia
   reference and what this implementation changes.
-- [Video production](docs/VIDEO_PRODUCTION.md) — reproducible local capture and
+- [Video production](docs/VIDEO_PRODUCTION.md): reproducible local capture and
   multiple aspect-ratio exports.
 
 ## Contributing

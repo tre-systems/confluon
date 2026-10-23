@@ -1,7 +1,7 @@
 # Confluon Video Production
 
 The local video pipeline turns a deterministic Confluon seed and its performance
-settings into synchronized video. It records the WebGPU canvas and the post-limiter
+settings into synchronised video. It records the WebGPU canvas and the post-limiter
 Web Audio master on one browser clock, then verifies every output with `ffprobe`.
 
 ## Quick start
@@ -53,7 +53,7 @@ requires one stereo PCM stream at 44.1 kHz or higher, duration within 150 ms of 
 request and source audio/video start timestamps within 50 ms. The WAV begins at
 its first audio sample; use the recorded start offset when aligning it separately
 to picture. These checks do not prove gap-free playback, musical quality or
-sample-accurate audiovisual synchronization. Inspect packet timing, listen through
+sample-accurate audiovisual synchronisation. Inspect packet timing, listen through
 the take and review the film before release.
 
 Output names must be unused. Capture failures preserve partial artifacts and print

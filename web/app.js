@@ -26,12 +26,6 @@ const FIXED_STEP = 1 / 30;
 const MAX_CATCH_UP_STEPS = 2;
 const CONFLUON_API_VERSION = 1;
 const IDLE_CONTROLS_MS = 20_000;
-const DISTRIBUTION = __CONFLUON_DISTRIBUTION__;
-const ITCH_CAMPAIGN = Object.freeze({
-  utm_source: "itchio",
-  utm_medium: "referral",
-  utm_campaign: "field-current",
-});
 const SOUND_START_EVENTS = [
   "pointerdown",
   "pointerup",
@@ -69,8 +63,6 @@ const elements = {
   gestureModes: Array.from(document.querySelectorAll("[data-gesture]")),
   runtimeStatus: document.querySelector("#runtime-status"),
 };
-
-configureDistribution();
 
 const state = {
   running: true,
@@ -145,24 +137,6 @@ async function recoverFromRendererLoss(info) {
     });
     elements.runtimeStatus.textContent = "The graphics renderer could not recover.";
   }
-}
-
-function configureDistribution() {
-  if (DISTRIBUTION !== "itch") return;
-  document.documentElement.dataset.distribution = "itch";
-  for (const link of document.querySelectorAll(".article-link")) {
-    link.href = campaignUrl(link.getAttribute("href"));
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-  }
-}
-
-function campaignUrl(pathname) {
-  const url = new URL(pathname, "https://confluon.com");
-  for (const [key, value] of Object.entries(ITCH_CAMPAIGN)) {
-    url.searchParams.set(key, value);
-  }
-  return url.href;
 }
 
 function installViewportSizing() {
@@ -772,7 +746,6 @@ function togglePause() {
 function exposeDiagnostics() {
   window.confluon = Object.freeze({
     apiVersion: CONFLUON_API_VERSION,
-    distribution: DISTRIBUTION,
     simulationContractVersion: SIMULATION_CONTRACT_VERSION,
     prepareCapture,
     beginCapture,

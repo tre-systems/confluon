@@ -277,7 +277,7 @@ world position visibly beneath it. Browser selection, callout, drag, and pan/zoo
 gestures are suppressed only on the field surface; native controls and page-level
 accessibility zoom remain available.
 
-The instrument shell is fixed to a pixel height synchronized from `window.innerHeight`
+The instrument shell is fixed to a pixel height synchronised from `window.innerHeight`
 on window and visual-viewport resize events. Its CSS fallback is `100dvh`, then
 `100vh` for older engines. This avoids both a stale document percentage height and
 WebKit transitions where the dynamic viewport unit briefly retains its previous
@@ -286,7 +286,7 @@ buffers from its current client dimensions.
 
 Installed Home Screen mode is detected through the display-mode media queries and
 the legacy iOS `navigator.standalone` flag. It deliberately skips pixel viewport
-synchronization and uses a top-anchored absolute shell at `100lvh`, with `100vh` as
+synchronisation and uses a top-anchored absolute shell at `100lvh`, with `100vh` as
 fallback. This isolates WebKit's standalone fixed-container and safe-area defects
 without changing browser-tab sizing or the centred-cover projection.
 
@@ -317,9 +317,9 @@ dry + wet -> master -> high-pass -> saturator -> tone filter -> compressor
 ```
 
 The context is resumed inside a user gesture before rate-dependent buffers are
-generated. Frame updates receive the graph only after initialization completes;
-failed initialization closes the context and leaves audio retryable without stopping
-the visual field. Concurrent starts share one initialization. Continuous parameter changes
+generated. Frame updates receive the graph only after initialisation completes;
+failed initialisation closes the context and leaves audio retryable without stopping
+the visual field. Concurrent starts share one initialisation. Continuous parameter changes
 use AudioParam scheduling rather than timer-driven value jumps. Metrics steer
 texture and musical density; formations retain voices by toroidal proximity; pointer
 pressure, movement, and position modulate brightness, air, and pan. Controls provide
@@ -411,7 +411,7 @@ cross-origin isolation and deployment requirements.
 
 ## Hosting, updates, and operational boundary
 
-Vite builds fingerprinted JavaScript, CSS, and WASM. The finalizer derives runtime
+Vite builds fingerprinted JavaScript, CSS, and WASM. The finaliser derives runtime
 config and the service-worker cache from Vite's actual entry manifest, then the
 artifact verifier checks content and security policy. Avoid manually copying hashed
 assets or maintaining a second precache list.
@@ -476,6 +476,6 @@ touch, audio-resume, and graphics lifecycle behaviour.
 The present tools are appropriate. The near-term engineering opportunity is stronger
 contract testing and profiling, not a rewrite. If the JavaScript state surface keeps
 growing, enable `tsc --checkJs` with JSDoc or migrate boundary modules to TypeScript
-before adding a framework. Keep dependency upgrades—especially Vite major versions
-and browser automation releases—as isolated, fully-smoked changes rather than mixing
+before adding a framework. Keep dependency upgrades (especially Vite major versions
+and browser automation releases) as isolated, fully-smoked changes rather than mixing
 them with audiovisual behaviour changes.
