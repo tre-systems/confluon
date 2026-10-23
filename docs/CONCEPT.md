@@ -5,7 +5,7 @@ Confluon is an audiovisual instrument powered by a deterministic Rust/WASM engin
 ## One-sentence concept
 
 Three particle populations compose by negotiating local energy and sensing one
-another: each visible formation sings from where it sits, encounters open the
+another: the largest formations sing from where they sit, encounters open the
 spectrum, coherent motion opens a shared drone, and the performer seeds, herds, or
 disturbs formations without a step grid.
 
@@ -34,9 +34,9 @@ summaries. Those signals expose changes in structure and motion without assignin
 - activity controls spatial width and delay feedback;
 - abrupt energy changes excite short resonant strikes;
 - formation count shifts the harmonic root through a six-step cycle;
-- each visible formation owns a sustained voice panned to its screen position and
-  weighted by its size, and a newly born formation rings an emergence bell from
-  where it appeared;
+- each of the up to eight largest formations owns a sustained voice panned to its
+  screen position and weighted by its size, and a newly tracked formation rings an
+  emergence bell from where it appeared;
 - cross-population encounter pressure brightens the field, widens its tuning, and
   shortens the space between sparse tones;
 - pointer pressure and speed open the shared spectrum, add a little air, and pull

@@ -2,8 +2,8 @@
 
 Confluon is a generative audiovisual instrument built from three deterministic
 particle populations. Each population forms its own structures while cyclic
-attraction and avoidance pull them into encounters. Each visible formation carries a
-voice panned to where it sits, coherent movement opens a shared drone, and sudden
+attraction and avoidance pull them into encounters. The largest formations carry
+voices panned to where they sit, coherent movement opens a shared drone, and sudden
 changes in collective energy strike resonant tones.
 
 A Rust/WASM simulation owns the evolving particle state. On each display frame,
@@ -40,7 +40,7 @@ a ten-minute piece made with the instrument
   still cursor, and keep a protected inner distance. Touch-friendly Gather, Orbit,
   and Divide gestures add deliberate sculpting, alongside seeding and resetting.
 - URL-backed performance settings for ecology, flow, touch strength, halo, visual
-  memory, tone, population, and level.
+  memory, tone, life (population), and level.
 - Three featured starting scores (Still Choir, Tidal Assembly, and Ember Rift) offer
   deliberately contrasting seeds and settings without changing the deterministic
   state contract.
@@ -162,7 +162,8 @@ Production releases can provide these GitHub Actions secrets:
   private source-map upload.
 - `CLOUDFLARE_WEB_ANALYTICS_TOKEN` activates Cloudflare's cookieless performance
   beacon.
-- `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` authorize deployment.
+- `CLOUDFLARE_DEPLOY_API_TOKEN` authorizes deployment. The workflow passes it to
+  Wrangler as `CLOUDFLARE_API_TOKEN` only in the deploy step.
 
 Without the Sentry or analytics values the corresponding browser integration is a
 no-op; Feedback stays hidden rather than presenting a dead control. Every deploy

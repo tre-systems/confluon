@@ -58,8 +58,8 @@ the take and review the film before release.
 
 Output names must be unused. Capture failures preserve partial artifacts and print
 the temporary chunk directory for diagnosis; they do not delete the failed take.
-Keep accepted masters, sources and manifests on the audio workspace and include
-them in its backup plan. Preparation does not itself create a backup or publish.
+Keep accepted masters, sources and manifests in backed-up storage outside the
+repository. Preparation does not itself create a backup or publish.
 
 ## Social formats
 
