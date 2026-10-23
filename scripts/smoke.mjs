@@ -65,7 +65,6 @@ try {
         : null;
     })(),
     feedbackHidden: document.querySelector("#feedback-button")?.hidden,
-    supportHref: document.querySelector(".panel-support a")?.href,
     manifestHref: document.querySelector('link[rel="manifest"]')?.href,
     marketingOverlay: Boolean(document.querySelector("#welcome, #gesture-hint")),
     controlsCollapsed: document.querySelector("#controls")?.classList.contains("collapsed"),
@@ -123,9 +122,6 @@ try {
     Object.values(initial.viewportCoverage).some((gap) => Math.abs(gap) > 1)
   ) {
     throw new Error(`field does not cover the viewport: ${JSON.stringify(initial.viewportCoverage)}`);
-  }
-  if (!initial.supportHref?.startsWith("https://ko-fi.com/robgilks")) {
-    throw new Error("Ko-fi support link is missing");
   }
   if (!initial.manifestHref?.endsWith("/site.webmanifest")) {
     throw new Error("PWA manifest link is missing");

@@ -64,7 +64,6 @@ const privacy = readText("privacy.html");
 for (const token of [
   'rel="manifest"',
   'id="feedback-button"',
-  "https://ko-fi.com/robgilks",
   'href="/privacy"',
   'src="/runtime-config.js"',
   'src="/pwa.js"',

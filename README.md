@@ -49,9 +49,9 @@ is the instrument's Ember Rift field, recorded in one ten-minute take with no ge
   returns with the next pointer movement, screen press, key, or wheel interaction.
 - An installable PWA shell with versioned offline caching and an explicit update
   prompt, so a running performance is never replaced underneath the player.
-- Privacy-scrubbed production diagnostics, an in-instrument feedback form, and a
-  quiet support link. Diagnostics and anonymous Web Analytics are build-time
-  opt-ins and remain absent when their deployment configuration is not present.
+- Privacy-scrubbed production diagnostics and an in-instrument feedback form.
+  Diagnostics and anonymous Web Analytics are build-time opt-ins and remain absent
+  when their deployment configuration is not present.
 - Native Rust tests for determinism, stability, bounded metrics, interaction, and
   particle-count conservation, plus browser smoke tests for graphics, audio,
   controls, touch, offline use, privacy, and error routes.
