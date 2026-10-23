@@ -2,15 +2,19 @@
 
 Confluon is a generative audiovisual instrument built from three deterministic
 particle populations. Each population forms its own structures while cyclic
-attraction and avoidance pull them into encounters. Local crowding excites resonant
-voices, coherent movement opens a shared drone, and changes in collective energy
-produce strikes and transitions.
+attraction and avoidance pull them into encounters. Each visible formation carries a
+voice panned to where it sits, coherent movement opens a shared drone, and sudden
+changes in collective energy strike resonant tones.
 
 A Rust/WASM simulation owns the evolving particle state. On each display frame,
 WebGPU renders that state while Web Audio maps its metrics and formations into sound.
 The instrument has no sequencer or separate soundtrack.
 
 **Live:** [confluon.com](https://confluon.com/)
+
+**Film:** [*Confluon* by Multivibrator](https://www.youtube.com/watch?v=f6xhDhJLdW0),
+a ten-minute piece made with the instrument
+([Bandcamp](https://multivibrator.bandcamp.com/track/confluon)).
 
 ![Confluon's cyan, ember, and violet organisms forming in a luminous field](screenshot.png)
 
@@ -37,7 +41,7 @@ The instrument has no sequencer or separate soundtrack.
   and Divide gestures add deliberate sculpting, alongside seeding and resetting.
 - URL-backed performance settings for ecology, flow, touch strength, halo, visual
   memory, tone, population, and level.
-- Three featured starting scores—Still Choir, Tidal Assembly, and Ember Rift—offer
+- Three featured starting scores (Still Choir, Tidal Assembly, and Ember Rift) offer
   deliberately contrasting seeds and settings without changing the deterministic
   state contract.
 - A discreet control panel whose closed settings icon fades after 20 seconds and
@@ -183,9 +187,10 @@ See [Privacy](https://confluon.com/privacy) for the user-facing data boundary.
 - `G`, `O`, `D`: select Gather, Orbit, or Divide.
 
 Append `?seed=12345` to the URL to start from a specific field.
-Changing a performance setting writes the seed, ecology, flow, look, tone, and
-selected gesture into the URL. For the same engine revision, that address reproduces
-the starting state; an interactive take also requires its timed gesture stream.
+Changing a performance setting writes the seed, every setting (ecology, flow, touch,
+halo, memory, tone, life, and level), and the selected gesture into the URL. For the
+same engine revision, that address reproduces the starting state; an interactive take
+also requires its timed gesture stream.
 
 ## Design documents
 

@@ -207,8 +207,8 @@ audio.update(metrics, engine.formations());</code></pre>
         <p>
           Confluon divides its wrapped world into an <strong>8 × 8 counting-sort grid</strong>.
           Cell boundaries are recorded in a flat prefix-sum array, and particle indices are
-          written into one contiguous entry buffer. Because the cell width matches the largest
-          support radius, a cell needs only itself and its adjacent cells.
+          written into one contiguous entry buffer. Because each cell is at least as wide as the
+          largest interaction radius, a cell needs only itself and its adjacent cells.
         </p>
         <p>
           A four-offset half stencil visits each neighbouring cell pair once; a triangular loop
@@ -352,7 +352,9 @@ audio.update(metrics, engine.formations());</code></pre>
           The canvas stream and post-limiter audio stream enter one
           <code>MediaRecorder</code>. Chunks are sent back to a local Node process as they arrive
           so a long recording does not live entirely in browser memory. FFmpeg can retain a
-          VP9/Opus WebM or transcode H.264/HEVC with AAC and fast-start metadata.
+          VP9/Opus WebM or transcode H.264/HEVC with AAC and fast-start metadata. For a release
+          source, an optional PCM path keeps lossless audio in a Matroska file and an exact WAV,
+          then checks that both decode to the same samples.
         </p>
         <p>
           Each landscape, square, portrait, story, 4K, or custom aspect ratio is a fresh run

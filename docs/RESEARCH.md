@@ -15,8 +15,9 @@ The most relevant findings for this instrument are:
 - energy history exposes phase transitions;
 - the reference sonification maps particle energy to pitch and speed to volume.
 
-The visual redesign also compared two working browser implementations and the local
-Galacto instrument. The useful architectural findings were consistent:
+The visual approach also draws on the two public browser implementations listed below
+and [Galacto](https://galacto.org/), an earlier playable particle instrument from Total
+Reality Engineering. They point to consistent architectural findings:
 
 - hundreds or thousands of small, visible particles read as material; a sparse set
   of large discs does not;
@@ -37,9 +38,9 @@ to dissolve every colony at once.
 
 Confluon keeps the field, repulsion, and local-energy ideas, but develops an
 independent browser implementation and a different musical mapping. It sonifies
-collective metrics with a small resonator ensemble rather than assigning one audible
-oscillator to every particle. No upstream code, saved creatures, images, names, or
-other creative assets are included.
+collective metrics and formation positions through a sustained harmonic field and a
+formation choir rather than assigning one audible oscillator to every particle. No
+upstream code, saved creatures, images, names, or other creative assets are included.
 
 Primary sources:
 

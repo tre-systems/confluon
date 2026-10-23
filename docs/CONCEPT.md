@@ -5,13 +5,14 @@ Confluon is an audiovisual instrument powered by a deterministic Rust/WASM engin
 ## One-sentence concept
 
 Three particle populations compose by negotiating local energy and sensing one
-another: crowding excites resonant voices, encounters open the spectrum, coherent
-motion opens a shared drone, and the performer seeds, herds, or disturbs formations
-without a step grid.
+another: each visible formation sings from where it sits, encounters open the
+spectrum, coherent motion opens a shared drone, and the performer seeds, herds, or
+disturbs formations without a step grid.
 
 ## Creative axes
 
-- Synthesis: additive resonator swarm plus filtered noise.
+- Synthesis: sample-free additive voices, a formation choir, resonant strikes, and
+  filtered noise.
 - Form: emergent energy-attractor transitions; no sequencer or fixed bars.
 - Visual family: dense, point-built membranes moving through restrained translucent
   kernel fields; the organisms remain visibly particulate at every scale.
@@ -37,7 +38,7 @@ summaries. Those signals expose changes in structure and motion without assignin
   weighted by its size, and a newly born formation rings an emergence bell from
   where it appeared;
 - cross-population encounter pressure brightens the field, widens its tuning, and
-  shortens the space between sparse tones.
+  shortens the space between sparse tones;
 - pointer pressure and speed open the shared spectrum, add a little air, and pull
   the field sound towards the contact position.
 
@@ -54,10 +55,11 @@ The visual image and the audio mix read the same deterministic simulation snapsh
   the gesture without pulling the entire world into it.
 - Shift + drag: temporarily orbit without changing the selected gesture.
 - Option/Alt + drag: temporarily divide and open a cavity.
-- Double click/tap: seed a new local population.
+- Double click/tap: seed a compact 50-particle colony of one population at the
+  pointer.
 - Hold `S`: constrain the system toward a quieter common state; release it to return
   to local negotiation, often causing a phase transition.
-- `R`: regenerate the current field.
+- `R`: reset the current field to its starting state.
 - `Space`: pause or resume.
 - `G`, `O`, `D`: select the touch-friendly Gather, Orbit, or Divide mode.
 
