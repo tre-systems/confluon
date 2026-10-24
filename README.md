@@ -42,6 +42,8 @@ is the instrument's Ember Rift field, recorded in one ten-minute take with no ge
   and Divide gestures add deliberate sculpting, alongside seeding and resetting.
 - URL-backed performance settings for ecology, flow, touch strength, halo, visual
   memory, tone, life (population), and level.
+- Launch Control XL 3 MIDI input with fader pickup and optional relative encoders,
+  plus a native iPad TouchOSC layout with a gesture pad and parameter feedback.
 - Three featured starting scores (Still Choir, Tidal Assembly, and Ember Rift) offer
   deliberately contrasting seeds and settings without changing the deterministic
   state contract.
@@ -97,6 +99,19 @@ npm run smoke
 
 `pkg/`, `dist/`, `output/`, `renders/`, and `target/` are generated locally and are
 ignored by git.
+
+## Play with MIDI and iPad
+
+Open **MIDI controllers** in the control panel and click **Connect MIDI** in Chrome
+or Edge. Select the Launch Control XL 3's main MIDI input and use hardware Mode 16.
+Faders 1–7 control Ecology, Flow, Touch, Halo, Memory, Tone and Level with pickup.
+The top encoder row shares those parameters; a configured relative Custom Mode
+provides fine adjustments.
+
+The [TouchOSC layout](public/controllers/confluon.tosc) supplies an iPad gesture
+pad, mode and transport buttons, and seven sliders with feedback. Connect it through
+TouchOSC Bridge over USB or the local network. See [MIDI performance](docs/MIDI.md)
+for the complete mappings, setup, pickup behaviour and connection safeguards.
 
 ## Produce video
 

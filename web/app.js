@@ -11,6 +11,7 @@ import {
   encodePerformanceState,
   GESTURE_MODES,
   isGestureMode,
+  normalizePerformanceParameter,
   parsePerformanceSettings,
   parseSeed,
   scoreSignature,
@@ -22,6 +23,8 @@ import {
   SIMULATION_CONTRACT_VERSION,
 } from "./simulation-contract.js";
 import { clientPointToWorld } from "./viewport-projection.js";
+import { MidiController } from "./midi.js";
+import { parameterValue } from "./midi-mapping.js";
 
 const FIXED_STEP = 1 / 30;
 const MAX_CATCH_UP_STEPS = 2;
@@ -101,6 +104,11 @@ let audio;
 let idleTimer;
 let visualSnapshot;
 let visualMetrics;
+let midi;
+let performanceDirty = false;
+let scoreTimer;
+let pointerOwner = null;
+const settleSources = new Set();
 
 const monitoringReady = initializeMonitoring();
 
@@ -114,6 +122,18 @@ try {
   audio = new ConfluonAudio(seed);
   applyPerformanceSettings(false);
   installControls();
+  midi = new MidiController({
+    root: elements.controls,
+    settings: () => settings,
+    transport: () => state,
+    parameter: (property, unit) => {
+      setPerformanceParameter(property, parameterValue(property, unit), true);
+    },
+    action: performMidiAction,
+    gesture: updateMidiGesture,
+    release: releaseMidiSource,
+    releaseAll: releaseInteractions,
+  });
   exposeDiagnostics();
   requestAnimationFrame(frame);
   void monitoringReady.then(() => setRuntimeTag("renderer", renderer.kind.toLowerCase()));
@@ -197,19 +217,20 @@ function installControls() {
     elements.tone,
   ].forEach((control) => {
     control.addEventListener("input", () => {
-      readSettingsFromControls();
-      applyPerformanceSettings(true);
+      setPerformanceParameter(control.id, Number(control.value) / 100);
       audio.cueControl(control.id, Number(control.value) / Number(control.max));
     });
   });
 
   elements.field.addEventListener("pointerenter", (event) => {
+    if (pointerOwner !== null) return;
     if (event.pointerType === "touch") return;
     updatePointerPosition(event, false);
     state.pointer.present = true;
   });
 
   elements.field.addEventListener("pointerdown", (event) => {
+    pointerOwner = `pointer:${event.pointerId}`;
     const point = updatePointerPosition(event, false);
     state.pointer.active = true;
     state.pointer.present = true;
@@ -222,6 +243,7 @@ function installControls() {
   });
 
   elements.field.addEventListener("pointermove", (event) => {
+    if (pointerOwner !== null && pointerOwner !== `pointer:${event.pointerId}`) return;
     if (event.pointerType === "touch" && !state.pointer.active) return;
     updatePointerPosition(event, true);
     state.pointer.present = true;
@@ -229,6 +251,8 @@ function installControls() {
   });
 
   elements.field.addEventListener("pointerup", (event) => {
+    if (pointerOwner !== `pointer:${event.pointerId}`) return;
+    pointerOwner = null;
     const point = updatePointerPosition(event, true);
     const duration = performance.now() - state.pointer.downAt;
     const travel = Math.hypot(point.x - state.pointer.downX, point.y - state.pointer.downY);
@@ -256,14 +280,13 @@ function installControls() {
   });
 
   elements.field.addEventListener("pointerleave", (event) => {
+    if (pointerOwner !== null && pointerOwner !== `pointer:${event.pointerId}`) return;
     if (event.pointerType === "touch" || !state.pointer.active) {
       state.pointer.present = false;
     }
   });
-  elements.field.addEventListener("pointercancel", () => {
-    state.pointer.active = false;
-    state.pointer.present = false;
-    elements.instrument.removeAttribute("data-active-gesture");
+  elements.field.addEventListener("pointercancel", (event) => {
+    if (pointerOwner === `pointer:${event.pointerId}`) clearPointer();
   });
   elements.field.addEventListener("dblclick", (event) => {
     // Chromium emits a compatibility dblclick after a native double-tap.
@@ -276,11 +299,6 @@ function installControls() {
     elements.field.addEventListener(eventName, preventBrowserFieldGesture);
   });
 
-  const settleOff = () => {
-    if (!state.settle) return;
-    state.settle = false;
-    audio.strike(0.58, engine.metrics()[METRIC_FIELD.ENERGY]);
-  };
   elements.population.addEventListener("change", () => {
     settings.population = clampPopulation(Number(elements.population.value));
     engine = new Engine(seed, settings.population);
@@ -293,25 +311,22 @@ function installControls() {
     audio.cueControl("population", settings.population / 4096);
   });
   elements.volume.addEventListener("input", () => {
-    settings.level = Number(elements.volume.value) / 100;
-    audio.setLevel(settings.level);
-    updateRangeProgress(elements.volume);
-    syncSettingsUrl();
+    setPerformanceParameter("level", Number(elements.volume.value) / 100);
   });
 
   window.addEventListener("keydown", (event) => {
+    if (
+      event.target instanceof HTMLElement &&
+      event.target.closest("input, select, button, textarea, [contenteditable=true]")
+    ) return;
     if (event.repeat && event.code !== "KeyS") return;
     if (event.code === "Space") {
       event.preventDefault();
       togglePause();
     } else if (event.code === "KeyR") {
-      engine.reset(seed);
-      audio.reseed(seed);
-      resetVisualSmoothing();
-      renderer.resetTrails();
-      audio.strike(0.62, 0.5);
+      resetField();
     } else if (event.code === "KeyS") {
-      state.settle = true;
+      setSettle("keyboard", true);
     } else if (event.code === "KeyG") {
       setGestureMode("gather");
     } else if (event.code === "KeyO") {
@@ -324,10 +339,18 @@ function installControls() {
   });
 
   window.addEventListener("keyup", (event) => {
-    if (event.code === "KeyS") settleOff();
+    if (event.code === "KeyS") setSettle("keyboard", false);
+  });
+
+  window.addEventListener("blur", () => releaseInteractions());
+  window.addEventListener("pagehide", () => {
+    releaseInteractions();
+    syncSettingsUrl();
+    midi?.disable();
   });
 
   document.addEventListener("visibilitychange", () => {
+    if (document.hidden) releaseInteractions();
     if (document.hidden && state.started) {
       audio.setPaused(true);
     } else if (state.started) {
@@ -414,8 +437,14 @@ function updatePointerPosition(event, trackMotion) {
 
 function setGestureMode(mode, updateUrl = true) {
   if (!isGestureMode(mode)) return;
+  const changed = state.gestureMode !== mode;
   state.gestureMode = mode;
   settings.mode = mode;
+  if (changed && state.pointer.active) {
+    state.pointer.mode = mode;
+    elements.instrument.dataset.activeGesture = mode;
+  }
+  midi?.invalidate();
   elements.instrument.dataset.gesture = mode;
   elements.gestureModes.forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.gesture === mode));
@@ -429,13 +458,14 @@ function setGestureMode(mode, updateUrl = true) {
   }
 }
 
-function readSettingsFromControls() {
-  settings.ecology = Number(elements.ecology.value) / 100;
-  settings.flow = Number(elements.flow.value) / 100;
-  settings.gesture = Number(elements.gesture.value) / 100;
-  settings.glow = Number(elements.glow.value) / 100;
-  settings.memory = Number(elements.memory.value) / 100;
-  settings.tone = Number(elements.tone.value) / 100;
+function setPerformanceParameter(property, value, defer = false) {
+  settings[property] = normalizePerformanceParameter(property, value);
+  performanceDirty = defer;
+  if (!defer) applyPerformanceSettings(false);
+  midi?.invalidate();
+  window.clearTimeout(scoreTimer);
+  if (defer) scoreTimer = window.setTimeout(syncSettingsUrl, 180);
+  else syncSettingsUrl();
 }
 
 function applyPerformanceSettings(updateUrl) {
@@ -607,6 +637,11 @@ let fpsFrameCount = 0;
 let measuredFps = 0;
 
 function frame(milliseconds) {
+  if (performanceDirty) {
+    performanceDirty = false;
+    applyPerformanceSettings(false);
+  }
+  midi?.tick();
   fpsFrameCount += 1;
   if (milliseconds - fpsWindowStarted >= 1000) {
     measuredFps = (fpsFrameCount * 1000) / (milliseconds - fpsWindowStarted);
@@ -742,6 +777,10 @@ function loadFieldScore(source) {
   const featuredSeed = parseSeed(featuredUrl);
   if (featuredSeed === null) return;
 
+  releaseInteractions();
+  window.clearTimeout(scoreTimer);
+  performanceDirty = false;
+
   seed = featuredSeed;
   Object.assign(settings, parsePerformanceSettings(featuredUrl));
   engine = new Engine(seed, settings.population);
@@ -757,6 +796,91 @@ function loadFieldScore(source) {
 function togglePause() {
   state.running = !state.running;
   audio.setPaused(!state.running);
+  midi?.invalidate();
+}
+
+function resetField() {
+  releaseInteractions(false);
+  engine.reset(seed);
+  audio.reseed(seed);
+  resetVisualSmoothing();
+  renderer.resetTrails();
+  audio.strike(0.62, 0.5);
+}
+
+function setSettle(source, down) {
+  const previous = state.settle;
+  if (down) settleSources.add(source);
+  else settleSources.delete(source);
+  state.settle = settleSources.size > 0;
+  if (previous && !state.settle) audio.strike(0.58, engine.metrics()[METRIC_FIELD.ENERGY]);
+  midi?.invalidate();
+}
+
+function performMidiAction(action, down, source) {
+  if (action === "settle") setSettle(`midi:${source}`, down);
+  else if (isGestureMode(action)) setGestureMode(action);
+  else if (action === "pause") togglePause();
+  else if (action === "reset") resetField();
+  else if (action === "seed") spawn(state.pointer.x, state.pointer.y);
+}
+
+function updateMidiGesture(source, point) {
+  const owner = `midi:${source}`;
+  if (!point.active) {
+    if (pointerOwner !== owner) return;
+    const strength =
+      state.pointer.mode === "orbit" ? 0.72 : state.pointer.mode === "divide" ? 0.64 : 0.5;
+    audio.strike(strength, engine.metrics()[METRIC_FIELD.ENERGY], state.pointer.x);
+    state.pointer.active = false;
+    state.pointer.present = false;
+    pointerOwner = null;
+    elements.instrument.removeAttribute("data-active-gesture");
+    return;
+  }
+  // A new press takes ownership. Movement from an older press cannot steal it back.
+  const starting = point.pressed;
+  if (!starting && pointerOwner !== owner) return;
+  pointerOwner = owner;
+  const rect = elements.field.getBoundingClientRect();
+  updatePointerPosition(
+    {
+      clientX: rect.left + point.x * rect.width,
+      clientY: rect.top + (1 - point.y) * rect.height,
+      timeStamp: performance.now(),
+      pointerType: "touch",
+    },
+    !starting,
+  );
+  state.pointer.active = true;
+  state.pointer.present = true;
+  state.pointer.mode = state.gestureMode;
+  if (starting) state.pointer.impulse = 1;
+  elements.instrument.dataset.activeGesture = state.pointer.mode;
+}
+
+function clearPointer() {
+  pointerOwner = null;
+  state.pointer.active = false;
+  state.pointer.present = false;
+  state.pointer.impulse = 0;
+  state.pointer.motion = 0;
+  elements.instrument.removeAttribute("data-active-gesture");
+}
+
+function releaseMidiSource(source) {
+  const owner = `midi:${source}`;
+  if (pointerOwner === owner) clearPointer();
+  setSettle(owner, false);
+}
+
+function releaseInteractions(resetMidi = true) {
+  if (resetMidi) midi?.mapping.releaseAll();
+  else midi?.mapping.releaseHolds();
+  settleSources.clear();
+  state.settle = false;
+  clearPointer();
+  midi?.invalidate();
 }
 
 function exposeDiagnostics() {
@@ -786,10 +910,17 @@ function exposeDiagnostics() {
     }),
     seed: () => seed,
     settings: () => ({ ...settings }),
+    transport: () => ({ running: state.running, settle: state.settle }),
   });
 }
 
 async function prepareCapture() {
+  midi?.disable();
+  releaseInteractions();
+  if (performanceDirty) {
+    applyPerformanceSettings(false);
+    performanceDirty = false;
+  }
   await audio.start();
   audio.setLevel(settings.level);
   audio.setPaused(true);

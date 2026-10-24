@@ -151,6 +151,20 @@
             </section>
           </section>
 
+          <details class="midi-controls">
+            <summary>MIDI controllers</summary>
+            <button id="midi-enable" type="button">Connect MIDI</button>
+            <p id="midi-status" role="status" aria-live="polite">Connect your Launch Control XL 3 or TouchOSC.</p>
+            <label>Launch Control input<select id="midi-launch" disabled><option value="">None</option></select></label>
+            <label>Encoders<select id="midi-encoders"><option value="absolute">Mode 16 · absolute with pickup</option><option value="relative">Custom Mode · relative fine adjustment</option></select></label>
+            <label>TouchOSC input<select id="midi-touch" disabled><option value="">None</option></select></label>
+            <label>TouchOSC feedback output<select id="midi-output" disabled><option value="">None</option></select></label>
+            <p>Use the XL 3’s main MIDI port and Mode 16. Faders 1–7 control Ecology, Flow, Touch, Halo, Memory, Tone and Level. Fader 8 is reserved.</p>
+            <p>Custom Mode: channel 16, faders CC 5–11, relative encoders CC 13–19 (64 is centre), momentary buttons CC 37–43.</p>
+            <button id="midi-release" type="button">Release held gestures</button>
+            <a class="article-link" href="/controllers/confluon.tosc" download>Download iPad TouchOSC layout</a>
+          </details>
+
           <footer class="panel-footer">
             <a
               class="article-link"

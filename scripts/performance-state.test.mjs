@@ -7,6 +7,7 @@ import {
   parsePerformanceSettings,
   parseSeed,
   scoreSignature,
+  normalizePerformanceParameter,
 } from "../web/performance-state.js";
 
 test("performance settings have one canonical set of defaults", () => {
@@ -21,6 +22,17 @@ test("performance settings have one canonical set of defaults", () => {
     population: 2000,
     mode: "gather",
   });
+});
+
+test("fine MIDI settings round-trip through a URL without losing precision", () => {
+  const settings = parsePerformanceSettings("/");
+  settings.tone = normalizePerformanceParameter("tone", 30 / 127 + 1 / 508);
+  settings.ecology = normalizePerformanceParameter("ecology", 0.25 + 85 / 127 * 1.55);
+  const encoded = encodePerformanceState("/", 12345, settings);
+  assert.deepEqual(parsePerformanceSettings(encoded), settings);
+  assert.notEqual(scoreSignature(12345, settings), scoreSignature(12345, { ...settings, tone: 0.24 }));
+  assert.equal(normalizePerformanceParameter("level", 100), 1);
+  assert.equal(normalizePerformanceParameter("flow", NaN), 1);
 });
 
 test("performance settings decode, clamp, and reject invalid modes", () => {

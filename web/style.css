@@ -167,6 +167,29 @@ button {
   display: none;
 }
 
+.midi-controls {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+}
+
+.midi-controls summary { cursor: pointer; }
+.midi-controls label { display: grid; gap: 5px; margin: 12px 0; color: var(--muted); }
+.midi-controls p { color: var(--muted); line-height: 1.5; }
+.midi-controls button, .midi-controls select {
+  min-height: 36px;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #12191e;
+  color: var(--paper);
+  padding: 7px 10px;
+}
+.midi-controls > button { margin: 12px 0 0; cursor: pointer; }
+.midi-controls button:disabled { opacity: 0.5; cursor: default; }
+.midi-controls > a { display: block; margin-top: 14px; }
+
 .score-control {
   display: grid;
   grid-template-columns: 62px minmax(0, 1fr);
