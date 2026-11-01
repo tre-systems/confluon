@@ -158,6 +158,11 @@ no-op; Feedback stays hidden rather than presenting a dead control. Every deploy
 candidate is dependency-audited, built, artifact-verified, and browser-smoked before
 release, then the public hostname is smoked again after deployment.
 
+The Sentry bundler plugin uses a scoped npm override for `glob` 14.0.3 or newer,
+which includes the patched `minimatch` dependency. This keeps source-map file
+discovery on audited versions while the plugin declares `glob` 13. Remove the
+override when the upstream plugin requires a patched version itself.
+
 See [Privacy](https://confluon.com/privacy) for the user-facing data boundary. That page
 states that Sentry does not store client IP addresses, so keep **Prevent Storing of IP
 Addresses** enabled in the Sentry project's Security & Privacy settings.
