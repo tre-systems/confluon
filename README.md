@@ -42,6 +42,8 @@ is the instrument's Ember Rift field, recorded in one ten-minute take with no ge
   and Divide gestures add deliberate sculpting, alongside seeding and resetting.
 - URL-backed performance settings for ecology, flow, touch strength, halo, visual
   memory, tone, life (population), and level.
+- Launch Control XL 3 DAW driver and hardware-shaped panel with relative encoders, fader pickup and button feedback,
+  plus a native iPad TouchOSC layout with a gesture pad and parameter feedback.
 - Three featured starting scores (Still Choir, Tidal Assembly, and Ember Rift) offer
   deliberately contrasting seeds and settings without changing the deterministic
   state contract.
@@ -98,6 +100,24 @@ npm run smoke
 `pkg/`, `dist/`, `output/`, `renders/`, and `target/` are generated locally and are
 ignored by git.
 
+## Play with MIDI and iPad
+
+Open the controls and choose **XL3** in Chrome or Edge. Click **Connect** to use
+DAW Control with immediate relative knobs, fader pickup and button highlights.
+The hardware-shaped panel has a live field preview and can be hidden while playing.
+Play starts the instrument; a second press fades to silence over eight seconds.
+
+The assignments are distinct: top knob 1 controls Tone; middle knobs 1–5 control
+Ecology, Flow, Touch strength and gesture X/Y; bottom knobs 1–2 control Halo and
+Memory. Fader 8 controls Level. Unassigned controls are dimmed. Hold Shift for fine
+adjustments. The existing Mode 16 and Custom Mode mappings remain available under
+**TouchOSC / legacy MIDI** in the standard controls.
+
+The [TouchOSC layout](public/controllers/confluon.tosc) supplies an iPad gesture
+pad, mode and transport buttons, and seven sliders with feedback. Connect it through
+TouchOSC Bridge over USB or the local network. See [MIDI performance](docs/MIDI.md)
+for the complete mappings, setup, pickup behaviour and connection safeguards.
+
 ## Produce video
 
 Create synchronised video from a seed:
@@ -131,14 +151,11 @@ the checks and limits. The default social-video path uses compressed audio.
 
 ## Deployment
 
-Every passing push to `main` deploys the production build to Cloudflare Workers
-through GitHub Actions:
-
-<https://confluon.com>
-
-The workflow builds and tests before deploying. Pull requests run the same checks but
-never deploy. A manual production deployment can also be started from the repository's
-Actions page. Local deployment is available to an authenticated operator with
+Pushes to `main` build and test without publishing. To publish an approved build
+to <https://confluon.com>, run the **CI** workflow manually with **deploy** enabled.
+It builds and tests before deploying to Cloudflare Workers. The deployment option
+defaults to off, so local prototypes can be committed and checked without changing
+the live instrument. Local deployment is available to an authenticated operator with
 `npm run deploy`. The former `confluon.tre.systems` and `geno-5.tre.systems`
 hostnames, plus `www.confluon.com`, permanently redirect to the canonical domain
 while preserving paths and query parameters, including seed and performance settings.

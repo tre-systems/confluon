@@ -47,7 +47,7 @@ follow. The short version is:
 ## System boundary and dependency direction
 
 ```text
-URL score + pointer/keyboard commands
+URL score + pointer/keyboard/MIDI commands
                   |
                   v
       web/app.js (composition root)
@@ -87,6 +87,11 @@ Dependencies point inward toward contracts and the engine:
 | `src/lib.rs` | Narrow WASM command/query facade | A second model or browser policy |
 | `web/simulation-contract.js` | ABI version, tuple indexes, strides, hard consumer limits | Dynamic engine state |
 | `web/performance-state.js` | URL keys, defaults, bounds, seed/settings parse and encode | DOM controls or side effects |
+| `web/midi-mapping.js` | MIDI channel/CC protocol, per-source pickup, button edges and touch heartbeat | DOM, Web MIDI permissions, engine access |
+| `web/xl3.js` | Portable XL3 DAW protocol, relative encoders, pickup and batched device feedback | DOM, instrument parameters or DSP |
+| `web/controller-panel.js` | Portable hardware-shaped panel, held buttons and press feedback | MIDI ports, audio or preset ownership |
+| `web/controller-bindings.js` / `web/xl3-surface.js` | Confluon slot assignments, panel/driver lifecycle and transport actions | Duplicate sound or visual engines |
+| `web/midi.js` | Web MIDI permission, port selection/lifecycle, local preferences and iPad feedback | Simulation state or a second parameter store |
 | `web/viewport-projection.js` | Pure centred-cover projection and inverse pointer mapping | DOM, simulation state, renderer policy |
 | `web/app.js` | Composition, frame clock, input state machine, adapter lifecycle, URL/history side effects, diagnostics facade | Particle rules, shader details, synthesis graph |
 | `web/renderer.js` | WebGPU and Canvas strategies, visual history, presentation interpolation inputs | Commands to the engine, audio state |
@@ -128,6 +133,45 @@ Confluon has several kinds of state. Their precedence and durability differ:
 The URL codec is the canonical browser representation of a starting score. Unknown
 query parameters such as renderer verification flags are preserved when score state
 is written.
+
+Performance parameters use six decimal places so fine relative MIDI adjustments
+survive a score round trip. Existing integer-percent URLs retain their meaning.
+On-screen controls apply immediately. MIDI writes the same canonical settings and
+applies audio/model changes in the event handler, then coalesces DOM updates to one display frame; URL writes are debounced to
+180 ms after the last parameter event and flushed on page exit. There is no growing
+queue of parameter updates and no separate MIDI simulation.
+
+MIDI permission is opt-in and requests no SysEx access. Each selected input owns
+its own pickup and held-button state. Absolute controls acquire near or across the
+current value, and re-arm when another control changes that target. Relative
+encoders apply binary-offset increments. Input channels separate the XL 3 and
+TouchOSC. The selected TouchOSC output receives parameter and mode feedback;
+the native layout suppresses feedback loops. The XL3 DAW output receives only its
+volatile session, encoder-position and LED messages. DAW ports are excluded from
+legacy selection. No Custom Modes or global hardware settings are written.
+
+The iPad sends 14-bit XY coordinates and a touch gate. A complete coordinate pair
+is committed on Y LSB, then mapped through the existing viewport projection. A
+fresh press owns the single pointer until another press replaces it. Older moves
+and releases cannot affect the new owner. Settle combines a set of held sources.
+TouchOSC's 200 ms heartbeat expires after one second; expiry, port disconnect,
+browser focus loss, page hiding and manual release clear held input. Capture
+preparation disconnects MIDI before resetting the field. Port preferences stay in
+local storage and never enter the URL or diagnostics. See [MIDI performance](MIDI.md)
+for the protocol and layout sources.
+
+The XL3 protocol driver and view are adapted from Cymion. Application bindings own
+Confluon's labels, units, gesture/transport actions and preview. This boundary lets
+another instrument use the same protocol/view without inheriting its sound engine.
+The two applications remain independently built; there is no published shared package.
+Device feedback is coalesced on a 16 ms timer; view feedback uses one animation-frame
+callback. Neither queue delays parameter writes. The small preview copies the existing
+rendered field at up to 20 fps only while the panel is open.
+
+Controller fade-out schedules the existing master gain against AudioContext time.
+The graph, seeded synthesis, renderer and default parameter values are unchanged.
+Fade completion sets master gain to zero and pauses the field without overwriting
+Level. The URL remains a starting score, not a recording of controller movements.
 
 ### Adding a performance parameter
 

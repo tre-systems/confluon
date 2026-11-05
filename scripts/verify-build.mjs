@@ -13,6 +13,7 @@ const requiredFiles = [
   "_headers",
   "article.css",
   "article.js",
+  "controllers/confluon.tosc",
   "assets",
   "engineering.html",
   "field.html",

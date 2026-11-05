@@ -1,5 +1,7 @@
 import { chromium } from "playwright";
 import { startStaticServer } from "./static-server.mjs";
+import { smokeMidi } from "./midi-smoke.mjs";
+import { smokeXL3 } from "./xl3-smoke.mjs";
 
 const options = parseArguments(process.argv.slice(2));
 let server;
@@ -463,6 +465,10 @@ try {
       throw new Error(`standalone field does not cover the viewport: ${JSON.stringify(coverage)}`);
     }
   }
+
+  await context.close();
+  await smokeMidi(browser, baseUrl);
+  await smokeXL3(browser, baseUrl);
 
   const ignoredErrors = browserErrors.filter(
     (message) =>

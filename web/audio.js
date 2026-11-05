@@ -323,7 +323,7 @@ export class ConfluonAudio {
     if (this.context.state !== "running") {
       throw new Error(`Audio context remained ${this.context.state}`);
     }
-    if (!this.paused) {
+    if (!this.paused && !this.fadingUntil) {
       this.master.gain.setTargetAtTime(this.targetLevel(), this.context.currentTime, 0.18);
     }
   }
@@ -675,7 +675,7 @@ export class ConfluonAudio {
 
   setLevel(level) {
     this.level = Math.max(0, Math.min(1, level));
-    if (this.context && !this.paused) {
+    if (this.context && !this.paused && !this.fadingUntil) {
       this.master.gain.setTargetAtTime(this.targetLevel(), this.context.currentTime, 0.1);
     }
   }
@@ -687,9 +687,35 @@ export class ConfluonAudio {
   setPaused(paused) {
     this.paused = paused;
     if (!this.context) return;
-    const target = paused ? 0.0001 : this.targetLevel();
+    if (!paused) this.performanceEnded = false;
+    const target = paused ? this.performanceEnded ? 0 : 0.0001 : this.targetLevel();
     this.master.gain.setTargetAtTime(target, this.context.currentTime, paused ? 0.1 : 0.38);
     if (!paused) this.nextNoteTime = Math.min(this.nextNoteTime, this.context.currentTime + 0.4);
+  }
+
+  // Controller transport uses the existing master; its idle/default signal
+  // path is unchanged. Audio time owns the fade, independent of UI frame rate.
+  fadeOut(seconds = 8) {
+    if (!this.context || this.fadingUntil) return;
+    const now = this.context.currentTime;
+    const gain = this.master.gain;
+    if (gain.cancelAndHoldAtTime) gain.cancelAndHoldAtTime(now);
+    else { const value = gain.value; gain.cancelScheduledValues(now); gain.setValueAtTime(value, now); }
+    this.fadingUntil = now + seconds;
+    gain.linearRampToValueAtTime(0, this.fadingUntil);
+  }
+
+  fadeFinished() {
+    return !!this.fadingUntil && this.context.currentTime >= this.fadingUntil;
+  }
+
+  finishFade() {
+    this.fadingUntil = 0;
+    this.paused = true;
+    this.performanceEnded = true;
+    if (!this.context) return;
+    this.master.gain.cancelScheduledValues(this.context.currentTime);
+    this.master.gain.setValueAtTime(0, this.context.currentTime);
   }
 
   targetLevel() {

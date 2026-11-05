@@ -2,6 +2,33 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ConfluonAudio } from "../web/audio.js";
 
+test("controller fade follows audio time, cannot be undone by level edits, and ends at zero", async (t) => {
+  installContext(t);
+  const audio = new ConfluonAudio(424242);
+  await audio.start();
+  const events = [];
+  for (const method of ["cancelScheduledValues", "setValueAtTime", "setTargetAtTime", "linearRampToValueAtTime"])
+    audio.master.gain[method] = (...args) => events.push([method,...args]);
+  audio.context.currentTime = 10;
+  audio.fadeOut();
+  assert.deepEqual(events.at(-1), ["linearRampToValueAtTime",0,18]);
+  const count=events.length;
+  audio.setLevel(0.3);
+  await audio.resume();
+  audio.fadeOut();
+  assert.equal(events.length,count);
+  assert.equal(audio.fadeFinished(),false);
+  audio.context.currentTime=18;
+  assert.equal(audio.fadeFinished(),true);
+  audio.finishFade();
+  assert.deepEqual(events.at(-1),["setValueAtTime",0,18]);
+  audio.setPaused(true);
+  assert.deepEqual(events.at(-1),["setTargetAtTime",0,18,0.1]);
+  audio.setPaused(false);
+  assert.deepEqual(events.at(-1),["setTargetAtTime",audio.targetLevel(),18,0.38]);
+  assert.equal(audio.level,0.3);
+});
+
 const metrics = [0.3, 0.4, 0.2, 0.3, 0, 0, 0];
 
 function fakeContext({ rate = 44100, resumedRate = rate, failBuffer = false, resumeGate } = {}) {

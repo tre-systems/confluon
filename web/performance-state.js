@@ -17,6 +17,19 @@ export const PERFORMANCE_PARAMETER_SCHEMA = Object.freeze([
   parameter("level", "level", 0.74, 0, 1),
 ]);
 
+// Fine MIDI movement keeps six decimal places in the durable score. The same
+// quantisation is applied at input and URL boundaries, so reloads retain a value.
+export function normalizePerformanceParameter(property, value) {
+  const descriptor = PERFORMANCE_PARAMETER_SCHEMA.find(
+    (item) => item.property === property,
+  );
+  if (!descriptor) throw new RangeError(`Unknown performance parameter: ${property}`);
+  const bounded = clamp(
+    Number(value), descriptor.minimum, descriptor.maximum, descriptor.fallback,
+  );
+  return Math.round(bounded * 1_000_000) / 1_000_000;
+}
+
 const gestureModes = new Set(GESTURE_MODES);
 
 export function parsePerformanceSettings(source) {
@@ -40,13 +53,12 @@ export function encodePerformanceState(source, seed, settings) {
   url.searchParams.set("seed", String(normalizeSeed(seed)));
 
   for (const descriptor of PERFORMANCE_PARAMETER_SCHEMA) {
-    const value = clamp(
-      Number(settings[descriptor.property]),
-      descriptor.minimum,
-      descriptor.maximum,
-      descriptor.fallback,
+    const value = normalizePerformanceParameter(
+      descriptor.property, settings[descriptor.property],
     );
-    url.searchParams.set(descriptor.query, String(Math.round(value * descriptor.scale)));
+    url.searchParams.set(
+      descriptor.query, String(Number((value * descriptor.scale).toFixed(4))),
+    );
   }
 
   url.searchParams.set("life", String(clampPopulation(Number(settings.population))));
@@ -105,11 +117,8 @@ function parameter(property, query, fallback, minimum, maximum) {
 
 function readScaledParameter(parameters, descriptor) {
   if (!parameters.has(descriptor.query)) return descriptor.fallback;
-  return clamp(
-    Number(parameters.get(descriptor.query)) / descriptor.scale,
-    descriptor.minimum,
-    descriptor.maximum,
-    descriptor.fallback,
+  return normalizePerformanceParameter(
+    descriptor.property, Number(parameters.get(descriptor.query)) / descriptor.scale,
   );
 }
 

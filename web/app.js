@@ -11,6 +11,7 @@ import {
   encodePerformanceState,
   GESTURE_MODES,
   isGestureMode,
+  normalizePerformanceParameter,
   parsePerformanceSettings,
   parseSeed,
   scoreSignature,
@@ -22,6 +23,9 @@ import {
   SIMULATION_CONTRACT_VERSION,
 } from "./simulation-contract.js";
 import { clientPointToWorld } from "./viewport-projection.js";
+import { MidiController } from "./midi.js";
+import { createXL3Surface } from "./xl3-surface.js";
+import { parameterValue } from "./midi-mapping.js";
 
 const FIXED_STEP = 1 / 30;
 const MAX_CATCH_UP_STEPS = 2;
@@ -67,6 +71,7 @@ const elements = {
 
 const state = {
   running: true,
+  ending: false,
   started: false,
   starting: false,
   settle: false,
@@ -101,6 +106,15 @@ let audio;
 let idleTimer;
 let visualSnapshot;
 let visualMetrics;
+let midi;
+let xl3;
+let controlLayout = "controls";
+try { controlLayout = localStorage.getItem("confluon-control-layout") === "xl3" ? "xl3" : "controls"; } catch { /* Optional UI preference. */ }
+if (new URL(location.href).searchParams.get("controller") === "1") controlLayout = "xl3";
+let performanceDirty = false;
+let scoreTimer;
+let pointerOwner = null;
+const settleSources = new Set();
 
 const monitoringReady = initializeMonitoring();
 
@@ -114,6 +128,36 @@ try {
   audio = new ConfluonAudio(seed);
   applyPerformanceSettings(false);
   installControls();
+  midi = new MidiController({
+    root: elements.controls,
+    settings: () => settings,
+    transport: () => state,
+    parameter: (property, unit) => {
+      setPerformanceParameter(property, parameterValue(property, unit), true);
+    },
+    action: performMidiAction,
+    gesture: updateMidiGesture,
+    release: releaseMidiSource,
+    releaseAll: releaseInteractions,
+  });
+  xl3 = createXL3Surface({
+    root: document.querySelector("#xl3-panel"), settings: () => settings,
+    parameter: (property,value) => setPerformanceParameter(property,value,true),
+    transport: () => state, play: playPerformance, arm: armPerformance,
+    gesture: (point,mode) => mode ? setGestureMode(mode) : updateMidiGesture("xl3",point),
+    settle: down => setSettle("xl3",down),
+    seed: point => { const rect=elements.field.getBoundingClientRect(); spawn(point.x*2-1,(point.y*2-1)*rect.height/rect.width); },
+    pause: () => { if (state.started && !state.ending) togglePause(); },
+    reset: resetField,
+    field: index => loadFieldScore(elements.fieldScore.options[index].value),
+    release: releaseInteractions, close: () => setControlsOpen(false),
+    standard: () => chooseControlLayout("controls"),
+  });
+  xl3.invalidate();
+  document.querySelectorAll("[data-interface]").forEach(button => {
+    button.addEventListener("click",() => chooseControlLayout(button.dataset.interface));
+  });
+  if (new URL(location.href).searchParams.get("controller") === "1") setControlsOpen(true);
   exposeDiagnostics();
   requestAnimationFrame(frame);
   void monitoringReady.then(() => setRuntimeTag("renderer", renderer.kind.toLowerCase()));
@@ -161,7 +205,7 @@ function installControls() {
     window.addEventListener(eventName, startExperience, { capture: true, passive: true });
   });
   elements.controlsToggle.addEventListener("click", () => {
-    setControlsOpen(elements.controls.classList.contains("collapsed"));
+    setControlsOpen(elements.controlsToggle.getAttribute("aria-expanded") !== "true");
   });
   elements.fieldScore.addEventListener("change", () => {
     if (!elements.fieldScore.value) return;
@@ -169,7 +213,7 @@ function installControls() {
   });
 
   document.addEventListener("pointerdown", (event) => {
-    if (!elements.controls.classList.contains("collapsed") && !elements.controls.contains(event.target)) {
+    if (elements.controlsToggle.getAttribute("aria-expanded") === "true" && !elements.controls.contains(event.target) && !document.querySelector("#xl3-panel").contains(event.target)) {
       setControlsOpen(false);
     }
   });
@@ -197,19 +241,20 @@ function installControls() {
     elements.tone,
   ].forEach((control) => {
     control.addEventListener("input", () => {
-      readSettingsFromControls();
-      applyPerformanceSettings(true);
+      setPerformanceParameter(control.id, Number(control.value) / 100);
       audio.cueControl(control.id, Number(control.value) / Number(control.max));
     });
   });
 
   elements.field.addEventListener("pointerenter", (event) => {
+    if (pointerOwner !== null) return;
     if (event.pointerType === "touch") return;
     updatePointerPosition(event, false);
     state.pointer.present = true;
   });
 
   elements.field.addEventListener("pointerdown", (event) => {
+    pointerOwner = `pointer:${event.pointerId}`;
     const point = updatePointerPosition(event, false);
     state.pointer.active = true;
     state.pointer.present = true;
@@ -222,6 +267,7 @@ function installControls() {
   });
 
   elements.field.addEventListener("pointermove", (event) => {
+    if (pointerOwner !== null && pointerOwner !== `pointer:${event.pointerId}`) return;
     if (event.pointerType === "touch" && !state.pointer.active) return;
     updatePointerPosition(event, true);
     state.pointer.present = true;
@@ -229,6 +275,8 @@ function installControls() {
   });
 
   elements.field.addEventListener("pointerup", (event) => {
+    if (pointerOwner !== `pointer:${event.pointerId}`) return;
+    pointerOwner = null;
     const point = updatePointerPosition(event, true);
     const duration = performance.now() - state.pointer.downAt;
     const travel = Math.hypot(point.x - state.pointer.downX, point.y - state.pointer.downY);
@@ -256,14 +304,13 @@ function installControls() {
   });
 
   elements.field.addEventListener("pointerleave", (event) => {
+    if (pointerOwner !== null && pointerOwner !== `pointer:${event.pointerId}`) return;
     if (event.pointerType === "touch" || !state.pointer.active) {
       state.pointer.present = false;
     }
   });
-  elements.field.addEventListener("pointercancel", () => {
-    state.pointer.active = false;
-    state.pointer.present = false;
-    elements.instrument.removeAttribute("data-active-gesture");
+  elements.field.addEventListener("pointercancel", (event) => {
+    if (pointerOwner === `pointer:${event.pointerId}`) clearPointer();
   });
   elements.field.addEventListener("dblclick", (event) => {
     // Chromium emits a compatibility dblclick after a native double-tap.
@@ -276,11 +323,6 @@ function installControls() {
     elements.field.addEventListener(eventName, preventBrowserFieldGesture);
   });
 
-  const settleOff = () => {
-    if (!state.settle) return;
-    state.settle = false;
-    audio.strike(0.58, engine.metrics()[METRIC_FIELD.ENERGY]);
-  };
   elements.population.addEventListener("change", () => {
     settings.population = clampPopulation(Number(elements.population.value));
     engine = new Engine(seed, settings.population);
@@ -293,25 +335,22 @@ function installControls() {
     audio.cueControl("population", settings.population / 4096);
   });
   elements.volume.addEventListener("input", () => {
-    settings.level = Number(elements.volume.value) / 100;
-    audio.setLevel(settings.level);
-    updateRangeProgress(elements.volume);
-    syncSettingsUrl();
+    setPerformanceParameter("level", Number(elements.volume.value) / 100);
   });
 
   window.addEventListener("keydown", (event) => {
+    if (
+      event.target instanceof HTMLElement &&
+      event.target.closest("input, select, button, textarea, [contenteditable=true]")
+    ) return;
     if (event.repeat && event.code !== "KeyS") return;
     if (event.code === "Space") {
       event.preventDefault();
       togglePause();
     } else if (event.code === "KeyR") {
-      engine.reset(seed);
-      audio.reseed(seed);
-      resetVisualSmoothing();
-      renderer.resetTrails();
-      audio.strike(0.62, 0.5);
+      resetField();
     } else if (event.code === "KeyS") {
-      state.settle = true;
+      setSettle("keyboard", true);
     } else if (event.code === "KeyG") {
       setGestureMode("gather");
     } else if (event.code === "KeyO") {
@@ -324,10 +363,19 @@ function installControls() {
   });
 
   window.addEventListener("keyup", (event) => {
-    if (event.code === "KeyS") settleOff();
+    if (event.code === "KeyS") setSettle("keyboard", false);
+  });
+
+  window.addEventListener("blur", () => { releaseInteractions(); xl3?.releaseHolds(true); });
+  window.addEventListener("pagehide", () => {
+    releaseInteractions();
+    syncSettingsUrl();
+    midi?.disable();
+    xl3?.disconnect();
   });
 
   document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { releaseInteractions(); xl3?.releaseHolds(true); if (state.ending) finishPerformance(); }
     if (document.hidden && state.started) {
       audio.setPaused(true);
     } else if (state.started) {
@@ -414,8 +462,15 @@ function updatePointerPosition(event, trackMotion) {
 
 function setGestureMode(mode, updateUrl = true) {
   if (!isGestureMode(mode)) return;
+  const changed = state.gestureMode !== mode;
   state.gestureMode = mode;
   settings.mode = mode;
+  if (changed && state.pointer.active) {
+    state.pointer.mode = mode;
+    elements.instrument.dataset.activeGesture = mode;
+  }
+  midi?.invalidate();
+  xl3?.invalidate();
   elements.instrument.dataset.gesture = mode;
   elements.gestureModes.forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.gesture === mode));
@@ -429,16 +484,19 @@ function setGestureMode(mode, updateUrl = true) {
   }
 }
 
-function readSettingsFromControls() {
-  settings.ecology = Number(elements.ecology.value) / 100;
-  settings.flow = Number(elements.flow.value) / 100;
-  settings.gesture = Number(elements.gesture.value) / 100;
-  settings.glow = Number(elements.glow.value) / 100;
-  settings.memory = Number(elements.memory.value) / 100;
-  settings.tone = Number(elements.tone.value) / 100;
+function setPerformanceParameter(property, value, defer = false) {
+  settings[property] = normalizePerformanceParameter(property, value);
+  performanceDirty = defer;
+  if (!defer) applyPerformanceSettings(false);
+  else applyPerformanceModel();
+  midi?.invalidate();
+  xl3?.invalidate();
+  window.clearTimeout(scoreTimer);
+  if (defer) scoreTimer = window.setTimeout(syncSettingsUrl, 180);
+  else syncSettingsUrl();
 }
 
-function applyPerformanceSettings(updateUrl) {
+function applyPerformanceSettings(updateUrl, model = true) {
   elements.ecology.value = String(Math.round(settings.ecology * 100));
   elements.flow.value = String(Math.round(settings.flow * 100));
   elements.gesture.value = String(Math.round(settings.gesture * 100));
@@ -448,6 +506,13 @@ function applyPerformanceSettings(updateUrl) {
   elements.volume.value = String(Math.round(settings.level * 100));
   elements.population.value = String(settings.population);
   updateSettingLabels();
+  if (model) applyPerformanceModel();
+  setGestureMode(settings.mode, false);
+  if (updateUrl) syncSettingsUrl();
+  syncFieldScore();
+}
+
+function applyPerformanceModel() {
   engine.set_ecology(settings.ecology);
   renderer.setStyle({
     glow: settings.glow,
@@ -457,9 +522,6 @@ function applyPerformanceSettings(updateUrl) {
   audio.setTone(settings.tone);
   audio.setLevel(settings.level);
   audio.setPerformance(settings);
-  setGestureMode(settings.mode, false);
-  if (updateUrl) syncSettingsUrl();
-  syncFieldScore();
 }
 
 function syncFieldScore() {
@@ -546,7 +608,8 @@ function updateRangeProgress(control) {
   control.style.setProperty("--range-fill", `${progress}%`);
 }
 
-async function startExperience() {
+async function startExperience(event) {
+  if (event?.target instanceof Element && (event.target.closest("#xl3-panel, [data-interface], #controls-toggle") || controlLayout === "xl3" && event.target.closest("#controls"))) return;
   if (state.started) {
     await resumeSound();
     return;
@@ -574,7 +637,7 @@ async function startExperience() {
 }
 
 async function resumeSound() {
-  if (!state.started || audio.state() === "running") return;
+  if (!state.started || !state.running || audio.state() === "running") return;
   try {
     await audio.resume();
   } catch (error) {
@@ -583,18 +646,76 @@ async function resumeSound() {
   }
 }
 
+function chooseControlLayout(layout) {
+  controlLayout = layout;
+  try { localStorage.setItem("confluon-control-layout",layout); } catch { /* Optional UI preference. */ }
+  setControlsOpen(true);
+}
+
 function setControlsOpen(open) {
-  elements.controls.classList.toggle("collapsed", !open);
+  elements.controls.classList.toggle("collapsed", !open || controlLayout === "xl3");
+  xl3?.panel.show(open && controlLayout === "xl3");
   elements.controlsToggle.setAttribute("aria-expanded", String(open));
   elements.controlsToggle.setAttribute("aria-label", open ? "Hide controls" : "Show controls");
+  elements.controlsToggle.setAttribute("aria-controls", controlLayout === "xl3" ? "xl3-panel" : "controls-body");
+  document.querySelectorAll("[data-interface]").forEach(button => {
+    button.setAttribute("aria-pressed",String(button.dataset.interface === controlLayout));
+  });
   wakeControls();
+}
+
+async function armPerformance() {
+  if (state.started) return;
+  if (state.starting) throw new Error("Audio is starting");
+  state.running = false;
+  audio.setPaused(true);
+  state.starting = true;
+  try { await audio.start(); audio.finishFade(); state.started = true; state.needsWake = true; }
+  finally { state.starting = false; xl3?.invalidate(); }
+}
+
+async function playPerformance() {
+  if (state.starting || state.ending) return;
+  if (!state.started) {
+    await armPerformance().catch(error => {
+      captureException(error,{stage:"controller_audio_start"});
+      xl3?.panel.message("Click Play in the panel to allow audio, then use the controller");
+    });
+    if (!state.started) return;
+  } else if (state.running && audio.state() === "running") {
+    state.ending = true;
+    audio.fadeOut(8);
+    xl3?.invalidate();
+    return;
+  }
+  state.starting = true;
+  xl3?.invalidate();
+  try {
+    await audio.resume();
+    state.running = true;
+    audio.setPaused(false);
+    if (state.needsWake) { state.needsWake = false; audio.wake(); }
+    xl3?.invalidate();
+  } catch {
+    xl3?.panel.message("Click Play in the panel to allow audio");
+  } finally {
+    state.starting = false;
+    xl3?.invalidate();
+  }
+}
+
+function finishPerformance() {
+  state.ending = false;
+  state.running = false;
+  audio.finishFade();
+  releaseInteractions();
 }
 
 function wakeControls() {
   elements.controls.classList.remove("idle-hidden");
   window.clearTimeout(idleTimer);
   idleTimer = window.setTimeout(() => {
-    if (elements.controls.classList.contains("collapsed")) {
+    if (elements.controlsToggle.getAttribute("aria-expanded") !== "true") {
       elements.controls.classList.add("idle-hidden");
     }
   }, IDLE_CONTROLS_MS);
@@ -607,6 +728,12 @@ let fpsFrameCount = 0;
 let measuredFps = 0;
 
 function frame(milliseconds) {
+  if (performanceDirty) {
+    performanceDirty = false;
+    applyPerformanceSettings(false, false);
+  }
+  if (state.ending && audio.fadeFinished()) finishPerformance();
+  midi?.tick();
   fpsFrameCount += 1;
   if (milliseconds - fpsWindowStarted >= 1000) {
     measuredFps = (fpsFrameCount * 1000) / (milliseconds - fpsWindowStarted);
@@ -647,6 +774,7 @@ function frame(milliseconds) {
   const metrics = engine.metrics();
   const visualState = smoothVisualState(snapshot, metrics, elapsed);
   renderer.render(visualState.snapshot, visualState.metrics, time);
+  xl3?.drawPreview([elements.traces,document.querySelector(".fallback-field") || elements.field],milliseconds);
   const audibleInteraction = pointerInteraction();
   audio.setInteraction(
     {
@@ -742,6 +870,10 @@ function loadFieldScore(source) {
   const featuredSeed = parseSeed(featuredUrl);
   if (featuredSeed === null) return;
 
+  releaseInteractions();
+  window.clearTimeout(scoreTimer);
+  performanceDirty = false;
+
   seed = featuredSeed;
   Object.assign(settings, parsePerformanceSettings(featuredUrl));
   engine = new Engine(seed, settings.population);
@@ -755,8 +887,98 @@ function loadFieldScore(source) {
 }
 
 function togglePause() {
+  if (state.ending) return;
   state.running = !state.running;
   audio.setPaused(!state.running);
+  midi?.invalidate();
+  xl3?.invalidate();
+}
+
+function resetField() {
+  releaseInteractions(false);
+  engine.reset(seed);
+  audio.reseed(seed);
+  resetVisualSmoothing();
+  renderer.resetTrails();
+  audio.strike(0.62, 0.5);
+}
+
+function setSettle(source, down) {
+  const previous = state.settle;
+  if (down) settleSources.add(source);
+  else settleSources.delete(source);
+  state.settle = settleSources.size > 0;
+  if (previous && !state.settle) audio.strike(0.58, engine.metrics()[METRIC_FIELD.ENERGY]);
+  midi?.invalidate();
+  xl3?.invalidate();
+}
+
+function performMidiAction(action, down, source) {
+  if (action === "settle") setSettle(`midi:${source}`, down);
+  else if (isGestureMode(action)) setGestureMode(action);
+  else if (action === "pause") togglePause();
+  else if (action === "reset") resetField();
+  else if (action === "seed") spawn(state.pointer.x, state.pointer.y);
+}
+
+function updateMidiGesture(source, point) {
+  const owner = `midi:${source}`;
+  if (!point.active) {
+    if (pointerOwner !== owner) return;
+    const strength =
+      state.pointer.mode === "orbit" ? 0.72 : state.pointer.mode === "divide" ? 0.64 : 0.5;
+    audio.strike(strength, engine.metrics()[METRIC_FIELD.ENERGY], state.pointer.x);
+    state.pointer.active = false;
+    state.pointer.present = false;
+    pointerOwner = null;
+    elements.instrument.removeAttribute("data-active-gesture");
+    return;
+  }
+  // A new press takes ownership. Movement from an older press cannot steal it back.
+  const starting = point.pressed;
+  if (!starting && pointerOwner !== owner) return;
+  pointerOwner = owner;
+  const rect = elements.field.getBoundingClientRect();
+  updatePointerPosition(
+    {
+      clientX: rect.left + point.x * rect.width,
+      clientY: rect.top + (1 - point.y) * rect.height,
+      timeStamp: performance.now(),
+      pointerType: "touch",
+    },
+    !starting,
+  );
+  state.pointer.active = true;
+  state.pointer.present = true;
+  state.pointer.mode = state.gestureMode;
+  if (starting) state.pointer.impulse = 1;
+  elements.instrument.dataset.activeGesture = state.pointer.mode;
+}
+
+function clearPointer() {
+  pointerOwner = null;
+  state.pointer.active = false;
+  state.pointer.present = false;
+  state.pointer.impulse = 0;
+  state.pointer.motion = 0;
+  elements.instrument.removeAttribute("data-active-gesture");
+}
+
+function releaseMidiSource(source) {
+  const owner = `midi:${source}`;
+  if (pointerOwner === owner) clearPointer();
+  setSettle(owner, false);
+}
+
+function releaseInteractions(resetMidi = true) {
+  xl3?.releaseHolds();
+  if (resetMidi) midi?.mapping.releaseAll();
+  else midi?.mapping.releaseHolds();
+  settleSources.clear();
+  state.settle = false;
+  clearPointer();
+  midi?.invalidate();
+  xl3?.invalidate();
 }
 
 function exposeDiagnostics() {
@@ -786,10 +1008,19 @@ function exposeDiagnostics() {
     }),
     seed: () => seed,
     settings: () => ({ ...settings }),
+    transport: () => ({ running: state.running, settle: state.settle, started: state.started, ending: state.ending }),
   });
 }
 
 async function prepareCapture() {
+  xl3?.disconnect();
+  if (state.ending) finishPerformance();
+  midi?.disable();
+  releaseInteractions();
+  if (performanceDirty) {
+    applyPerformanceSettings(false);
+    performanceDirty = false;
+  }
   await audio.start();
   audio.setLevel(settings.level);
   audio.setPaused(true);
