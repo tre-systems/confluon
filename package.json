@@ -37,7 +37,7 @@
     "check": "npm run check:rust && npm run check:js && npm run check:icons && npm run test:midi && npm run check:controllers && npm run test:state && npm run test:pwa && npm run test:audio && npm run test:tooling && npm run build",
     "controllers": "node scripts/build-touchosc.mjs",
     "check:controllers": "node scripts/build-touchosc.mjs --check",
-    "test:midi": "node --test scripts/midi.test.mjs scripts/xl3.test.mjs",
+    "test:midi": "node --test scripts/midi.test.mjs scripts/xl3.test.mjs scripts/touchosc-format.test.mjs",
     "smoke:midi": "node scripts/midi-smoke.mjs"
   },
   "keywords": [

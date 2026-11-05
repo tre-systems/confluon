@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
+import { matchesTouchOscLayout } from "./touchosc-format.mjs";
 import {
   MIDI_ACTIONS,
   MIDI_PARAMETERS,
@@ -8,7 +9,7 @@ import {
 } from "../web/midi-mapping.js";
 
 // Native TouchOSC lexml v6, verified with the desktop editor. Keep the editable
-// script and generator as sources; the .tosc is a deterministic distributable.
+// script and generator as sources; its decompressed content is deterministic.
 const output = new URL("../public/controllers/confluon.tosc", import.meta.url);
 let id = 0;
 const color = (r, g, b, a = 1) => ({
@@ -126,7 +127,7 @@ MIDI_PARAMETERS.forEach((parameter, index) => {
 const xml = `<?xml version='1.0' encoding='UTF-8'?><lexml version='6'>${node("GROUP", "Confluon", [0, 0, 1194, 834], { color: color(0.025, 0.04, 0.055), interactive: false, outline: false, script }, { touch: false }, children)}</lexml>`;
 const bytes = deflateSync(Buffer.from(xml));
 if (process.argv.includes("--check")) {
-  if (!readFileSync(output).equals(bytes))
+  if (!matchesTouchOscLayout(readFileSync(output), xml))
     throw new Error("TouchOSC layout is stale. Run npm run controllers.");
   console.log("touchosc: native layout matches its sources");
 } else {
