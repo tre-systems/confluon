@@ -774,7 +774,6 @@ function frame(milliseconds) {
   const metrics = engine.metrics();
   const visualState = smoothVisualState(snapshot, metrics, elapsed);
   renderer.render(visualState.snapshot, visualState.metrics, time);
-  xl3?.drawPreview([elements.traces,document.querySelector(".fallback-field") || elements.field],milliseconds);
   const audibleInteraction = pointerInteraction();
   audio.setInteraction(
     {

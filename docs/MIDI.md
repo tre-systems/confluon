@@ -43,10 +43,11 @@ immediate and replaces the current starting score, just like the existing dropdo
 Up/down focuses rows; the side Hide button hides the panel. Unmapped hardware
 buttons do nothing. Momentary buttons highlight while held, including Shift.
 
-A live field preview sits at the lower left. On narrow screens the board scrolls
-horizontally; its columns stay aligned with the physical controller. The layout
-choice is stored separately from URL scores. The panel is also usable with a mouse,
-touch or keyboard without connecting hardware.
+The translucent panel keeps the field visible behind the controls. Dimmed, unused
+dials retain their hardware positions with compact spacing. On narrow screens the
+board scrolls horizontally; its columns stay aligned with the physical controller.
+The layout choice is stored separately from URL scores. The panel is also usable
+with a mouse, touch or keyboard without connecting hardware.
 
 Disconnecting, changing DAW mode, losing focus or hiding the tab releases held
 forces. A disconnected device needs an explicit reconnect. Ordinary controls and

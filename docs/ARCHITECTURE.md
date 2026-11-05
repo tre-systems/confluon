@@ -161,12 +161,12 @@ local storage and never enter the URL or diagnostics. See [MIDI performance](MID
 for the protocol and layout sources.
 
 The XL3 protocol driver and view are adapted from Cymion. Application bindings own
-Confluon's labels, units, gesture/transport actions and preview. This boundary lets
+Confluon's labels, units and gesture/transport actions. This boundary lets
 another instrument use the same protocol/view without inheriting its sound engine.
 The two applications remain independently built; there is no published shared package.
 Device feedback is coalesced on a 16 ms timer; view feedback uses one animation-frame
-callback. Neither queue delays parameter writes. The small preview copies the existing
-rendered field at up to 20 fps only while the panel is open.
+callback. Neither queue delays parameter writes. The translucent panel overlays
+the existing field directly, without a second canvas or preview copy.
 
 Controller fade-out schedules the existing master gain against AudioContext time.
 The graph, seeded synthesis, renderer and default parameter values are unchanged.

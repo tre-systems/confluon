@@ -34,11 +34,59 @@ export async function smokeXL3(browser, baseUrl) {
       await page.locator(".xl3-selected input").getAttribute("aria-label"),
       "Controller Ecology",
     );
-    assert.equal(await page.isVisible(".xl3-preview"), true);
+    assert.equal(await page.locator(".xl3-preview").count(), 0);
     await page.click("#xl3-panel [data-connect]");
     await page.waitForFunction(() =>
       document.querySelector("#xl3-connection").textContent.includes("DAW"),
     );
+    for (const viewport of [
+      { width: 1280, height: 800 },
+      { width: 657, height: 739 },
+      { width: 390, height: 844 },
+      { width: 844, height: 390 },
+    ]) {
+      await page.setViewportSize(viewport);
+      const geometry = await page.evaluate(() => {
+        const panel = document.querySelector("#xl3-panel");
+        const bounds = panel.getBoundingClientRect();
+        const header = [...panel.querySelector("header").children]
+          .filter((el) => !el.hidden)
+          .map((el) => el.getBoundingClientRect());
+        return {
+          fits:
+            bounds.top >= 0 &&
+            bounds.left >= 0 &&
+            bounds.right <= innerWidth &&
+            bounds.bottom <= innerHeight,
+          headerFits: header.every(
+            (r) => r.left >= bounds.left && r.right <= bounds.right,
+          ),
+          headerOverlaps: header.some((a, i) =>
+            header
+              .slice(i + 1)
+              .some(
+                (b) =>
+                  a.left < b.right &&
+                  a.right > b.left &&
+                  a.top < b.bottom &&
+                  a.bottom > b.top,
+              ),
+          ),
+          documentOverflows: document.documentElement.scrollWidth > innerWidth,
+        };
+      });
+      assert.deepEqual(
+        geometry,
+        {
+          fits: true,
+          headerFits: true,
+          headerOverlaps: false,
+          documentOverflows: false,
+        },
+        `XL3 panel at ${viewport.width}×${viewport.height}`,
+      );
+    }
+    await page.setViewportSize({ width: 1280, height: 800 });
     assert.deepEqual(await settings(), original);
     assert.equal((await state()).running, false);
     assert.deepEqual(await page.evaluate(() => window.testXL3.requests), [
@@ -94,6 +142,19 @@ export async function smokeXL3(browser, baseUrl) {
     );
     await send(0xbf, 88, 80);
     assert.ok((await page.evaluate(() => window.confluon.interaction().x)) > 0);
+    const gestureX = page.getByRole("slider", {
+      name: "Controller Gesture X",
+      exact: true,
+    });
+    const beforeKey = await page.evaluate(
+      () => window.confluon.interaction().x,
+    );
+    await gestureX.focus();
+    await gestureX.press("ArrowRight");
+    assert.ok(
+      (await page.evaluate(() => window.confluon.interaction().x)) > beforeKey,
+    );
+    await gestureX.press("ArrowLeft");
     await send(0xb0, 40, 0);
     assert.equal(
       await page.evaluate(() => window.confluon.interaction().active),

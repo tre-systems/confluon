@@ -65,7 +65,7 @@ export function controllerBindings({
 export const CONFLUON_XL3_LAYOUT = {
   initialSlot: 24,
   summary:
-    "Faders 1–6: Ecology, Flow, Touch, Halo, Memory, Tone · Fader 8: Level. Middle knobs 4–5: gesture X/Y; Shift for fine adjustment. Move faders through their current values to pick up.",
+    "Move faders through their current values to pick up. Hold Shift for fine adjustment.",
   momentary: [40, 41],
   buttons: [
     ["pages", 106, "↑", "Previous row"],

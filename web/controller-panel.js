@@ -9,7 +9,6 @@ export function controllerPanel(
     disconnect,
     layout = { buttons: [] },
     onClose,
-    preview,
   },
 ) {
   const document = root.ownerDocument;
@@ -17,6 +16,9 @@ export function controllerPanel(
   heading.innerHTML =
     '<div><strong>Launch Control XL 3</strong><span id="xl3-connection">Not connected</span></div><button type="button" data-connect>Connect</button><button type="button" data-close aria-label="Close controller">×</button>';
   root.append(heading);
+  const switcher = root.querySelector(":scope > .interface-switch");
+  if (switcher)
+    heading.insertBefore(switcher, heading.querySelector("[data-connect]"));
   heading.querySelector("[data-connect]").addEventListener("click", connect);
   heading
     .querySelector("[data-close]")
@@ -181,7 +183,6 @@ export function controllerPanel(
   fine.textContent = "Shift · fine adjustment";
   left.append(fine);
   keys.set(63, fine);
-  if (preview) left.append(preview);
   if (layout.summary) {
     const note = document.createElement("p");
     note.className = "xl3-note";

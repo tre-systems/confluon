@@ -104,7 +104,8 @@ ignored by git.
 
 Open the controls and choose **XL3** in Chrome or Edge. Click **Connect** to use
 DAW Control with immediate relative knobs, fader pickup and button highlights.
-The hardware-shaped panel has a live field preview and can be hidden while playing.
+The translucent hardware-shaped panel lets the field show through and can be
+hidden while playing.
 Play starts the instrument; a second press fades to silence over eight seconds.
 
 Faders 1–6 control Ecology, Flow, Touch strength, Halo, Memory and Tone. Fader 8

@@ -37,13 +37,6 @@ export function createXL3Surface({
       if (holding) gesture({ ...point, active: true, pressed: false });
     },
   });
-  const preview = document.createElement("canvas");
-  preview.className = "xl3-preview";
-  preview.width = 240;
-  preview.height = 150;
-  preview.setAttribute("aria-label", "Live field preview");
-  const previewContext = preview.getContext("2d");
-  let previewAt = -Infinity;
   const paint = new ViewFeedback(() => panel.refresh());
   const driver = new XL3({
     ...bindings,
@@ -89,7 +82,6 @@ export function createXL3Surface({
     disconnect,
     layout: CONFLUON_XL3_LAYOUT,
     onClose: close,
-    preview,
   });
 
   function action(cc, shift = false, down = true) {
@@ -216,40 +208,11 @@ export function createXL3Surface({
     driver.sync();
     paint.schedule();
   }
-  function drawPreview(canvases, time) {
-    if (!panel.open || time - previewAt < 1000 / 20) return;
-    previewAt = time;
-    previewContext.fillStyle = "#05070a";
-    previewContext.fillRect(0, 0, preview.width, preview.height);
-    for (const canvas of canvases) {
-      if (
-        !canvas ||
-        canvas.style.display === "none" ||
-        !canvas.width ||
-        !canvas.height
-      )
-        continue;
-      const scale = Math.min(
-        preview.width / canvas.width,
-        preview.height / canvas.height,
-      );
-      const w = canvas.width * scale,
-        h = canvas.height * scale;
-      previewContext.drawImage(
-        canvas,
-        (preview.width - w) / 2,
-        (preview.height - h) / 2,
-        w,
-        h,
-      );
-    }
-  }
   return {
     panel,
     invalidate,
     disconnect,
     releaseHolds,
-    drawPreview,
     get connected() {
       return !!driver.input;
     },
