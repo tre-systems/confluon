@@ -110,7 +110,7 @@ export function createXL3Surface({
       else panel.message("Hold Shift to reset the field");
     } else if (cc >= 45 && cc <= 47) field(cc - 44);
     else if (cc === 48) release();
-    else if (cc >= 49 && cc <= 51) panel.focus((cc - 49) * 8);
+    else if (cc >= 49 && cc <= 51) panel.focus([29, 24, 27][cc - 49]);
     else if (cc === 52) standard();
     invalidate();
   }

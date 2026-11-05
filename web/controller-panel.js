@@ -188,7 +188,7 @@ export function controllerPanel(
     note.textContent = layout.summary;
     root.append(note);
   }
-  let selected = 0,
+  let selected = layout.initialSlot ?? 0,
     paintedSelection = -1,
     readout = "Ready";
   const keyStates = new Map(),

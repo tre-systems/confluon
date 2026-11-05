@@ -23,23 +23,22 @@ start. Hiding the browser tab pauses audio; hiding just the control panel does n
 
 | Position | Assignment |
 | --- | --- |
-| Top knob 1 | Tone |
-| Middle knobs 1–3 | Ecology, Flow, Touch strength |
-| Middle knobs 4–5 | Gesture X, Gesture Y |
-| Bottom knobs 1–2 | Halo, Memory |
+| Faders 1–6 | Ecology, Flow, Touch strength, Halo, Memory, Tone |
+| Fader 7 | Unassigned |
 | Fader 8 | Level |
+| Middle knobs 4–5 | Gesture X, Gesture Y |
 
 The remaining continuous controls are unassigned and dimmed. Each active control
 has one job. The panel uses the same canonical parameter ranges as the standard
 controls. Relative knobs respond immediately; Shift makes steps ten times finer.
-Fader 8 uses pickup, re-armed after touch edits, field changes or release of gestures.
+All assigned faders use pickup, re-armed after touch edits, field changes or release of gestures.
 No parameter changes simply because a panel opens or a device connects.
 
 The top button row selects Gather / Orbit / Divide, holds the gesture at the X/Y
 position, holds Settle, adds a Seed, pauses/resumes, and resets with **Shift + Reset**.
 X/Y starts at the centre each session and does not enter the saved score. The bottom
 row loads Still Choir / Tidal Assembly / Ember Rift, releases gestures, focuses the
-sound / field / visual row, and switches to standard Controls. Loading a field is
+Tone / Ecology / Halo fader, and switches to standard Controls. Loading a field is
 immediate and replaces the current starting score, just like the existing dropdown.
 Up/down focuses rows; the side Hide button hides the panel. Unmapped hardware
 buttons do nothing. Momentary buttons highlight while held, including Shift.

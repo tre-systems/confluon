@@ -3,12 +3,12 @@ import { parameterUnit, parameterValue } from "./midi-mapping.js";
 // The instrument owns musical units. The shared XL3 driver/panel see only
 // physical slots, normalized positions and labels; no DSP or preset data.
 export const XL3_PARAMETERS = Object.freeze({
-  0: ["tone", "Tone", "Dark to bright sound"],
-  8: ["ecology", "Ecology", "Calm to volatile interactions"],
-  9: ["flow", "Flow", "Speed of the field and its musical development"],
-  10: ["gesture", "Touch", "Strength of the held gesture"],
-  16: ["glow", "Halo", "Light around the particles"],
-  17: ["memory", "Memory", "Length of visual trails"],
+  24: ["ecology", "Ecology", "Calm to volatile interactions"],
+  25: ["flow", "Flow", "Speed of the field and its musical development"],
+  26: ["gesture", "Touch", "Strength of the held gesture"],
+  27: ["glow", "Halo", "Light around the particles"],
+  28: ["memory", "Memory", "Length of visual trails"],
+  29: ["tone", "Tone", "Dark to bright sound"],
   31: [
     "level",
     "Level",
@@ -63,8 +63,9 @@ export function controllerBindings({
 }
 
 export const CONFLUON_XL3_LAYOUT = {
+  initialSlot: 24,
   summary:
-    "Top: sound · Middle: field / gesture · Bottom: visuals · Fader 8: level. Shift: fine adjustment. Disconnect other instruments before connecting.",
+    "Faders 1–6: Ecology, Flow, Touch, Halo, Memory, Tone · Fader 8: Level. Middle knobs 4–5: gesture X/Y; Shift for fine adjustment. Move faders through their current values to pick up.",
   momentary: [40, 41],
   buttons: [
     ["pages", 106, "↑", "Previous row"],
@@ -83,9 +84,9 @@ export const CONFLUON_XL3_LAYOUT = {
     ["grid", 46, "Tidal", "Tidal Assembly field"],
     ["grid", 47, "Ember", "Ember Rift field"],
     ["grid", 48, "Release", "Release gestures"],
-    ["grid", 49, "Sound", "Focus sound row"],
-    ["grid", 50, "Field", "Focus field row"],
-    ["grid", 51, "Visuals", "Focus visuals row"],
+    ["grid", 49, "Sound", "Focus Tone fader"],
+    ["grid", 50, "Field", "Focus Ecology fader"],
+    ["grid", 51, "Visuals", "Focus Halo fader"],
     ["grid", 52, "Controls", "Standard controls"],
   ],
 };

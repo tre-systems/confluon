@@ -204,6 +204,14 @@ test("Confluon bindings preserve preset values and expose only distinct existing
   }
   assert.deepEqual(settings, before);
   assert.equal(new Set(Object.values(XL3_PARAMETERS).map((v) => v[0])).size, 7);
+  assert.deepEqual(
+    Array.from({ length: 8 }, (_, i) => b.read(24 + i).label),
+    ["Ecology", "Flow", "Touch", "Halo", "Memory", "Tone", "—", "Level"],
+  );
+  assert.deepEqual(
+    Array.from({ length: 24 }, (_, i) => i).filter((i) => !b.read(i).disabled),
+    [11, 12],
+  );
   for (let i = 0; i < 32; i++)
     if (b.read(i).disabled) assert.equal(b.change(i, 0.8), false);
   assert.deepEqual(settings, before);
@@ -211,7 +219,7 @@ test("Confluon bindings preserve preset values and expose only distinct existing
   b.change(12, 0.9);
   assert.deepEqual(settings, before);
   assert.deepEqual(point, { x: 0.1, y: 0.9 });
-  b.change(0, 1);
+  b.change(29, 1);
   assert.deepEqual(changes, ["tone"]);
   assert.equal(settings.tone, 1);
   assert.equal(settings.level, before.level);
@@ -219,11 +227,72 @@ test("Confluon bindings preserve preset values and expose only distinct existing
   assert.equal(settings.level, 0);
   assert.equal(settings.tone, 1);
   assert.equal(b.change(32, 0.5), false);
-  assert.equal(b.change(0, NaN), false);
+  assert.equal(b.change(29, NaN), false);
   for (const [slot, [property]] of Object.entries(XL3_PARAMETERS)) {
     b.change(Number(slot), 0);
     const low = settings[property];
     b.change(Number(slot), 1);
     assert.ok(settings[property] > low);
   }
+});
+
+test("every assigned Confluon fader picks up independently and re-arms after a score change", async () => {
+  const settings = parsePerformanceSettings(
+    "https://confluon.com/?seed=424242",
+  );
+  const point = { x: 0.5, y: 0.5 },
+    changes = [];
+  const bindings = controllerBindings({
+    settings: () => settings,
+    setParameter: (property, value) => {
+      settings[property] = value;
+      changes.push(property);
+    },
+    point: () => point,
+    setPoint: (axis, value) => {
+      point[axis] = value;
+    },
+  });
+  const driver = new XL3({ ...bindings, action() {} });
+  await driver.connect({
+    input: { state: "connected", open: async () => {} },
+    output: { state: "connected", open: async () => {}, send() {} },
+  });
+  const assignments = [
+    "ecology",
+    "flow",
+    "gesture",
+    "glow",
+    "memory",
+    "tone",
+    null,
+    "level",
+  ];
+  for (let fader = 0; fader < 8; fader++) {
+    const property = assignments[fader],
+      before = { ...settings };
+    driver.receive([0xbf, 5 + fader, 0]);
+    assert.deepEqual(settings, before);
+    driver.receive([0xbf, 5 + fader, 127]);
+    if (!property) {
+      assert.deepEqual(settings, before);
+      continue;
+    }
+    assert.equal(changes.at(-1), property);
+    assert.deepEqual(
+      Object.keys(settings).filter((key) => settings[key] !== before[key]),
+      [property],
+    );
+    // A new score puts the target below the physical fader: it must cross again.
+    settings[property] = before[property];
+    driver.receive([0xbf, 5 + fader, 126]);
+    assert.equal(settings[property], before[property]);
+    driver.receive([0xbf, 5 + fader, 0]);
+    assert.ok(settings[property] < before[property]);
+  }
+  const before = { ...settings };
+  for (let knob = 0; knob < 24; knob++) driver.receive([0xbf, 77 + knob, 65]);
+  assert.deepEqual(settings, before);
+  assert.ok(point.x > 0.5 && point.y > 0.5);
+  driver.disconnect();
 });

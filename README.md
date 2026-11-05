@@ -107,10 +107,10 @@ DAW Control with immediate relative knobs, fader pickup and button highlights.
 The hardware-shaped panel has a live field preview and can be hidden while playing.
 Play starts the instrument; a second press fades to silence over eight seconds.
 
-The assignments are distinct: top knob 1 controls Tone; middle knobs 1–5 control
-Ecology, Flow, Touch strength and gesture X/Y; bottom knobs 1–2 control Halo and
-Memory. Fader 8 controls Level. Unassigned controls are dimmed. Hold Shift for fine
-adjustments. The existing Mode 16 and Custom Mode mappings remain available under
+Faders 1–6 control Ecology, Flow, Touch strength, Halo, Memory and Tone. Fader 8
+controls Level; fader 7 is unassigned. Middle-row knobs 4–5 control gesture X/Y.
+Unassigned controls are dimmed. Each fader uses pickup; Shift makes the X/Y knobs
+ten times finer. The existing Mode 16 and Custom Mode mappings remain available under
 **TouchOSC / legacy MIDI** in the standard controls.
 
 The [TouchOSC layout](public/controllers/confluon.tosc) supplies an iPad gesture

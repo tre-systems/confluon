@@ -28,6 +28,12 @@ export async function smokeXL3(browser, baseUrl) {
     assert.equal(await page.locator(".xl3-knob").count(), 24);
     assert.equal(await page.locator(".xl3-fader").count(), 8);
     assert.equal(await page.locator(".xl3-cell input:enabled").count(), 9);
+    assert.equal(await page.locator(".xl3-fader input:enabled").count(), 7);
+    assert.equal(await page.locator(".xl3-knob input:enabled").count(), 2);
+    assert.equal(
+      await page.locator(".xl3-selected input").getAttribute("aria-label"),
+      "Controller Ecology",
+    );
     assert.equal(await page.isVisible(".xl3-preview"), true);
     await page.click("#xl3-panel [data-connect]");
     await page.waitForFunction(() =>
@@ -38,17 +44,46 @@ export async function smokeXL3(browser, baseUrl) {
     assert.deepEqual(await page.evaluate(() => window.testXL3.requests), [
       { sysex: false },
     ]);
-    await send(0xbf, 77, 65);
+    await send(0xbf, 10, 0);
+    assert.equal((await settings()).tone, original.tone);
+    await send(0xbf, 10, 80);
     assert.ok((await settings()).tone > original.tone);
     await page.waitForFunction(
-      () => document.querySelector("#tone").value === "56",
+      () => document.querySelector("#tone").value === "63",
     );
     await send(0xbf, 12, 0);
     assert.equal((await settings()).level, original.level);
     await send(0xbf, 12, 100);
     assert.ok(Math.abs((await settings()).level - 100 / 127) < 1e-6);
-    await send(0xbf, 5, 127);
-    assert.equal((await settings()).ecology, original.ecology);
+    for (const [cc, property, maximum] of [
+      [5, "ecology", 1.8],
+      [6, "flow", 1.8],
+      [7, "gesture", 1.8],
+      [8, "glow", 1.55],
+      [9, "memory", 1],
+    ]) {
+      const before = await settings();
+      await send(0xbf, cc, 0);
+      assert.deepEqual(await settings(), before);
+      await send(0xbf, cc, 127);
+      assert.deepEqual(await settings(), { ...before, [property]: maximum });
+    }
+    const beforeUnused = await settings();
+    await send(0xbf, 11, 0);
+    await send(0xbf, 11, 127);
+    await send(0xbf, 77, 65);
+    assert.deepEqual(await settings(), beforeUnused);
+    for (const [cc, label] of [
+      [49, "Controller Tone"],
+      [50, "Controller Ecology"],
+      [51, "Controller Halo"],
+    ]) {
+      await button(cc).click();
+      assert.equal(
+        await page.locator(".xl3-selected input").getAttribute("aria-label"),
+        label,
+      );
+    }
     await send(0xb0, 38, 127);
     await send(0xb0, 38, 0);
     assert.equal((await settings()).mode, "orbit");
@@ -74,7 +109,7 @@ export async function smokeXL3(browser, baseUrl) {
     await send(0xb6, 30, 29);
     assert.equal((await state()).settle, false);
     const beforeInactive = await settings();
-    await send(0xbf, 77, 65);
+    await send(0xbf, 5, 0);
     assert.deepEqual(await settings(), beforeInactive);
     await send(0xb6, 30, 2);
     await send(0xb0, 41, 127);
@@ -112,7 +147,8 @@ export async function smokeXL3(browser, baseUrl) {
     assert.deepEqual(await settings(), preserved);
     await button(104).click();
     assert.equal(await page.isVisible("#xl3-panel"), false);
-    await send(0xbf, 77, 65);
+    await send(0xbf, 10, 0);
+    await send(0xbf, 10, 100);
     assert.ok((await settings()).tone > preserved.tone);
     await page.click("#controls-toggle");
     await send(0xb0, 40, 127);
