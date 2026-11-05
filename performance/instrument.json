@@ -1,0 +1,24 @@
+{
+  "name": "confluon",
+  "version": "1.0.0",
+  "api": 1,
+  "entry": "performance/instrument.js",
+  "export": "Confluon",
+  "files": [
+    "Cargo.lock",
+    "Cargo.toml",
+    "LICENSE",
+    "performance/confluon-smoothing.js",
+    "performance/instrument.js",
+    "src/lib.rs",
+    "src/simulation.rs",
+    "web/audio.js",
+    "web/controller-bindings.js",
+    "web/midi-mapping.js",
+    "web/monitoring.js",
+    "web/performance-state.js",
+    "web/renderer.js",
+    "web/simulation-contract.js",
+    "web/viewport-projection.js"
+  ]
+}

@@ -24,7 +24,6 @@ import {
 } from "./simulation-contract.js";
 import { clientPointToWorld } from "./viewport-projection.js";
 import { MidiController } from "./midi.js";
-import { createXL3Surface } from "./xl3-surface.js";
 import { parameterValue } from "./midi-mapping.js";
 
 const FIXED_STEP = 1 / 30;
@@ -107,10 +106,6 @@ let idleTimer;
 let visualSnapshot;
 let visualMetrics;
 let midi;
-let xl3;
-let controlLayout = "controls";
-try { controlLayout = localStorage.getItem("confluon-control-layout") === "xl3" ? "xl3" : "controls"; } catch { /* Optional UI preference. */ }
-if (new URL(location.href).searchParams.get("controller") === "1") controlLayout = "xl3";
 let performanceDirty = false;
 let scoreTimer;
 let pointerOwner = null;
@@ -140,24 +135,6 @@ try {
     release: releaseMidiSource,
     releaseAll: releaseInteractions,
   });
-  xl3 = createXL3Surface({
-    root: document.querySelector("#xl3-panel"), settings: () => settings,
-    parameter: (property,value) => setPerformanceParameter(property,value,true),
-    transport: () => state, play: playPerformance, arm: armPerformance,
-    gesture: (point,mode) => mode ? setGestureMode(mode) : updateMidiGesture("xl3",point),
-    settle: down => setSettle("xl3",down),
-    seed: point => { const rect=elements.field.getBoundingClientRect(); spawn(point.x*2-1,(point.y*2-1)*rect.height/rect.width); },
-    pause: () => { if (state.started && !state.ending) togglePause(); },
-    reset: resetField,
-    field: index => loadFieldScore(elements.fieldScore.options[index].value),
-    release: releaseInteractions, close: () => setControlsOpen(false),
-    standard: () => chooseControlLayout("controls"),
-  });
-  xl3.invalidate();
-  document.querySelectorAll("[data-interface]").forEach(button => {
-    button.addEventListener("click",() => chooseControlLayout(button.dataset.interface));
-  });
-  if (new URL(location.href).searchParams.get("controller") === "1") setControlsOpen(true);
   exposeDiagnostics();
   requestAnimationFrame(frame);
   void monitoringReady.then(() => setRuntimeTag("renderer", renderer.kind.toLowerCase()));
@@ -213,7 +190,7 @@ function installControls() {
   });
 
   document.addEventListener("pointerdown", (event) => {
-    if (elements.controlsToggle.getAttribute("aria-expanded") === "true" && !elements.controls.contains(event.target) && !document.querySelector("#xl3-panel").contains(event.target)) {
+    if (elements.controlsToggle.getAttribute("aria-expanded") === "true" && !elements.controls.contains(event.target)) {
       setControlsOpen(false);
     }
   });
@@ -366,16 +343,15 @@ function installControls() {
     if (event.code === "KeyS") setSettle("keyboard", false);
   });
 
-  window.addEventListener("blur", () => { releaseInteractions(); xl3?.releaseHolds(true); });
+  window.addEventListener("blur", () => { releaseInteractions(); });
   window.addEventListener("pagehide", () => {
     releaseInteractions();
     syncSettingsUrl();
     midi?.disable();
-    xl3?.disconnect();
-  });
+    });
 
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) { releaseInteractions(); xl3?.releaseHolds(true); if (state.ending) finishPerformance(); }
+    if (document.hidden) { releaseInteractions(); if (state.ending) finishPerformance(); }
     if (document.hidden && state.started) {
       audio.setPaused(true);
     } else if (state.started) {
@@ -470,7 +446,6 @@ function setGestureMode(mode, updateUrl = true) {
     elements.instrument.dataset.activeGesture = mode;
   }
   midi?.invalidate();
-  xl3?.invalidate();
   elements.instrument.dataset.gesture = mode;
   elements.gestureModes.forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.gesture === mode));
@@ -490,7 +465,6 @@ function setPerformanceParameter(property, value, defer = false) {
   if (!defer) applyPerformanceSettings(false);
   else applyPerformanceModel();
   midi?.invalidate();
-  xl3?.invalidate();
   window.clearTimeout(scoreTimer);
   if (defer) scoreTimer = window.setTimeout(syncSettingsUrl, 180);
   else syncSettingsUrl();
@@ -609,7 +583,6 @@ function updateRangeProgress(control) {
 }
 
 async function startExperience(event) {
-  if (event?.target instanceof Element && (event.target.closest("#xl3-panel, [data-interface], #controls-toggle") || controlLayout === "xl3" && event.target.closest("#controls"))) return;
   if (state.started) {
     await resumeSound();
     return;
@@ -646,62 +619,12 @@ async function resumeSound() {
   }
 }
 
-function chooseControlLayout(layout) {
-  controlLayout = layout;
-  try { localStorage.setItem("confluon-control-layout",layout); } catch { /* Optional UI preference. */ }
-  setControlsOpen(true);
-}
-
 function setControlsOpen(open) {
-  elements.controls.classList.toggle("collapsed", !open || controlLayout === "xl3");
-  xl3?.panel.show(open && controlLayout === "xl3");
+  elements.controls.classList.toggle("collapsed", !open);
   elements.controlsToggle.setAttribute("aria-expanded", String(open));
   elements.controlsToggle.setAttribute("aria-label", open ? "Hide controls" : "Show controls");
-  elements.controlsToggle.setAttribute("aria-controls", controlLayout === "xl3" ? "xl3-panel" : "controls-body");
-  document.querySelectorAll("[data-interface]").forEach(button => {
-    button.setAttribute("aria-pressed",String(button.dataset.interface === controlLayout));
-  });
+  elements.controlsToggle.setAttribute("aria-controls", "controls-body");
   wakeControls();
-}
-
-async function armPerformance() {
-  if (state.started) return;
-  if (state.starting) throw new Error("Audio is starting");
-  state.running = false;
-  audio.setPaused(true);
-  state.starting = true;
-  try { await audio.start(); audio.finishFade(); state.started = true; state.needsWake = true; }
-  finally { state.starting = false; xl3?.invalidate(); }
-}
-
-async function playPerformance() {
-  if (state.starting || state.ending) return;
-  if (!state.started) {
-    await armPerformance().catch(error => {
-      captureException(error,{stage:"controller_audio_start"});
-      xl3?.panel.message("Click Play in the panel to allow audio, then use the controller");
-    });
-    if (!state.started) return;
-  } else if (state.running && audio.state() === "running") {
-    state.ending = true;
-    audio.fadeOut(8);
-    xl3?.invalidate();
-    return;
-  }
-  state.starting = true;
-  xl3?.invalidate();
-  try {
-    await audio.resume();
-    state.running = true;
-    audio.setPaused(false);
-    if (state.needsWake) { state.needsWake = false; audio.wake(); }
-    xl3?.invalidate();
-  } catch {
-    xl3?.panel.message("Click Play in the panel to allow audio");
-  } finally {
-    state.starting = false;
-    xl3?.invalidate();
-  }
 }
 
 function finishPerformance() {
@@ -890,8 +813,7 @@ function togglePause() {
   state.running = !state.running;
   audio.setPaused(!state.running);
   midi?.invalidate();
-  xl3?.invalidate();
-}
+  }
 
 function resetField() {
   releaseInteractions(false);
@@ -909,8 +831,7 @@ function setSettle(source, down) {
   state.settle = settleSources.size > 0;
   if (previous && !state.settle) audio.strike(0.58, engine.metrics()[METRIC_FIELD.ENERGY]);
   midi?.invalidate();
-  xl3?.invalidate();
-}
+  }
 
 function performMidiAction(action, down, source) {
   if (action === "settle") setSettle(`midi:${source}`, down);
@@ -970,15 +891,13 @@ function releaseMidiSource(source) {
 }
 
 function releaseInteractions(resetMidi = true) {
-  xl3?.releaseHolds();
   if (resetMidi) midi?.mapping.releaseAll();
   else midi?.mapping.releaseHolds();
   settleSources.clear();
   state.settle = false;
   clearPointer();
   midi?.invalidate();
-  xl3?.invalidate();
-}
+  }
 
 function exposeDiagnostics() {
   window.confluon = Object.freeze({
@@ -1012,7 +931,6 @@ function exposeDiagnostics() {
 }
 
 async function prepareCapture() {
-  xl3?.disconnect();
   if (state.ending) finishPerformance();
   midi?.disable();
   releaseInteractions();

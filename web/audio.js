@@ -107,7 +107,7 @@ export class ConfluonAudio {
     }
   }
 
-  buildGraph(context) {
+  buildGraph(context, destination = context.destination) {
     // Master chain: gain -> subsonic highpass -> tape saturator -> tone
     // lowpass -> glue compressor -> safety limiter -> analyser -> out.
     this.master = context.createGain();
@@ -146,7 +146,7 @@ export class ConfluonAudio {
       .connect(this.compressor)
       .connect(this.limiter)
       .connect(this.analyser)
-      .connect(context.destination);
+      .connect(destination);
     // The production capture pipeline records this second pull from the same
     // mastered signal that reaches the speakers. Keeping the tap after the
     // limiter makes production video exports agree with interactive playback.

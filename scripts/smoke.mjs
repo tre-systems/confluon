@@ -1,7 +1,7 @@
 import { chromium } from "playwright";
 import { startStaticServer } from "./static-server.mjs";
 import { smokeMidi } from "./midi-smoke.mjs";
-import { smokeXL3 } from "./xl3-smoke.mjs";
+import { smokeStandalone } from "./standalone-smoke.mjs";
 
 const options = parseArguments(process.argv.slice(2));
 let server;
@@ -468,7 +468,7 @@ try {
 
   await context.close();
   await smokeMidi(browser, baseUrl);
-  await smokeXL3(browser, baseUrl);
+  await smokeStandalone(browser, baseUrl);
 
   const ignoredErrors = browserErrors.filter(
     (message) =>

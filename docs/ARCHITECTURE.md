@@ -88,8 +88,6 @@ Dependencies point inward toward contracts and the engine:
 | `web/simulation-contract.js` | ABI version, tuple indexes, strides, hard consumer limits | Dynamic engine state |
 | `web/performance-state.js` | URL keys, defaults, bounds, seed/settings parse and encode | DOM controls or side effects |
 | `web/midi-mapping.js` | MIDI channel/CC protocol, per-source pickup, button edges and touch heartbeat | DOM, Web MIDI permissions, engine access |
-| `web/xl3.js` | Portable XL3 DAW protocol, relative encoders, pickup and batched device feedback | DOM, instrument parameters or DSP |
-| `web/controller-panel.js` | Portable hardware-shaped panel, held buttons and press feedback | MIDI ports, audio or preset ownership |
 | `web/controller-bindings.js` / `web/xl3-surface.js` | Confluon slot assignments, panel/driver lifecycle and transport actions | Duplicate sound or visual engines |
 | `web/midi.js` | Web MIDI permission, port selection/lifecycle, local preferences and iPad feedback | Simulation state or a second parameter store |
 | `web/viewport-projection.js` | Pure centred-cover projection and inverse pointer mapping | DOM, simulation state, renderer policy |
@@ -146,9 +144,8 @@ its own pickup and held-button state. Absolute controls acquire near or across t
 current value, and re-arm when another control changes that target. Relative
 encoders apply binary-offset increments. Input channels separate the XL 3 and
 TouchOSC. The selected TouchOSC output receives parameter and mode feedback;
-the native layout suppresses feedback loops. The XL3 DAW output receives only its
-volatile session, encoder-position and LED messages. DAW ports are excluded from
-legacy selection. No Custom Modes or global hardware settings are written.
+the native layout suppresses feedback loops. DAW ports are excluded from legacy
+selection; the separate performance host owns the XL3 DAW connection. No Custom Modes or global hardware settings are written.
 
 The iPad sends 14-bit XY coordinates and a touch gate. A complete coordinate pair
 is committed on Y LSB, then mapped through the existing viewport projection. A
@@ -160,18 +157,12 @@ preparation disconnects MIDI before resetting the field. Port preferences stay i
 local storage and never enter the URL or diagnostics. See [MIDI performance](MIDI.md)
 for the protocol and layout sources.
 
-The XL3 protocol driver and view are adapted from Cymion. Application bindings own
-Confluon's labels, units and gesture/transport actions. This boundary lets
-another instrument use the same protocol/view without inheriting its sound engine.
-The two applications remain independently built; there is no published shared package.
-Device feedback is coalesced on a 16 ms timer; view feedback uses one animation-frame
-callback. Neither queue delays parameter writes. The translucent panel overlays
-the existing field directly, without a second canvas or preview copy.
-
-Controller fade-out schedules the existing master gain against AudioContext time.
-The graph, seeded synthesis, renderer and default parameter values are unchanged.
-Fade completion sets master gain to zero and pauses the field without overwriting
-Level. The URL remains a starting score, not a recording of controller movements.
+`performance/instrument.json` defines the versioned source package for the host.
+`performance/instrument.js` uses the canonical simulation, renderer, audio graph
+and parameter schema. `buildGraph(context, destination)` accepts a host-owned
+output bus; omitting it retains the ordinary AudioContext destination. The host
+owns MIDI protocol, panel rendering, fades and the shared AudioContext. The
+standalone app never loads the XL3 panel or requests its DAW ports.
 
 ### Adding a performance parameter
 

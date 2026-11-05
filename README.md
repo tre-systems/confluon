@@ -42,8 +42,8 @@ is the instrument's Ember Rift field, recorded in one ten-minute take with no ge
   and Divide gestures add deliberate sculpting, alongside seeding and resetting.
 - URL-backed performance settings for ecology, flow, touch strength, halo, visual
   memory, tone, life (population), and level.
-- Launch Control XL 3 DAW driver and hardware-shaped panel with relative encoders, fader pickup and button feedback,
-  plus a native iPad TouchOSC layout with a gesture pad and parameter feedback.
+- A versioned instrument package for the separate XL3 performance host, plus a
+  native iPad TouchOSC layout with a gesture pad and parameter feedback.
 - Three featured starting scores (Still Choir, Tidal Assembly, and Ember Rift) offer
   deliberately contrasting seeds and settings without changing the deterministic
   state contract.
@@ -102,17 +102,14 @@ ignored by git.
 
 ## Play with MIDI and iPad
 
-Open the controls and choose **XL3** in Chrome or Edge. Click **Connect** to use
-DAW Control with immediate relative knobs, fader pickup and button highlights.
-The translucent hardware-shaped panel lets the field show through and can be
-hidden while playing.
-Play starts the instrument; a second press fades to silence over eight seconds.
+The standalone app uses its compact controls. The separate performance host owns
+the XL3 connection and translucent hardware panel, and can run Confluon alone or
+crossfade with Cymion and Galacto. [The instrument package](performance/README.md)
+contains the source-owned adapter and fader-first mappings. Factory fields and
+URL-backed scores keep their existing values and format.
 
-Faders 1–6 control Ecology, Flow, Touch strength, Halo, Memory and Tone. Fader 8
-controls Level; fader 7 is unassigned. Middle-row knobs 4–5 control gesture X/Y.
-Unassigned controls are dimmed. Each fader uses pickup; Shift makes the X/Y knobs
-ten times finer. The existing Mode 16 and Custom Mode mappings remain available under
-**TouchOSC / legacy MIDI** in the standard controls.
+The standalone **TouchOSC / legacy MIDI** controls remain available for the iPad
+layout and older mappings. Disconnect those inputs before using the host.
 
 The [TouchOSC layout](public/controllers/confluon.tosc) supplies an iPad gesture
 pad, mode and transport buttons, and seven sliders with feedback. Connect it through

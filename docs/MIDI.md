@@ -7,52 +7,18 @@ gestures as the instrument's on-screen controls.
 Use Chrome or Edge on the Mac, on HTTPS or localhost. MIDI is optional: browsers
 without Web MIDI retain the normal instrument. SysEx permission is not requested.
 
-## XL3 panel and DAW Control
+## XL3 performance host
 
-Disconnect the controller from other instruments before connecting here. Open the
-controls, choose **XL3**, then click **Connect**. The app selects the unique matching
-XL3 DAW input/output pair and configures its volatile DAW session. It does not write
-Custom Modes, firmware or global settings. More than one matching device requires
-unplugging the extra device before retrying.
+The separate performance host owns DAW Control, the translucent XL3 panel and
+transitions. Use Confluon solo or include it in the three-instrument set. Connect
+once there after disconnecting MIDI in any standalone instrument tabs.
+Faders 1–6 control Ecology, Flow, Touch strength, Halo, Memory and Tone; fader 8
+controls Level. Gesture X/Y stays on middle-row knobs 4–5. The host supplies
+pickup, relative encoders, button feedback and Play/fade transport.
 
-Connecting a stopped instrument unlocks audio silently. Physical Play or the panel's
-Play button starts it; another press fades to zero over eight seconds, then pauses
-the field. Repeated presses during the fade are ignored. Play resumes the current
-field rather than resetting it. Level changes during the fade apply to the next
-start. Hiding the browser tab pauses audio; hiding just the control panel does not.
-
-| Position | Assignment |
-| --- | --- |
-| Faders 1–6 | Ecology, Flow, Touch strength, Halo, Memory, Tone |
-| Fader 7 | Unassigned |
-| Fader 8 | Level |
-| Middle knobs 4–5 | Gesture X, Gesture Y |
-
-The remaining continuous controls are unassigned and dimmed. Each active control
-has one job. The panel uses the same canonical parameter ranges as the standard
-controls. Relative knobs respond immediately; Shift makes steps ten times finer.
-All assigned faders use pickup, re-armed after touch edits, field changes or release of gestures.
-No parameter changes simply because a panel opens or a device connects.
-
-The top button row selects Gather / Orbit / Divide, holds the gesture at the X/Y
-position, holds Settle, adds a Seed, pauses/resumes, and resets with **Shift + Reset**.
-X/Y starts at the centre each session and does not enter the saved score. The bottom
-row loads Still Choir / Tidal Assembly / Ember Rift, releases gestures, focuses the
-Tone / Ecology / Halo fader, and switches to standard Controls. Loading a field is
-immediate and replaces the current starting score, just like the existing dropdown.
-Up/down focuses rows; the side Hide button hides the panel. Unmapped hardware
-buttons do nothing. Momentary buttons highlight while held, including Shift.
-
-The translucent panel keeps the field visible behind the controls. Dimmed, unused
-dials retain their hardware positions with compact spacing. On narrow screens the
-board scrolls horizontally; its columns stay aligned with the physical controller.
-The layout choice is stored separately from URL scores. The panel is also usable
-with a mouse, touch or keyboard without connecting hardware.
-
-Disconnecting, changing DAW mode, losing focus or hiding the tab releases held
-forces. A disconnected device needs an explicit reconnect. Ordinary controls and
-TouchOSC remain available; the legacy input selector excludes DAW ports so it
-cannot take the XL3 driver's input handler.
+Confluon's versioned [instrument package](../performance/README.md) owns the
+mapping and source adapter. The standalone page keeps its ordinary controls and
+optional TouchOSC / legacy MIDI section; it has no XL3 layout switch.
 
 ## Legacy Mode 16 / Custom Mode
 
@@ -143,7 +109,7 @@ available from **Download iPad TouchOSC layout** in the instrument's MIDI contro
 4. Under **Connections → MIDI**, enable connection 1 and select **<Bridge 1>** for
    both Send Port and Receive Port. The layout uses only MIDI connection 1.
 5. In Confluon select **TouchOSC Bridge** for the TouchOSC input and feedback output.
-   Use the XL3 panel connection separately, or select its main input for legacy Mode 16.
+   Use the performance host for XL3 DAW Control, or select its main input for legacy Mode 16.
 6. Enter TouchOSC's control-surface mode with its Play button. The layout shows
    **CONNECTED** when Confluon's feedback arrives.
 

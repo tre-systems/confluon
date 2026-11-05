@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { extname, join } from "node:path";
 
-const roots = ["web", "public", "scripts"];
+const roots = ["web", "public", "scripts", "performance"];
 const files = ["vite.config.js", "worker.js"];
 
 for (const root of roots) collect(root, files);
